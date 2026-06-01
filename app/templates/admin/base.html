@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Admin{% endblock %} — {{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  {% block head %}{% endblock %}
+</head>
+<body class="admin-body">
+  <header class="admin-header">
+    <div class="admin-header__brand">
+      <a href="/admin/" class="admin-header__logo">{{ app_name }}</a>
+    </div>
+    <div class="admin-header__user">
+      <a href="/admin/profile" class="admin-profile-chip {% if active == 'profile' %}admin-profile-chip--active{% endif %}" title="Your profile">
+        <span class="admin-profile-chip__avatar">{{ admin.username[0]|upper }}</span>
+        <span class="admin-profile-chip__name">{{ admin.username }}</span>
+      </a>
+      <form method="post" action="/admin/logout" class="admin-logout-form">
+        <button type="submit" class="btn btn-secondary btn-sm">Logout</button>
+      </form>
+    </div>
+  </header>
+
+  <nav class="admin-tabs" aria-label="Admin sections">
+    <a href="/admin/" class="admin-tab {% if active == 'overview' %}admin-tab--active{% endif %}">Overview</a>
+    <a href="/admin/share" class="admin-tab {% if active == 'share' %}admin-tab--active{% endif %}">Share with guests</a>
+    <a href="/admin/submissions" class="admin-tab {% if active == 'submissions' %}admin-tab--active{% endif %}">
+      Submissions{% if pending_count %}<span class="admin-tab__badge">{{ pending_count }}</span>{% endif %}
+    </a>
+    <a href="/admin/calendar" class="admin-tab {% if active == 'calendar' %}admin-tab--active{% endif %}">Calendar</a>
+    <a href="/admin/archive" class="admin-tab {% if active == 'archive' %}admin-tab--active{% endif %}">
+      Archive{% if archive_count %}<span class="admin-tab__badge admin-tab__badge--muted">{{ archive_count }}</span>{% endif %}
+    </a>
+  </nav>
+
+  <div class="container-wide admin-main">
+    {% block content %}{% endblock %}
+  </div>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

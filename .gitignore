@@ -1,0 +1,30 @@
+# Secrets & local env
+.env
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Local database (created on deploy / first run)
+data/*
+!data/.gitkeep
+
+# Runtime uploads & generated files — never commit guest data
+storage/**/*
+!storage/.gitkeep
+!storage/signatures/.gitkeep
+!storage/pdfs/.gitkeep
+!storage/id_documents/.gitkeep
+!storage/archive_exports/.gitkeep
+
+# PDF assets in config/: only the source coat of arms is versioned.
+# morocco_coat_header.png is auto-generated at runtime from morocco_coat_of_arms.png
+config/*.png
+!config/morocco_coat_of_arms.png
+
+# Local tunnel binary
+bin/cloudflared

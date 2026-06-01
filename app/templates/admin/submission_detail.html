@@ -1,0 +1,256 @@
+{% extends "admin/base.html" %}
+{% set active = 'submissions' %}
+{% block title %}{{ submission.last_name }} {{ submission.first_name }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumb">
+  <a href="/admin/submissions">Submissions</a>
+  {% if submission.status == 'archived' %} · <a href="/admin/archive">Archive</a>{% endif %}
+  · <span>{{ submission.last_name }} {{ submission.first_name }}</span>
+</p>
+
+{% if flash %}
+<div class="alert alert-success">{{ flash }}</div>
+{% endif %}
+{% if flash_error %}
+<div class="alert alert-error">{{ flash_error }}</div>
+{% endif %}
+
+<div class="admin-panel review-page">
+  <header class="review-header">
+    <h1 class="review-header__title">{{ submission.last_name }} {{ submission.first_name }}</h1>
+    <p class="subtitle review-header__meta">
+      Ref. {{ submission.public_id[:8]|upper }} · {{ submission.submitted_at.strftime('%d %b %Y %H:%M UTC') }}
+    </p>
+    <p class="review-header__status">
+      <span class="status-pill status-{{ submission.status }}">{{ submission.status }}</span>
+      {% if submission.status == 'submitted' %}
+      <span class="subtitle">Review details and ID below, then take your decision at the bottom.</span>
+      {% endif %}
+    </p>
+  </header>
+
+  <div class="review-workspace">
+    <div class="review-main">
+      <section class="review-card">
+        <h2 class="review-section-label"><span class="review-step">1</span> Guest details</h2>
+        <p class="subtitle" style="margin:0 0 1rem;padding:0.65rem 0.85rem;background:var(--surface-alt, #f4f6f8);border-radius:8px;border-left:3px solid var(--primary, #1e3a5f)">
+          <strong>Établissement (PDF):</strong> {{ property_placeholder }}
+        </p>
+        <dl class="review-dl">
+          <div><dt>Name</dt><dd>{{ submission.first_name }} {{ submission.last_name }}</dd></div>
+          <div><dt>Nationality</dt><dd>{{ submission.nationality }}</dd></div>
+          <div><dt>Date of birth</dt><dd>{{ submission.date_of_birth }}</dd></div>
+          <div><dt>Residence</dt><dd>{{ submission.country_of_residence }}</dd></div>
+          <div><dt>Stay</dt><dd>{{ submission.arrival_date }} → {{ submission.departure_date }}</dd></div>
+          <div><dt>Guests</dt><dd>{{ submission.number_of_guests }} ({{ submission.number_of_kids }} children)</dd></div>
+          <div><dt>ID type</dt><dd>{{ submission.id_document_type }}</dd></div>
+          <div><dt>ID number</dt><dd><strong>{{ submission.id_document_number }}</strong></dd></div>
+        </dl>
+        {% if submission.admin_notes %}
+        <p class="review-note"><strong>Notes:</strong> {{ submission.admin_notes }}</p>
+        {% endif %}
+      </section>
+
+      <section class="review-card">
+        <h2 class="review-section-label"><span class="review-step">2</span> Identity document</h2>
+        {% if has_id_preview %}
+        <div class="id-preview-wrap">
+          <img
+            src="/admin/submissions/{{ submission.public_id }}/id-preview"
+            alt="ID document scan"
+            class="id-preview-img"
+            loading="lazy"
+          >
+        </div>
+        <p class="subtitle id-preview-caption">Compare the scan above with the guest details. Open full file if needed.</p>
+        <a class="btn-link btn-sm" href="/admin/submissions/{{ submission.public_id }}/id-document" target="_blank" rel="noopener">Open original file</a>
+        {% if not submission.id_document_verified_at %}
+        <div class="review-id-verify-row">
+          <form method="post" action="/admin/submissions/{{ submission.public_id }}/verify-id">
+            <button type="submit" class="btn btn-confirm btn-sm">Mark ID verified</button>
+          </form>
+          <span class="subtitle">File auto-deleted {{ id_retention_hours }}h after verification.</span>
+        </div>
+        {% else %}
+        <p class="subtitle" style="margin-top:0.75rem">
+          ✓ Verified {{ submission.id_document_verified_at.strftime('%d %b %Y %H:%M') }} — scan removed after {{ id_retention_hours }}h.
+        </p>
+        {% endif %}
+        {% elif submission.id_document_path and not has_id_preview %}
+        <p class="subtitle">ID scan was verified and removed from storage.</p>
+        {% else %}
+        <p class="subtitle">No ID scan uploaded.</p>
+        {% endif %}
+      </section>
+
+      <section class="review-card">
+        <h2 class="review-section-label"><span class="review-step">3</span> Generated documents</h2>
+        {% if submission.document %}
+        <div class="review-docs">
+          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf">Fiche de police</a>
+          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf/rules">Règlement signé</a>
+        </div>
+        {% else %}
+        <p class="subtitle">PDFs not generated.</p>
+        {% endif %}
+        {% if submission.signature_path %}
+        <div class="review-signature">
+          <p class="subtitle" style="margin-bottom:0.5rem">Signature</p>
+          <img src="/admin/submissions/{{ submission.public_id }}/signature" alt="Signature" class="review-signature__img">
+        </div>
+        {% endif %}
+      </section>
+    </div>
+
+    <aside class="review-ai-sidebar" aria-label="AI verification assistant">
+      <div class="review-ai-sidebar__inner">
+        <h2 class="review-ai-sidebar__title">AI assistant</h2>
+        <p class="review-ai-disclaimer">
+          <strong>Admin decides.</strong> AI only suggests whether the form matches the ID. You confirm or edit yourself.
+        </p>
+        {% if ai_provider_label %}
+        <p class="subtitle" style="margin:0 0 0.75rem;font-size:0.8rem">
+          Engine: <strong>{{ ai_provider_label }}</strong>
+        </p>
+        {% endif %}
+
+        {% if has_id_preview and not submission.id_document_verified_at %}
+          {% if ai_enabled %}
+          <form id="ai-verify-form" method="post" action="/admin/submissions/{{ submission.public_id }}/ai-verify" class="review-ai-form">
+            <button type="submit" class="btn btn-primary btn-sm" style="width:100%" id="ai-verify-btn">
+              Run AI check
+            </button>
+          </form>
+          <div id="ai-verify-error" class="alert alert-error" hidden style="margin-top:0.75rem;font-size:0.85rem"></div>
+          {% else %}
+          <p class="subtitle" style="font-size:0.85rem">AI is off. Set <code>AI_PROVIDER=ollama</code> in <code>.env</code> and restart the app.</p>
+          {% endif %}
+        {% elif not has_id_preview %}
+        <p class="subtitle" style="font-size:0.85rem">No ID scan on this submission — AI check is not available.</p>
+        {% endif %}
+
+        {% if ai_result %}
+        <div class="ai-result ai-result--{{ ai_result.overall }}">
+          <div class="ai-result__head">
+            <span class="ai-result__label">Suggestion</span>
+            <span class="ai-result__badge ai-result__badge--{{ ai_result.overall }}">{{ ai_result.overall }}</span>
+          </div>
+          {% if ai_result.confidence is defined %}
+          <p class="subtitle">{{ (ai_result.confidence * 100)|int }}% confidence — not a final verdict</p>
+          {% endif %}
+          {% if ai_result.summary %}
+          <p class="ai-result__summary">{{ ai_result.summary }}</p>
+          {% endif %}
+          {% if ai_result.fields %}
+          <table class="ai-result__table">
+            <thead><tr><th>Field</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for f in ai_result.fields %}
+              <tr class="ai-row--{{ f.status }}" title="Form: {{ f.form_value or '—' }} | ID: {{ f.id_value or '—' }}">
+                <td>{{ f.field|replace('_', ' ')|title }}</td>
+                <td><span class="ai-field-status ai-field-status--{{ f.status }}">{{ f.status }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="subtitle ai-result__legend">Hover a row for form vs ID values.</p>
+          {% endif %}
+          {% if submission.ai_verification_at %}
+          <p class="subtitle" style="margin-top:0.5rem">Last run {{ submission.ai_verification_at.strftime('%d %b %H:%M') }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+
+  {% if can_edit or can_confirm or can_archive %}
+  <section class="review-actions review-actions--footer" aria-label="Your decision">
+    <h2 class="review-section-label">Your decision</h2>
+    <p class="subtitle review-actions__hint">
+      After reviewing details and ID{% if ai_result %} (and the AI suggestion){% endif %}, choose an action.
+    </p>
+    <div class="review-actions__bar">
+      {% if can_edit %}
+      <a class="btn btn-secondary review-actions__btn" href="/admin/submissions/{{ submission.public_id }}/edit">
+        ✎ Edit &amp; resave
+      </a>
+      {% endif %}
+      {% if can_confirm %}
+      <form method="post" action="/admin/submissions/{{ submission.public_id }}/confirm" class="review-actions__form">
+        <button type="submit" class="btn btn-confirm review-actions__btn">✓ Confirm registration</button>
+      </form>
+      {% endif %}
+      {% if can_archive %}
+      <form method="post" action="/admin/submissions/{{ submission.public_id }}/archive" class="review-actions__form"
+            onsubmit="return confirm('Move this submission to the archive?');">
+        <button type="submit" class="btn btn-danger review-actions__btn review-actions__btn--outline">Archive</button>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById('ai-verify-form');
+  if (!form) return;
+  const btn = document.getElementById('ai-verify-btn');
+  const errEl = document.getElementById('ai-verify-error');
+  const defaultLabel = btn ? btn.textContent : 'Run AI check';
+
+  function resetBtn() {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = defaultLabel;
+    }
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (errEl) errEl.hidden = true;
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Checking…';
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 120000);
+
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        window.location.reload();
+        return;
+      }
+      if (errEl) {
+        errEl.textContent = data.error || data.detail || 'AI check failed.';
+        errEl.hidden = false;
+      }
+      resetBtn();
+    } catch (err) {
+      clearTimeout(timer);
+      if (errEl) {
+        errEl.textContent =
+          err.name === 'AbortError'
+            ? 'Timed out. If using Ollama, ensure it is running (ollama serve).'
+            : 'Network error: ' + (err.message || 'could not reach server');
+        errEl.hidden = false;
+      }
+      resetBtn();
+    }
+  });
+})();
+</script>
+{% endblock %}

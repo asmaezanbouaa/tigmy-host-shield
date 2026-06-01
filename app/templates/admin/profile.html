@@ -1,0 +1,56 @@
+{% extends "admin/base.html" %}
+{% set active = 'profile' %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<h1 class="admin-page-title">Your profile</h1>
+<p class="admin-page-lead">Manage your admin account for {{ app_name }}.</p>
+
+<div class="admin-profile-layout">
+  <div class="admin-panel admin-profile-card-side">
+    <div class="admin-profile-avatar">{{ admin.username[0]|upper }}</div>
+    <h2 style="margin:0.5rem 0 0;font-size:1.25rem">{{ admin.username }}</h2>
+    <p class="subtitle" style="margin:0.25rem 0 0">Administrator</p>
+    {% if admin.created_at %}
+    <p class="subtitle" style="margin-top:1rem">Member since {{ admin.created_at.strftime('%d %B %Y') }}</p>
+    {% endif %}
+    <p class="subtitle" style="margin-top:0.5rem">Account status: <span class="status-pill status-confirmed">active</span></p>
+  </div>
+
+  <div class="admin-profile-forms">
+    <div class="admin-panel">
+      <h2 style="font-size:1rem;margin:0 0 1rem">Change password</h2>
+      <form method="post" action="/admin/profile/password" class="profile-form">
+        <div class="field">
+          <label class="required">Current password</label>
+          <input type="password" name="current_password" required autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label class="required">New password</label>
+          <input type="password" name="new_password" required minlength="4" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label class="required">Confirm new password</label>
+          <input type="password" name="confirm_password" required minlength="4" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:auto">Update password</button>
+      </form>
+    </div>
+
+    <div class="admin-panel">
+      <h2 style="font-size:1rem;margin:0 0 0.5rem">Session</h2>
+      <p class="subtitle" style="margin:0 0 1rem">You are signed in on this device. Log out when using a shared computer.</p>
+      <form method="post" action="/admin/logout">
+        <button type="submit" class="btn btn-secondary btn-sm">Log out</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>{{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="guest-body">
+  <div class="container guest-container">
+    {% if not usable %}
+    <div class="card guest-card" style="margin-top: 1rem;">
+      <div class="alert alert-error">{{ error_message }}</div>
+    </div>
+    {% else %}
+
+    <!-- Language selection -->
+    <div id="lang-screen" class="guest-screen {% if selected_lang %}guest-screen--hidden{% else %}guest-screen--active{% endif %}">
+      <div class="guest-hero">
+        <p class="guest-hero__badge">{{ app_name }}</p>
+        <h1 class="guest-hero__title" data-i18n="intro_title">Welcome</h1>
+        <p class="guest-hero__lead" data-i18n="intro_lead">We are delighted to host you. Please complete your official guest registration before your stay — it only takes a few minutes.</p>
+      </div>
+
+      <div class="card guest-card">
+        <h2 class="guest-steps-title" data-i18n="intro_steps_title">How it works</h2>
+        <ol class="guest-steps">
+          <li><span data-i18n="step1">Choose your language</span></li>
+          <li><span data-i18n="step2">Fill in your details and stay dates</span></li>
+          <li><span data-i18n="step3">Upload your ID, sign, and submit</span></li>
+        </ol>
+        <p class="guest-note" data-i18n="intro_id_note">You will upload a scan of your identity document. It is deleted {{ id_retention_hours }} hours after the host verifies it.</p>
+
+        <p class="subtitle guest-lang-label" data-i18n="intro_subtitle">Select your language</p>
+        <div class="lang-picker">
+          <a href="?lang=fr" class="lang-btn" data-lang="fr">
+            <span class="lang-flag">🇫🇷</span>
+            <span data-i18n="lang_fr">Français</span>
+          </a>
+          <a href="?lang=en" class="lang-btn" data-lang="en">
+            <span class="lang-flag">🇬🇧</span>
+            <span data-i18n="lang_en">English</span>
+          </a>
+          <a href="?lang=ar" class="lang-btn" data-lang="ar">
+            <span class="lang-flag">🇸🇦</span>
+            <span data-i18n="lang_ar">العربية</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registration form -->
+    <div id="form-screen" class="guest-screen {% if selected_lang %}guest-screen--active{% else %}guest-screen--hidden{% endif %}">
+      <div class="guest-form-banner">
+        <p class="guest-form-banner__label">{{ app_name }}</p>
+        <p class="guest-form-banner__text" data-i18n="form_welcome_text">Thank you for choosing to stay with us. Your information helps us prepare a smooth arrival.</p>
+      </div>
+
+      <div class="card guest-card">
+        <div class="form-top-bar">
+          <h1 data-i18n="page_title">{{ app_name }}</h1>
+          <button type="button" class="btn btn-secondary btn-sm" id="change-lang-btn" data-i18n="change_lang">Change language</button>
+        </div>
+        <p class="subtitle" data-i18n="form_subtitle">Fill in your details, accept the rules, and sign below.</p>
+
+        <div id="form-error" class="alert alert-error" hidden></div>
+
+        <form id="guest-form" data-token="{{ token }}" novalidate>
+          <div class="card inner-section">
+            <h2 data-i18n="section_info">Your information</h2>
+            <div class="grid-2">
+              <div class="field">
+                <label class="required" data-i18n="first_name">First name</label>
+                <input type="text" name="first_name" required maxlength="128" autocomplete="given-name">
+              </div>
+              <div class="field">
+                <label class="required" data-i18n="last_name">Last name</label>
+                <input type="text" name="last_name" required maxlength="128" autocomplete="family-name">
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label class="required" data-i18n="nationality">Nationality</label>
+                <input type="text" name="nationality" required maxlength="128">
+              </div>
+              <div class="field">
+                <label class="required" data-i18n="date_of_birth">Date of birth</label>
+                <input type="date" name="date_of_birth" required autocomplete="bday">
+                <span class="field-hint" data-i18n="hint_dob">Age 16–120 years</span>
+              </div>
+            </div>
+            <div class="field">
+              <label class="required" data-i18n="country_of_residence">Country of residence</label>
+              <input type="text" name="country_of_residence" required maxlength="128">
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label class="required" data-i18n="number_of_guests">Number of guests</label>
+                <input type="number" name="number_of_guests" min="1" max="50" step="1" value="1" inputmode="numeric" required>
+              </div>
+              <div class="field">
+                <label class="required" data-i18n="number_of_kids">Number of children</label>
+                <input type="number" name="number_of_kids" min="0" max="30" step="1" value="0" inputmode="numeric" required>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label class="required" data-i18n="arrival_date">Arrival date</label>
+                <input type="date" name="arrival_date" required>
+                <span class="field-hint" data-i18n="hint_arrival">From 30 days ago up to 2 years ahead</span>
+              </div>
+              <div class="field">
+                <label class="required" data-i18n="departure_date">Departure date</label>
+                <input type="date" name="departure_date" required>
+                <span class="field-hint" data-i18n="hint_departure">After arrival, max 365 nights</span>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label class="required" data-i18n="id_type">ID document type</label>
+                <select name="id_document_type" required>
+                  <option value="" data-i18n="select_option">—</option>
+                  <option value="Passeport / Passport" data-i18n-opt="id_passport">Passport</option>
+                  <option value="Carte d'identité / ID card" data-i18n-opt="id_card">ID card</option>
+                  <option value="Permis de conduire / Driving licence" data-i18n-opt="id_licence">Driving licence</option>
+                  <option value="Autre / Other" data-i18n-opt="id_other">Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="required" data-i18n="id_number">ID document number</label>
+                <input type="text" name="id_document_number" required maxlength="128">
+              </div>
+            </div>
+            <div class="field id-upload-field">
+              <label class="required" data-i18n="id_scan">Upload ID scan (photo or PDF)</label>
+              <input type="file" name="id_scan" id="id_scan" accept="image/jpeg,image/png,application/pdf" required>
+              <span class="field-hint" data-i18n="hint_id_scan">JPG, PNG or PDF — max 10 MB. Deleted {{ id_retention_hours }}h after host verification.</span>
+            </div>
+          </div>
+
+          <div class="card inner-section">
+            <h2 data-i18n="section_confirm">Confirmations</h2>
+            <div class="checkbox-field">
+              <input type="checkbox" id="accept_internal_rules" name="accept_internal_rules" required>
+              <label for="accept_internal_rules" data-i18n="accept_rules">I accept the rental rules</label>
+            </div>
+            <p class="rules-preview" id="rules-preview"></p>
+            <div class="checkbox-field">
+              <input type="checkbox" id="accept_terms" name="accept_terms" required>
+              <label for="accept_terms" data-i18n="accept_terms">I accept the terms and conditions</label>
+            </div>
+          </div>
+
+          <div class="card inner-section">
+            <h2 data-i18n="section_signature">Signature</h2>
+            <p class="subtitle sig-hint" data-i18n="signature_hint">Sign with your finger or mouse</p>
+            <div class="signature-wrap">
+              <canvas id="signature-canvas"></canvas>
+              <div class="signature-actions">
+                <button type="button" class="btn btn-secondary btn-sm" id="clear-signature" data-i18n="clear_signature">Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <p class="guest-submit-note" data-i18n="submit_note">After submitting, our team will review your registration. Your ID scan is kept only until verified, then deleted within {{ id_retention_hours }} hours.</p>
+          <div id="form-loading" class="loading" data-i18n="loading" hidden>Submitting…</div>
+          <button type="submit" class="btn btn-primary" id="submit-btn" disabled data-i18n="submit">Submit registration</button>
+        </form>
+      </div>
+    </div>
+
+    {% endif %}
+  </div>
+
+  <script id="guest-config" type="application/json">
+    {{ {"rules": {"fr": rules_fr, "en": rules_en, "ar": rules_ar}, "date_limits": date_limits, "selected_lang": selected_lang, "fresh_start": fresh_start, "token": token, "id_retention_hours": id_retention_hours} | tojson }}
+  </script>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/date-validation.js"></script>
+  <script src="/static/js/signature.js"></script>
+  <script src="/static/js/guest-form.js"></script>
+</body>
+</html>

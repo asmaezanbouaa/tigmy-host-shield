@@ -1,0 +1,83 @@
+{% extends "admin/base.html" %}
+{% set active = 'archive' %}
+{% block title %}Archive{% endblock %}
+
+{% block content %}
+<h1 class="admin-page-title">Archive</h1>
+<p class="admin-page-lead">
+  Archived registrations. Total (all time): <strong>{{ archive_count }}</strong>
+  ({{ archive_current }} in database{% if archive_purged_total %}, {{ archive_purged_total }} purged in past cycles{% endif %}).
+</p>
+
+{% if request.query_params.get('msg') %}
+<div class="alert alert-success">{{ request.query_params.get('msg') }}</div>
+{% endif %}
+{% if request.query_params.get('error') %}
+<div class="alert alert-error">{{ request.query_params.get('error') }}</div>
+{% endif %}
+{% if request.query_params.get('purged') %}
+<div class="alert alert-success">Submission permanently deleted.</div>
+{% endif %}
+
+<div class="admin-panel admin-link-card" style="margin-bottom:1.25rem">
+  <h2 style="font-size:1.05rem;margin:0 0 0.5rem">Quarterly backup (every {{ purge_interval_days }} days)</h2>
+  <p class="subtitle" style="margin:0 0 1rem">{{ purge_msg }}</p>
+  <div class="admin-quick-actions">
+    {% if archive_current > 0 %}
+    <a class="btn btn-primary btn-sm" href="/admin/archive/download.zip">Download all archived (ZIP)</a>
+    {% endif %}
+    {% if purge_ok and archive_current > 0 %}
+    <form method="post" action="/admin/archive/purge-quarterly" style="display:inline"
+          onsubmit="return confirm('Download the ZIP first! This permanently removes all {{ archive_current }} archived record(s) from the database. The total count ({{ archive_count }}) will still include them. Continue?');">
+      <button type="submit" class="btn btn-danger btn-sm">Purge archive (refresh database)</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="admin-panel">
+  <div class="admin-toolbar-row">
+    <form class="filters" method="get" action="/admin/archive" style="margin:0">
+      <input type="search" name="q" placeholder="Name or ID number…" value="{{ q }}">
+      <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+    </form>
+    <a class="btn btn-secondary btn-sm" href="/admin/export.csv?include_archived=true&status_filter=archived">Export CSV</a>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Submitted</th>
+          <th>Archived</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in submissions %}
+        <tr>
+          <td>{{ sub.last_name }} {{ sub.first_name }}</td>
+          <td>{{ sub.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{{ sub.archived_at.strftime('%Y-%m-%d %H:%M') if sub.archived_at else '—' }}</td>
+          <td class="actions-cell">
+            <a href="/admin/submissions/{{ sub.public_id }}">View</a>
+            {% if sub.document %}
+            · <a href="/admin/submissions/{{ sub.public_id }}/pdf">Fiche</a>
+            · <a href="/admin/submissions/{{ sub.public_id }}/pdf/rules">Rules</a>
+            {% endif %}
+            ·
+            <form method="post" action="/admin/archive/{{ sub.public_id }}/purge" style="display:inline"
+                  onsubmit="return confirm('Permanently delete this submission?');">
+              <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No archived submissions in the database. Total archived (all time): {{ archive_count }}.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

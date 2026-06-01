@@ -1,0 +1,12 @@
+# Named Cloudflare Tunnel — use with YOUR domain (not trycloudflare.com).
+# Example hostname: tigmy-host-shield.example.com
+#
+# Setup: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+#
+# tunnel: <TUNNEL-UUID>
+# credentials-file: /path/to/<TUNNEL-UUID>.json
+#
+# ingress:
+#   - hostname: tigmy-host-shield.example.com
+#     service: http://127.0.0.1:8000
+#   - service: http_status:404

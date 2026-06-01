@@ -1,0 +1,110 @@
+{% extends "admin/base.html" %}
+{% set active = 'calendar' %}
+{% block title %}Calendar{% endblock %}
+
+{% block content %}
+<h1 class="admin-page-title">Arrival calendar</h1>
+<p class="admin-page-lead">{{ event_count }} booking(s) in {{ month_name }}.</p>
+
+<div class="admin-panel">
+  <div class="admin-panel__head admin-panel__head--row">
+    <div></div>
+    <div class="calendar-nav">
+      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ prev_year }}&month={{ prev_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}">← Prev</a>
+      <strong class="calendar-nav__title">{{ month_name }}</strong>
+      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ next_year }}&month={{ next_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}">Next →</a>
+    </div>
+  </div>
+
+  <div class="calendar-toolbar">
+    <div class="calendar-view-tabs">
+      <a href="/admin/calendar?year={{ year }}&month={{ month }}&view=month{% if include_archived %}&include_archived=true{% endif %}"
+         class="calendar-tab {% if view == 'month' %}calendar-tab--active{% endif %}">Month</a>
+      <a href="/admin/calendar?year={{ year }}&month={{ month }}&view=list{% if include_archived %}&include_archived=true{% endif %}"
+         class="calendar-tab {% if view == 'list' %}calendar-tab--active{% endif %}">List</a>
+    </div>
+    <form class="filters calendar-filters" method="get" action="/admin/calendar">
+      <input type="hidden" name="year" value="{{ year }}">
+      <input type="hidden" name="month" value="{{ month }}">
+      <input type="hidden" name="view" value="{{ view }}">
+      <label class="calendar-check">
+        <input type="checkbox" name="include_archived" value="true" {% if include_archived %}checked{% endif %}>
+        Include archived
+      </label>
+      <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+    </form>
+    <a class="btn btn-secondary btn-sm" href="/admin/export.csv?arrival_from={{ month_start_iso }}&arrival_to={{ month_end_iso }}{% if include_archived %}&include_archived=true{% endif %}">Export month (CSV)</a>
+  </div>
+
+  {% if view == 'month' %}
+  <div class="calendar-grid-wrap">
+    <div class="calendar-weekdays">
+      {% for wd in weekdays %}
+      <div class="calendar-weekday">{{ wd }}</div>
+      {% endfor %}
+    </div>
+    {% for week in weeks %}
+    <div class="calendar-week">
+      {% for cell in week %}
+      <div class="calendar-day {% if not cell.day %}calendar-day--empty{% endif %} {% if cell.is_today %}calendar-day--today{% endif %}">
+        {% if cell.day %}
+        <span class="calendar-day__num">{{ cell.day }}</span>
+        <div class="calendar-day__events">
+          {% for ev in cell.events[:3] %}
+          <a href="{{ ev.detail_url }}" class="calendar-event status-{{ ev.status }}" title="{{ ev.guest_name }}">
+            <span class="calendar-event__name">{{ ev.guest_name }}</span>
+          </a>
+          {% endfor %}
+          {% if cell.events|length > 3 %}
+          <span class="calendar-more">+{{ cell.events|length - 3 }} more</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="calendar-legend">
+    <span><span class="status-pill status-submitted">submitted</span> awaiting review</span>
+    <span><span class="status-pill status-confirmed">confirmed</span> approved</span>
+    <span><span class="status-pill status-issue">issue</span> notified</span>
+  </div>
+  {% else %}
+  <div class="admin-table-wrap">
+    <table class="data-table calendar-list-table">
+      <thead>
+        <tr>
+          <th>Guest</th>
+          <th>Arrival</th>
+          <th>Departure</th>
+          <th>Nights</th>
+          <th>Guests</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in list_events %}
+        <tr>
+          <td><strong>{{ ev.guest_name }}</strong><br><span class="subtitle">{{ ev.id_number }}</span></td>
+          <td>{{ ev.arrival_date }}</td>
+          <td>{{ ev.departure_date }}</td>
+          <td>{{ ev.nights }}</td>
+          <td>{{ ev.guests }}</td>
+          <td><span class="status-pill status-{{ ev.status }}">{{ ev.status }}</span></td>
+          <td><a class="btn btn-secondary btn-sm" href="{{ ev.detail_url }}" style="width:auto;text-decoration:none">Open</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">No stays in this month.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/admin-dashboard.js"></script>
+{% endblock %}

@@ -1,0 +1,297 @@
+/**
+ * Guest form translations: French, English, Arabic
+ */
+window.GuestI18n = {
+  langs: ["fr", "en", "ar"],
+
+  t: {
+    fr: {
+      page_title: "Tigmy Host Shield",
+      hero_badge: "Tigmy Host Shield",
+      intro_title: "Bienvenue",
+      intro_lead: "Nous sommes ravis de vous accueillir. Merci de compléter votre enregistrement officiel avant votre séjour — cela ne prend que quelques minutes.",
+      intro_steps_title: "Comment ça marche",
+      step1: "Choisissez votre langue",
+      step2: "Renseignez vos informations et dates de séjour",
+      step3: "Téléversez votre pièce d'identité, signez et envoyez",
+      intro_id_note: "Vous téléverserez une copie de votre pièce d'identité. Elle sera supprimée 14 heures après vérification par l'hôte.",
+      intro_subtitle: "Choisissez votre langue",
+      form_welcome_label: "Tigmy Host Shield",
+      form_welcome_text: "Merci d'avoir choisi notre logement. Ces informations nous permettent de préparer votre arrivée dans les meilleures conditions.",
+      submit_note: "Après envoi, notre équipe examinera votre dossier. Votre pièce d'identité est supprimée après vérification (sous 14 h).",
+      id_scan: "Téléverser la pièce d'identité (photo ou PDF)",
+      hint_id_scan: "JPG, PNG ou PDF — max. 10 Mo. Supprimé 14 h après vérification par l'hôte.",
+      err_id_scan: "Veuillez téléverser une copie de votre pièce d'identité.",
+      submit: "Envoyer mon enregistrement",
+      success_title: "Merci !",
+      success_lead: "Votre enregistrement a bien été reçu.",
+      success_next_title: "Et ensuite ?",
+      success_step1: "Notre équipe vérifie vos informations",
+      success_step2: "L'hôte vérifie votre pièce d'identité",
+      success_step3: "Votre fichier d'identité est supprimé 14 heures après vérification (protection des données)",
+      success_id_notice: "Pour votre confidentialité : une fois votre pièce d'identité vérifiée par l'hôte, le scan est automatiquement supprimé de nos serveurs sous 14 heures.",
+      success_welcome_back: "Nous avons hâte de vous accueillir. Vous pouvez fermer cette page.",
+      success_close: "Excellent séjour !",
+      lang_fr: "Français",
+      lang_en: "English",
+      lang_ar: "العربية",
+      continue: "Continuer",
+      form_subtitle: "Remplissez vos informations et signez ci-dessous.",
+      section_apartment: "Appartement",
+      label_apartment: "Choisissez votre logement",
+      label_apartment_locked: "Votre logement",
+      select_apartment: "— Choisir —",
+      section_info: "Vos informations",
+      first_name: "Prénom",
+      last_name: "Nom",
+      nationality: "Nationalité",
+      date_of_birth: "Date de naissance",
+      country_of_residence: "Pays de résidence",
+      number_of_guests: "Nombre de voyageurs",
+      number_of_kids: "Nombre d'enfants",
+      arrival_date: "Date d'arrivée",
+      departure_date: "Date de départ",
+      id_type: "Type de pièce d'identité",
+      id_number: "N° pièce d'identité",
+      select_option: "—",
+      id_passport: "Passeport",
+      id_card: "Carte d'identité",
+      id_licence: "Permis de conduire",
+      id_other: "Autre",
+      section_confirm: "Confirmations",
+      accept_rules: "J'accepte le règlement intérieur",
+      accept_terms: "J'accepte les conditions générales",
+      section_signature: "Signature",
+      signature_hint: "Signez avec le doigt ou la souris",
+      clear_signature: "Effacer",
+      loading: "Envoi en cours…",
+      err_sign: "Veuillez signer avant de soumettre.",
+      err_generic: "Une erreur est survenue. Réessayez.",
+      change_lang: "Changer la langue",
+      hint_dob: "Âge entre 16 et 120 ans",
+      hint_arrival: "Du 30 derniers jours jusqu'à 2 ans maximum",
+      hint_departure: "Après l'arrivée, séjour max. 365 nuits",
+      err_date_invalid: "Date invalide. Utilisez le calendrier ou une date réaliste (AAAA-MM-JJ).",
+      err_dob_future: "La date de naissance ne peut pas être dans le futur.",
+      err_dob_too_old: "Date de naissance trop ancienne (max. 120 ans).",
+      err_dob_too_young: "L'âge minimum est 16 ans.",
+      err_arrival_past: "L'arrivée ne peut pas dater de plus de 30 jours.",
+      err_arrival_future: "L'arrivée ne peut pas dépasser 2 ans dans le futur.",
+      err_departure_before: "Le départ doit être après l'arrivée.",
+      err_departure_min_stay: "Le séjour doit durer au moins 1 nuit.",
+      err_departure_max_stay: "Le séjour ne peut pas dépasser 365 nuits.",
+      err_kids_exceed: "Le nombre d'enfants ne peut pas dépasser le nombre de voyageurs.",
+    },
+    en: {
+      page_title: "Tigmy Host Shield",
+      hero_badge: "Tigmy Host Shield",
+      intro_title: "Welcome",
+      intro_lead: "We are delighted to host you. Please complete your official guest registration before your stay — it only takes a few minutes.",
+      intro_steps_title: "How it works",
+      step1: "Choose your language",
+      step2: "Fill in your details and stay dates",
+      step3: "Upload your ID, sign, and submit",
+      intro_id_note: "You will upload a copy of your ID. It is deleted 14 hours after the host verifies it.",
+      intro_subtitle: "Select your language",
+      form_welcome_label: "Tigmy Host Shield",
+      form_welcome_text: "Thank you for choosing to stay with us. Your information helps us prepare a smooth arrival.",
+      submit_note: "After submitting, our team will review your registration. Your ID file is deleted after verification (within 14 hours).",
+      id_scan: "Upload ID scan (photo or PDF)",
+      hint_id_scan: "JPG, PNG or PDF — max 10 MB. Deleted 14 hours after host verification.",
+      err_id_scan: "Please upload a copy of your identity document.",
+      submit: "Submit registration",
+      success_title: "Thank you!",
+      success_lead: "Your registration has been received successfully.",
+      success_next_title: "What happens next?",
+      success_step1: "Our team will review your information",
+      success_step2: "The host will verify your identity document",
+      success_step3: "Your ID file is deleted 14 hours after verification (data protection)",
+      success_id_notice: "For your privacy: once the host has verified your ID, the uploaded scan is automatically removed from our servers within 14 hours.",
+      success_welcome_back: "We look forward to welcoming you. You may close this page.",
+      success_close: "Have a wonderful stay!",
+      lang_fr: "Français",
+      lang_en: "English",
+      lang_ar: "العربية",
+      continue: "Continue",
+      form_subtitle: "Fill in your details and sign below.",
+      section_apartment: "Apartment",
+      label_apartment: "Select your apartment",
+      label_apartment_locked: "Your accommodation",
+      select_apartment: "— Select —",
+      section_info: "Your information",
+      first_name: "First name",
+      last_name: "Last name",
+      nationality: "Nationality",
+      date_of_birth: "Date of birth",
+      country_of_residence: "Country of residence",
+      number_of_guests: "Number of guests",
+      number_of_kids: "Number of children",
+      arrival_date: "Arrival date",
+      departure_date: "Departure date",
+      id_type: "ID document type",
+      id_number: "ID document number",
+      select_option: "—",
+      id_passport: "Passport",
+      id_card: "ID card",
+      id_licence: "Driving licence",
+      id_other: "Other",
+      section_confirm: "Confirmations",
+      accept_rules: "I accept the rental rules",
+      accept_terms: "I accept the terms and conditions",
+      section_signature: "Signature",
+      signature_hint: "Sign with your finger or mouse",
+      clear_signature: "Clear",
+      loading: "Submitting…",
+      err_sign: "Please sign before submitting.",
+      err_generic: "An error occurred. Please try again.",
+      change_lang: "Change language",
+      hint_dob: "Age between 16 and 120 years",
+      hint_arrival: "From 30 days ago up to 2 years ahead",
+      hint_departure: "After arrival, max. 365 nights",
+      err_date_invalid: "Invalid date. Use the calendar or a realistic date (YYYY-MM-DD).",
+      err_dob_future: "Date of birth cannot be in the future.",
+      err_dob_too_old: "Date of birth is too far in the past (max. 120 years).",
+      err_dob_too_young: "Minimum age is 16 years.",
+      err_arrival_past: "Arrival cannot be more than 30 days in the past.",
+      err_arrival_future: "Arrival cannot be more than 2 years in the future.",
+      err_departure_before: "Departure must be on or after arrival.",
+      err_departure_min_stay: "Stay must be at least 1 night.",
+      err_departure_max_stay: "Stay cannot exceed 365 nights.",
+      err_kids_exceed: "Number of children cannot exceed number of guests.",
+    },
+    ar: {
+      page_title: "Tigmy Host Shield",
+      hero_badge: "Tigmy Host Shield",
+      intro_title: "مرحباً",
+      intro_lead: "يسعدنا استقبالكم. يرجى إكمال تسجيل الضيف الرسمي قبل موعد إقامتكم — الأمر يستغرق بضع دقائق فقط.",
+      intro_steps_title: "كيف يعمل",
+      step1: "اختر لغتك",
+      step2: "أدخل معلوماتك وتواريخ الإقامة",
+      step3: "ارفعوا وثيقة الهوية ووقّعوا وأرسلوا",
+      intro_id_note: "سترفعون نسخة من وثيقة الهوية. تُحذف بعد 14 ساعة من تحقق المضيف.",
+      intro_subtitle: "اختر لغتك",
+      form_welcome_label: "Tigmy Host Shield",
+      form_welcome_text: "شكراً لاختياركم إقامتكم معنا. تساعدنا معلوماتكم على تجهيز وصول سلس.",
+      submit_note: "بعد الإرسال، ستراجع فريقنا تسجيلكم. تُحذف وثيقة الهوية بعد التحقق (خلال 14 ساعة).",
+      id_scan: "رفع نسخة الهوية (صورة أو PDF)",
+      hint_id_scan: "JPG أو PNG أو PDF — بحد أقصى 10 ميجا. تُحذف بعد 14 ساعة من التحقق.",
+      err_id_scan: "يرجى رفع نسخة من وثيقة الهوية.",
+      submit: "إرسال التسجيل",
+      success_title: "شكراً لكم!",
+      success_lead: "تم استلام تسجيلكم بنجاح.",
+      success_next_title: "ماذا بعد؟",
+      success_step1: "يراجع فريقنا معلوماتكم",
+      success_step2: "يتحقق المضيف من وثيقة الهوية",
+      success_step3: "تُحذف وثيقة الهوية بعد 14 ساعة من التحقق (حماية البيانات)",
+      success_id_notice: "لخصوصيتكم: بعد تحقق المضيف من الهوية، تُزال النسخة من خوادمنا تلقائياً خلال 14 ساعة.",
+      success_welcome_back: "نتطلع لاستقبالكم. يمكنكم إغلاق هذه الصفحة.",
+      success_close: "إقامة سعيدة!",
+      lang_fr: "Français",
+      lang_en: "English",
+      lang_ar: "العربية",
+      continue: "متابعة",
+      form_subtitle: "أدخل معلوماتك ووقّع أدناه.",
+      section_apartment: "الشقة",
+      label_apartment: "اختر شقتك",
+      label_apartment_locked: "مكان إقامتك",
+      select_apartment: "— اختر —",
+      section_info: "معلوماتك",
+      first_name: "الاسم الشخصي",
+      last_name: "اسم العائلة",
+      nationality: "الجنسية",
+      date_of_birth: "تاريخ الميلاد",
+      country_of_residence: "بلد الإقامة",
+      number_of_guests: "عدد الضيوف",
+      number_of_kids: "عدد الأطفال",
+      arrival_date: "تاريخ الوصول",
+      departure_date: "تاريخ المغادرة",
+      id_type: "نوع وثيقة الهوية",
+      id_number: "رقم وثيقة الهوية",
+      select_option: "—",
+      id_passport: "جواز سفر",
+      id_card: "بطاقة هوية",
+      id_licence: "رخصة قيادة",
+      id_other: "أخرى",
+      section_confirm: "التأكيدات",
+      accept_rules: "أوافق على اللائحة الداخلية",
+      accept_terms: "أوافق على الشروط والأحكام",
+      section_signature: "التوقيع",
+      signature_hint: "وقّع بإصبعك أو بالفأرة",
+      clear_signature: "مسح",
+      loading: "جاري الإرسال…",
+      err_sign: "يرجى التوقيع قبل الإرسال.",
+      err_generic: "حدث خطأ. حاول مرة أخرى.",
+      change_lang: "تغيير اللغة",
+      hint_dob: "العمر بين 16 و 120 سنة",
+      hint_arrival: "من 30 يوماً مضت حتى سنتين كحد أقصى",
+      hint_departure: "بعد الوصول، 365 ليلة كحد أقصى",
+      err_date_invalid: "تاريخ غير صالح. استخدم التقويم أو تاريخاً واقعياً.",
+      err_dob_future: "لا يمكن أن يكون تاريخ الميلاد في المستقبل.",
+      err_dob_too_old: "تاريخ الميلاد قديم جداً (120 سنة كحد أقصى).",
+      err_dob_too_young: "الحد الأدنى للعمر 16 سنة.",
+      err_arrival_past: "لا يمكن أن يكون الوصول قبل أكثر من 30 يوماً.",
+      err_arrival_future: "لا يمكن أن يتجاوز الوصول سنتين في المستقبل.",
+      err_departure_before: "يجب أن يكون المغادرة في أو بعد الوصول.",
+      err_departure_min_stay: "الإقامة ليلة واحدة على الأقل.",
+      err_departure_max_stay: "لا يمكن أن تتجاوز الإقامة 365 ليلة.",
+      err_kids_exceed: "عدد الأطفال لا يمكن أن يتجاوز عدد الضيوف.",
+    },
+  },
+
+  idOptionValues: {
+    passport: "Passeport / Passport",
+    id_card: "Carte d'identité / ID card",
+    licence: "Permis de conduire / Driving licence",
+    other: "Autre / Other",
+  },
+
+  getLang() {
+    const saved = localStorage.getItem("guest_form_lang");
+    return this.langs.includes(saved) ? saved : null;
+  },
+
+  setLang(lang) {
+    if (this.langs.includes(lang)) {
+      localStorage.setItem("guest_form_lang", lang);
+    }
+  },
+
+  apply(lang) {
+    const strings = this.t[lang];
+    if (!strings) return;
+
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    document.title = strings.page_title;
+
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const key = el.getAttribute("data-i18n");
+      if (strings[key] !== undefined) {
+        el.textContent = strings[key];
+      }
+    });
+
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+      const key = el.getAttribute("data-i18n-placeholder");
+      if (strings[key] !== undefined) {
+        el.placeholder = strings[key];
+      }
+    });
+
+    const idSelect = document.querySelector('select[name="id_document_type"]');
+    if (idSelect) {
+      idSelect.querySelectorAll("option[data-i18n-opt]").forEach((opt) => {
+        const k = opt.getAttribute("data-i18n-opt");
+        if (strings[k] !== undefined) {
+          opt.textContent = strings[k];
+        }
+      });
+    }
+
+    const rulesEl = document.getElementById("rules-preview");
+    if (rulesEl && window.RULES_BY_LANG) {
+      const text = window.RULES_BY_LANG[lang] || "";
+      rulesEl.textContent = text.length > 600 ? text.slice(0, 600) + "…" : text;
+    }
+  },
+};

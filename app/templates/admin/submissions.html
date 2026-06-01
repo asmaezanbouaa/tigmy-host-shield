@@ -1,0 +1,93 @@
+{% extends "admin/base.html" %}
+{% set active = 'submissions' %}
+{% block title %}Submissions{% endblock %}
+
+{% block content %}
+{% if request.query_params.get('sub') == 'archived' %}
+<div class="alert alert-success">
+  Submission archived.
+  {% if request.query_params.get('msg') %}<br><span class="subtitle">{{ request.query_params.get('msg') }}</span>{% endif %}
+</div>
+{% endif %}
+
+<h1 class="admin-page-title">Guest submissions</h1>
+<p class="admin-page-lead"><strong>Review</strong> each submission, verify the ID scan, then <strong>Confirm</strong> or <strong>Edit &amp; resave</strong> if something is wrong.</p>
+
+<div class="admin-panel">
+  <div class="admin-toolbar-row">
+    <div class="admin-workflow-hint">
+      <span class="pill-submitted"><strong>submitted</strong> = needs action</span>
+      <span class="pill-confirmed"><strong>confirmed</strong> = approved</span>
+    </div>
+    <div class="admin-quick-actions">
+      <a class="btn btn-secondary btn-sm" href="/admin/calendar">Calendar</a>
+      <a class="btn btn-secondary btn-sm" href="{{ export_url }}">Export CSV</a>
+    </div>
+  </div>
+
+  <form id="submissions-filter-form" class="filters" method="get" action="/admin/submissions">
+    <input type="search" name="q" placeholder="Search name…" value="{{ q }}" autocomplete="off">
+    <select name="status_filter" aria-label="Status">
+      <option value="">All statuses</option>
+      {% for s in statuses %}
+      <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="arrival_from" value="{{ arrival_from }}" title="Arrival from">
+    <input type="date" name="arrival_to" value="{{ arrival_to }}" title="Arrival to">
+    <input type="date" name="submitted_from" value="{{ submitted_from }}" title="Submitted from">
+    <input type="date" name="submitted_to" value="{{ submitted_to }}" title="Submitted to">
+    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+    {% if filters_active %}
+    <a href="/admin/submissions" class="btn btn-secondary btn-sm">Clear</a>
+    {% endif %}
+  </form>
+  <p class="subtitle" style="margin:0.5rem 0 1rem">
+    {% if filters_active %}
+    <strong>{{ result_count }}</strong> result(s){% if status_filter %} · {{ status_filter }}{% endif %}
+    {% else %}
+    Filters update automatically when you change a field.
+    {% endif %}
+  </p>
+
+  <div class="admin-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Guest</th>
+          <th>ID number</th>
+          <th>Stay</th>
+          <th>Submitted</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in submissions %}
+        <tr>
+          <td><strong>{{ sub.last_name }}</strong> {{ sub.first_name }}</td>
+          <td style="font-size:0.85rem">{{ sub.id_document_number }}</td>
+          <td>{{ sub.arrival_date }} → {{ sub.departure_date }}<br><span class="subtitle">{{ sub.number_of_guests }} guests</span></td>
+          <td>{{ sub.submitted_at.strftime('%d %b %Y %H:%M') }}</td>
+          <td><span class="status-pill status-{{ sub.status }}">{{ sub.status }}</span></td>
+          <td class="actions-cell">
+            <a class="btn btn-secondary btn-sm" href="/admin/submissions/{{ sub.public_id }}" style="width:auto;text-decoration:none">
+              {% if sub.status == 'submitted' %}Review{% else %}View{% endif %}
+            </a>
+            {% if sub.document %}
+            <a class="btn-link" href="/admin/submissions/{{ sub.public_id }}/pdf">PDF</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No submissions yet. <a href="/admin/share">Share the guest link</a> to get started.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/admin-dashboard.js"></script>
+{% endblock %}

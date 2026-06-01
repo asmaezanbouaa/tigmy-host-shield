@@ -1,0 +1,52 @@
+{% extends "admin/base.html" %}
+{% set active = 'apartments' %}
+{% block title %}Edit apartment{% endblock %}
+
+{% block content %}
+<p class="breadcrumb">
+  <a href="/admin/apartments">Apartments</a>
+  · <span>{{ apartment.name }}</span>
+</p>
+
+<div class="admin-panel" style="max-width: 560px">
+  <h1 style="margin:0 0 0.25rem;font-size:1.35rem">Edit apartment</h1>
+  <p class="subtitle">Changes appear immediately on the guest registration form.</p>
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+  <form method="post" action="/admin/apartments/{{ apartment.public_id }}/edit">
+    <div class="field">
+      <label class="required">Apartment name</label>
+      <input type="text" name="name" required maxlength="128" value="{{ apartment.name }}">
+    </div>
+    <div class="field">
+      <label class="required">Address</label>
+      <textarea name="address" rows="3" required maxlength="2000" style="width:100%;padding:0.65rem;border:1px solid var(--border);border-radius:8px;font-family:inherit">{{ apartment.address }}</textarea>
+    </div>
+    <div class="field">
+      <label>Link slug (<code>apt=</code> in Airbnb messages)</label>
+      <input type="text" name="slug" maxlength="64" value="{{ apartment.slug or '' }}" placeholder="e.g. apartment-2">
+      <p class="subtitle" style="margin:0.35rem 0 0">Optional identifier for future booking links. Not shown to guests.</p>
+    </div>
+    <div class="checkbox-field">
+      <input type="checkbox" name="is_active" id="is_active" {% if apartment.is_active %}checked{% endif %}>
+      <label for="is_active">Visible on guest form (active)</label>
+    </div>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1.25rem">
+      <button type="submit" class="btn btn-primary" style="width:auto">Save changes</button>
+      <a href="/admin/apartments" class="btn btn-secondary" style="width:auto">Cancel</a>
+    </div>
+  </form>
+  {% if submission_count > 0 %}
+  <p class="subtitle" style="margin-top:1.5rem">
+    This apartment has {{ submission_count }} submission(s). It cannot be deleted; you can hide it instead.
+  </p>
+  {% else %}
+  <form method="post" action="/admin/apartments/{{ apartment.public_id }}/delete"
+        style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border)"
+        onsubmit="return confirm('Delete this apartment permanently?');">
+    <button type="submit" class="btn btn-danger btn-sm">Delete apartment</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

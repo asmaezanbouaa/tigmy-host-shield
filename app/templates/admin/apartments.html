@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+{% set active = 'apartments' %}
+{% block title %}Apartments{% endblock %}
+
+{% block content %}
+{% if request.query_params.get('apt') == 'created' %}
+<div class="alert alert-success">Apartment added successfully.</div>
+{% elif request.query_params.get('apt') == 'updated' %}
+<div class="alert alert-success">Apartment updated.</div>
+{% elif request.query_params.get('apt') == 'deleted' %}
+<div class="alert alert-success">Apartment deleted.</div>
+{% endif %}
+
+<h1 class="admin-page-title">Apartments</h1>
+<p class="admin-page-lead">Properties used on police PDFs and admin filters. Guests do not pick an apartment — the first active one (or <code>DEFAULT_APARTMENT_PUBLIC_ID</code> in <code>.env</code>) is used automatically.</p>
+
+<div class="admin-panel">
+  <h2 style="font-size:1rem;margin:0 0 1rem">Add apartment</h2>
+  <form method="post" action="/admin/apartments/create" class="grid-2" style="margin-bottom:0">
+    <div class="field">
+      <label class="required">Name</label>
+      <input type="text" name="name" required placeholder="e.g. Apartment 2 — Floor 3">
+    </div>
+    <div class="field">
+      <label class="required">Full address</label>
+      <input type="text" name="address" required placeholder="Street, city, postal code">
+    </div>
+    <div style="grid-column: 1 / -1">
+      <button type="submit" class="btn btn-primary" style="width:auto">Add apartment</button>
+    </div>
+  </form>
+</div>
+
+<div class="admin-panel" style="margin-top:1.25rem">
+  <div class="admin-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Address</th>
+          <th>Status</th>
+          <th>Registrations</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for apt in apartments %}
+        <tr>
+          <td><strong>{{ apt.name }}</strong></td>
+          <td>{{ apt.address[:55] }}{% if apt.address|length > 55 %}…{% endif %}</td>
+          <td>
+            <span class="status-pill {% if apt.is_active %}status-confirmed{% else %}status-cancelled{% endif %}">
+              {{ 'active' if apt.is_active else 'hidden' }}
+            </span>
+          </td>
+          <td>{{ submission_counts[apt.id] if apt.id in submission_counts else 0 }}</td>
+          <td class="actions-cell">
+            <a class="btn-link" href="/admin/apartments/{{ apt.public_id }}/edit">Edit</a>
+            <form method="post" action="/admin/apartments/{{ apt.public_id }}/toggle" style="display:inline">
+              <button type="submit" class="btn btn-secondary btn-sm">{{ 'Hide' if apt.is_active else 'Show' }}</button>
+            </form>
+            {% if (submission_counts[apt.id] if apt.id in submission_counts else 0) == 0 %}
+            <form method="post" action="/admin/apartments/{{ apt.public_id }}/delete" style="display:inline"
+                  onsubmit="return confirm('Delete this apartment?');">
+              <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">No apartments yet — add one above.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_name }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="guest-body">
+  <div class="container guest-container">
+    <div class="success-page">
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <h1 class="success-title" data-i18n="success_title">Thank you!</h1>
+      <p class="success-lead" data-i18n="success_lead">Your registration has been received successfully.</p>
+
+      <div class="card guest-card success-card">
+        <h2 data-i18n="success_next_title">What happens next?</h2>
+        <ul class="success-steps">
+          <li data-i18n="success_step1">Our team will review your information</li>
+          <li data-i18n="success_step2">Your ID scan will be checked by the host</li>
+          <li data-i18n="success_step3">Your ID file is deleted {{ id_retention_hours }} hours after verification (data protection)</li>
+        </ul>
+        <div class="alert" style="margin-top:1rem;background:#ecfdf5;border-color:#6ee7b7;font-size:0.9rem">
+          <p data-i18n="success_id_notice" style="margin:0">For your privacy: once the host has verified your identity document, the uploaded scan is automatically removed from our servers within {{ id_retention_hours }} hours.</p>
+        </div>
+      </div>
+
+      <p class="success-footer" data-i18n="success_welcome_back">We look forward to welcoming you. You may close this page.</p>
+      <p class="success-footer success-footer--muted" data-i18n="success_close">Have a wonderful stay!</p>
+    </div>
+  </div>
+  <script src="/static/js/i18n.js"></script>
+  <script>
+    (function () {
+      const I18n = window.GuestI18n;
+      const lang = I18n.getLang() || "fr";
+      I18n.apply(lang);
+    })();
+  </script>
+</body>
+</html>

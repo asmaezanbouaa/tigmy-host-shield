@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+{% set active = 'submissions' %}
+{% block title %}Edit {{ submission.last_name }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumb">
+  <a href="/admin/submissions">Submissions</a>
+  · <a href="/admin/submissions/{{ submission.public_id }}">{{ submission.last_name }} {{ submission.first_name }}</a>
+  · <span>Edit</span>
+</p>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="admin-panel">
+  <h1 style="margin:0 0 0.25rem;font-size:1.35rem">Edit registration</h1>
+  <p class="subtitle">Correct any errors, then save. Both PDFs (Fiche de police + Règlement signé) will be regenerated.</p>
+
+  <form method="post" action="/admin/submissions/{{ submission.public_id }}/edit" style="margin-top:1.25rem">
+    <div class="grid-2">
+      <div class="field">
+        <label class="required">Last name</label>
+        <input type="text" name="last_name" required maxlength="128" value="{{ submission.last_name }}">
+      </div>
+      <div class="field">
+        <label class="required">First name</label>
+        <input type="text" name="first_name" required maxlength="128" value="{{ submission.first_name }}">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="required">Nationality</label>
+        <input type="text" name="nationality" required value="{{ submission.nationality }}">
+      </div>
+      <div class="field">
+        <label class="required">Date of birth</label>
+        <input type="date" name="date_of_birth" required value="{{ submission.date_of_birth }}">
+      </div>
+    </div>
+    <div class="field">
+      <label class="required">Country of residence</label>
+      <input type="text" name="country_of_residence" required value="{{ submission.country_of_residence }}">
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="required">Guests</label>
+        <input type="number" name="number_of_guests" min="1" max="50" required value="{{ submission.number_of_guests }}">
+      </div>
+      <div class="field">
+        <label class="required">Children</label>
+        <input type="number" name="number_of_kids" min="0" max="30" required value="{{ submission.number_of_kids }}">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="required">Arrival</label>
+        <input type="date" name="arrival_date" required value="{{ submission.arrival_date }}">
+      </div>
+      <div class="field">
+        <label class="required">Departure</label>
+        <input type="date" name="departure_date" required value="{{ submission.departure_date }}">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="required">ID type</label>
+        <input type="text" name="id_document_type" required value="{{ submission.id_document_type }}">
+      </div>
+      <div class="field">
+        <label class="required">ID number</label>
+        <input type="text" name="id_document_number" required value="{{ submission.id_document_number }}">
+      </div>
+    </div>
+    <div class="field">
+      <label>Admin notes (internal)</label>
+      <textarea name="admin_notes" rows="3" maxlength="5000" style="width:100%;padding:0.65rem;border:1px solid var(--border);border-radius:8px;font-family:inherit">{{ submission.admin_notes or '' }}</textarea>
+    </div>
+    <div style="display:flex;gap:0.75rem;margin-top:1.25rem">
+      <button type="submit" class="btn btn-primary" style="width:auto">Save &amp; regenerate PDFs</button>
+      <a href="/admin/submissions/{{ submission.public_id }}" class="btn btn-secondary" style="width:auto">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
