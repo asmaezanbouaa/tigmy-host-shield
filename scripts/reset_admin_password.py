@@ -7,33 +7,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app.config import get_settings
 from app.database import SessionLocal
-from app.models import AdminUser
-from app.services.auth import hash_password
-
-settings = get_settings()
+from app.services.admin_users import ensure_admin_users
 
 
 def main():
     db = SessionLocal()
     try:
-        admin = (
-            db.query(AdminUser)
-            .filter(AdminUser.username == settings.admin_username)
-            .first()
-        )
-        if not admin:
-            admin = AdminUser(
-                username=settings.admin_username,
-                password_hash=hash_password(settings.admin_password),
-            )
-            db.add(admin)
-            print(f"Created admin: {settings.admin_username}")
-        else:
-            admin.password_hash = hash_password(settings.admin_password)
-            print(f"Password updated for: {settings.admin_username}")
-        db.commit()
+        for note in ensure_admin_users(db):
+            print(note)
         print("Use these credentials at /admin/login")
     finally:
         db.close()

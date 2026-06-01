@@ -90,6 +90,15 @@ def on_startup():
             n = purge_expired_id_documents(db)
             if n:
                 logger.info("Purged %s expired ID document(s)", n)
+            from app.services.admin_users import ensure_admin_users
+            from app.services.property_placeholder import get_or_create_placeholder_apartment
+            from app.services.registration import get_or_create_shared_link
+
+            admin_changes = ensure_admin_users(db)
+            if admin_changes:
+                logger.info("Admin users: %s", ", ".join(admin_changes))
+            get_or_create_placeholder_apartment(db)
+            get_or_create_shared_link(db)
     except Exception as exc:
         logger.warning("Database migration skipped or failed: %s", exc)
 

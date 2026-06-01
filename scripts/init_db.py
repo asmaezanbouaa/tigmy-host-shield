@@ -9,8 +9,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine
-from app.models import AdminUser
-from app.services.auth import hash_password
+from app.services.admin_users import ensure_admin_users
 from app.services.property_placeholder import get_or_create_placeholder_apartment
 from app.services.public_urls import guest_register_url
 from app.services.registration import get_or_create_shared_link
@@ -25,26 +24,17 @@ def main():
     Base.metadata.create_all(bind=engine)
 
     try:
-        from scripts.migrate_v2 import run_migrations
+        from scripts.run_all_migrations import run_all_migrations
 
-        run_migrations()
+        run_all_migrations()
     except Exception as exc:
         print(f"Migration note: {exc}")
 
     db = SessionLocal()
     try:
-        existing = db.query(AdminUser).filter(AdminUser.username == settings.admin_username).first()
-        if not existing:
-            db.add(
-                AdminUser(
-                    username=settings.admin_username,
-                    password_hash=hash_password(settings.admin_password),
-                )
-            )
-            db.commit()
-            print(f"Created admin user: {settings.admin_username}")
-        else:
-            print(f"Admin user '{settings.admin_username}' already exists.")
+        changes = ensure_admin_users(db)
+        for note in changes:
+            print(f"Admin user {note}")
 
         get_or_create_placeholder_apartment(db)
         get_or_create_shared_link(db)

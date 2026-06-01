@@ -38,6 +38,8 @@ class Settings(BaseSettings):
 
     admin_username: str = "admin"
     admin_password: str = "changeme"
+    admin_username_2: str = ""
+    admin_password_2: str = ""
 
     default_link_expiry_days: int = 30
 
