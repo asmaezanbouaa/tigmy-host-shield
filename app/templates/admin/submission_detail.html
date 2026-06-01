@@ -124,7 +124,7 @@
           </form>
           <div id="ai-verify-error" class="alert alert-error" hidden style="margin-top:0.75rem;font-size:0.85rem"></div>
           {% else %}
-          <p class="subtitle" style="font-size:0.85rem">AI is off. Set <code>AI_PROVIDER=ollama</code> in <code>.env</code> and restart the app.</p>
+          <p class="subtitle" style="font-size:0.85rem">AI is off. Set <code>AI_PROVIDER=local</code> in <code>.env</code> and restart the app.</p>
           {% endif %}
         {% elif not has_id_preview %}
         <p class="subtitle" style="font-size:0.85rem">No ID scan on this submission — AI check is not available.</p>
@@ -244,7 +244,7 @@
       if (errEl) {
         errEl.textContent =
           err.name === 'AbortError'
-            ? 'Timed out. If using Ollama, ensure it is running (ollama serve).'
+            ? 'Timed out — try again or use AI_PROVIDER=local for faster OCR.'
             : 'Network error: ' + (err.message || 'could not reach server');
         errEl.hidden = false;
       }

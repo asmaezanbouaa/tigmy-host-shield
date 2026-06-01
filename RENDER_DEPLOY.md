@@ -61,7 +61,7 @@ In **Render → tigmy-host-shield → Environment**, you can add later:
 
 - **Cold start:** If nobody visits for ~15 minutes, the next visit may take 30–60 seconds to load.
 - **Data:** SQLite and uploaded files live on the server disk. They survive normal restarts but can be lost on a **full redeploy** or service recreate. For heavy production use, add [Render Postgres](https://render.com/docs/databases) later.
-- **AI:** Default is `AI_PROVIDER=off` on Render (no local Ollama/Tesseract). Use Gemini with an API key if you need ID verification.
+- **AI:** Default is `AI_PROVIDER=local` (Tesseract OCR, unlimited). Use Gemini with a valid `AIza…` API key if you prefer cloud vision.
 
 ---
 

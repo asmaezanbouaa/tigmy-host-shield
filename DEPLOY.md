@@ -101,8 +101,7 @@ Back up regularly:
 
 ## AI on the server (optional)
 
-- **Local OCR**: `sudo apt install tesseract-ocr tesseract-ocr-fra`, `AI_PROVIDER=local`
-- **Ollama**: install on the same VPS or another machine; set `OLLAMA_BASE_URL` if remote
+- **Local OCR**: `sudo apt install tesseract-ocr tesseract-ocr-fra`, `AI_PROVIDER=local` (unlimited, no daily quota)
 
 ## Updates
 

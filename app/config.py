@@ -48,14 +48,11 @@ class Settings(BaseSettings):
     rules_en_path: Path = PROJECT_ROOT / "config" / "rules_en.txt"
     rules_ar_path: Path = PROJECT_ROOT / "config" / "rules_ar.txt"
 
-    # AI ID check: local (free OCR) | ollama (free local LLM) | gemini | openai (paid)
+    # AI ID check: local (free OCR, unlimited) | gemini (free tier, daily limit) | openai (paid)
     ai_provider: str = "local"
 
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
-
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "moondream"
 
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
@@ -72,8 +69,6 @@ class Settings(BaseSettings):
             return False
         if p == "gemini":
             return bool(self.gemini_api_key.strip())
-        if p == "ollama":
-            return True
         if p == "local":
             return True
         if p == "openai":
@@ -85,7 +80,6 @@ class Settings(BaseSettings):
         labels = {
             "local": "Local OCR (free, unlimited)",
             "gemini": "Google Gemini (free tier)",
-            "ollama": "Ollama (local LLM, free)",
             "openai": "OpenAI (paid credits)",
         }
         return labels.get(self.ai_provider_normalized, self.ai_provider_normalized)

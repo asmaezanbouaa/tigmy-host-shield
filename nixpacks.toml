@@ -1,0 +1,3 @@
+# Tesseract for AI_PROVIDER=local (unlimited free OCR on Railway)
+[phases.setup]
+aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng", "tesseract-ocr-fra"]

@@ -1,4 +1,4 @@
-"""Compare guest form data against ID scan — Gemini (free), Ollama (local), or OpenAI."""
+"""Compare guest form data against ID scan — local OCR (free), Gemini, or OpenAI."""
 
 import base64
 import io
@@ -13,8 +13,8 @@ from PIL import Image
 
 from app.config import get_settings
 from app.models import Submission
-from app.services.id_preview import get_preview_image
 from app.services.ai_local import verify_local_ocr
+from app.services.id_preview import get_preview_image
 from app.services.storage import absolute_path
 
 
@@ -75,7 +75,7 @@ def _parse_json_response(text: str) -> dict:
 
 
 def _parse_ai_response(text: str) -> dict:
-    """Parse JSON from the model; fall back for small local models (e.g. moondream)."""
+    """Parse JSON from the model; fall back to plain-text heuristics."""
     text = (text or "").strip()
     if not text:
         raise ValueError("Empty response from AI model.")
@@ -113,22 +113,18 @@ def _config_hint() -> str:
         return (
             "Set AI_PROVIDER=gemini and GEMINI_API_KEY in .env "
             "(free key: https://aistudio.google.com/apikey). "
-            "Or use AI_PROVIDER=ollama for 100% free local AI."
+            "Or use AI_PROVIDER=local for unlimited free OCR."
         )
     if p == "local":
         return (
             "Set AI_PROVIDER=local in .env. Install: "
             "sudo apt install tesseract-ocr tesseract-ocr-fra && pip install pytesseract"
         )
-    if p == "ollama":
-        return (
-            "Install Ollama, run: ollama pull moondream — then set AI_PROVIDER=ollama in .env"
-        )
     if p == "openai":
         return (
-            "OpenAI needs paid credits. For free: AI_PROVIDER=gemini or AI_PROVIDER=ollama"
+            "OpenAI needs paid credits. For free unlimited OCR: AI_PROVIDER=local"
         )
-    return "Set AI_PROVIDER=gemini, ollama, or openai in .env"
+    return "Set AI_PROVIDER=local, gemini, or openai in .env"
 
 
 def _verify_openai(sub: Submission, image_bytes: bytes, media_type: str) -> dict:
@@ -166,8 +162,8 @@ def _verify_openai(sub: Submission, image_bytes: bytes, media_type: str) -> dict
     if response.status_code == 429:
         raise ValueError(
             "OpenAI quota exceeded (paid credits required). "
-            "Switch to free AI in .env: AI_PROVIDER=gemini and GEMINI_API_KEY from "
-            "https://aistudio.google.com/apikey — or AI_PROVIDER=ollama for local free AI."
+            "Switch to AI_PROVIDER=local for unlimited free OCR, or AI_PROVIDER=gemini with a key from "
+            "https://aistudio.google.com/apikey"
         )
     if response.status_code != 200:
         raise ValueError(f"OpenAI error ({response.status_code}): {response.text[:300]}")
@@ -176,11 +172,26 @@ def _verify_openai(sub: Submission, image_bytes: bytes, media_type: str) -> dict
     return _finish_result(_parse_ai_response(content), cfg.openai_model)
 
 
+def _gemini_quota_message() -> str:
+    return (
+        "Gemini rate limit or daily free quota reached for this API key. "
+        "The limit is per key (shared by every app using the same GEMINI_API_KEY). "
+        "Try again later, create a new key at https://aistudio.google.com/apikey, "
+        "or set AI_PROVIDER=local for unlimited free OCR with no daily cap."
+    )
+
+
 def _verify_gemini(sub: Submission, image_bytes: bytes, media_type: str) -> dict:
     cfg = _settings()
     key = cfg.gemini_api_key.strip()
     if not key:
         raise ValueError(_config_hint())
+    if not key.startswith("AIza"):
+        raise ValueError(
+            "GEMINI_API_KEY does not look valid (it should start with AIza). "
+            "Create a free key at https://aistudio.google.com/apikey — "
+            "do not paste keys from other Google products."
+        )
 
     model = cfg.gemini_model.strip()
     b64 = base64.standard_b64encode(image_bytes).decode("ascii")
@@ -203,7 +214,7 @@ def _verify_gemini(sub: Submission, image_bytes: bytes, media_type: str) -> dict
     timeout = httpx.Timeout(90.0, connect=20.0)
     try:
         with httpx.Client(timeout=timeout) as client:
-            response = client.post(url, json=payload)
+            response = _post_with_retry(client, url, payload, headers={})
     except httpx.TimeoutException:
         raise ValueError("Gemini request timed out. Try again.") from None
     except httpx.RequestError as exc:
@@ -214,16 +225,11 @@ def _verify_gemini(sub: Submission, image_bytes: bytes, media_type: str) -> dict
             "Invalid Gemini API key. Get a free key at https://aistudio.google.com/apikey"
         )
     if response.status_code == 429:
-        raise ValueError(
-            f"Gemini free quota used for today. Active provider in .env: {_settings().ai_provider_normalized!r} "
-            "(restart ./run.sh after changing .env). For free local AI: AI_PROVIDER=ollama"
-        )
+        raise ValueError(_gemini_quota_message())
     if response.status_code != 200:
         err = response.text[:400]
         if "quota" in err.lower() or "RESOURCE_EXHAUSTED" in err:
-            raise ValueError(
-                "Gemini free quota exceeded. Use AI_PROVIDER=ollama (install Ollama + ollama pull moondream)."
-            )
+            raise ValueError(_gemini_quota_message())
         raise ValueError(f"Gemini error ({response.status_code}): {err}")
 
     data = response.json()
@@ -233,55 +239,6 @@ def _verify_gemini(sub: Submission, image_bytes: bytes, media_type: str) -> dict
         raise ValueError("Unexpected Gemini response format.") from exc
 
     return _finish_result(_parse_ai_response(text), model)
-
-
-def _verify_ollama(sub: Submission, image_bytes: bytes, media_type: str) -> dict:
-    cfg = _settings()
-    base = cfg.ollama_base_url.rstrip("/")
-    model = cfg.ollama_model.strip()
-    b64 = base64.standard_b64encode(image_bytes).decode("ascii")
-
-    payload = {
-        "model": model,
-        "messages": [
-            {
-                "role": "user",
-                "content": _build_prompt(sub),
-                "images": [b64],
-            }
-        ],
-        "stream": False,
-        "options": {"temperature": 0.1},
-    }
-
-    timeout = httpx.Timeout(120.0, connect=5.0)
-    try:
-        with httpx.Client(timeout=timeout) as client:
-            response = client.post(f"{base}/api/chat", json=payload)
-    except httpx.ConnectError:
-        raise ValueError(
-            "Ollama is not running. Install from https://ollama.com then run:\n"
-            "  ollama pull moondream\n"
-            "  ollama serve\n"
-            "Set AI_PROVIDER=ollama in .env"
-        ) from None
-    except httpx.TimeoutException:
-        raise ValueError("Ollama timed out (slow PC or large image). Try again.") from None
-    except httpx.RequestError as exc:
-        raise ValueError(f"Cannot reach Ollama at {base}: {exc}") from exc
-
-    if response.status_code == 404:
-        raise ValueError(
-            f"Ollama model '{model}' not found. Run: ollama pull {model}"
-        )
-    if response.status_code != 200:
-        raise ValueError(f"Ollama error ({response.status_code}): {response.text[:300]}")
-
-    content = response.json().get("message", {}).get("content", "")
-    if not content:
-        raise ValueError("Empty response from Ollama. Try: ollama pull llava or moondream")
-
-    return _finish_result(_parse_ai_response(content), f"ollama/{model}")
 
 
 def _post_with_retry(
@@ -326,13 +283,11 @@ def verify_submission_id(sub: Submission) -> dict:
         return _finish_result(verify_local_ocr(sub, image_bytes), "local/tesseract")
     if provider == "gemini":
         return _verify_gemini(sub, image_bytes, media_type)
-    if provider == "ollama":
-        return _verify_ollama(sub, image_bytes, media_type)
     if provider == "openai":
         return _verify_openai(sub, image_bytes, media_type)
 
     raise ValueError(
-        f"Unknown AI_PROVIDER={provider}. Use local, ollama, gemini, or openai."
+        f"Unknown AI_PROVIDER={provider}. Use local, gemini, or openai."
     )
 
 
