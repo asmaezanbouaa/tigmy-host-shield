@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
@@ -21,8 +21,19 @@ app = FastAPI(
     redoc_url=None,
 )
 
+class ProxyHTTPSRedirectMiddleware(BaseHTTPMiddleware):
+    """Redirect external HTTP only; Railway healthchecks use plain HTTP internally."""
+
+    async def dispatch(self, request, call_next):
+        if settings.force_https:
+            proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+            if proto == "http":
+                return RedirectResponse(str(request.url.replace(scheme="https")), status_code=308)
+        return await call_next(request)
+
+
 if settings.force_https:
-    app.add_middleware(HTTPSRedirectMiddleware)
+    app.add_middleware(ProxyHTTPSRedirectMiddleware)
 
 static_dir = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
