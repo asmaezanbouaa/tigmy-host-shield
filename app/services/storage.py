@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from uuid import uuid4
 
-from app.config import get_settings
+from app.config import PROJECT_ROOT, get_settings
 
 settings = get_settings()
 
@@ -21,7 +21,7 @@ def ensure_storage_dirs() -> None:
     settings.pdfs_path.mkdir(parents=True, exist_ok=True)
     settings.id_documents_path.mkdir(parents=True, exist_ok=True)
     settings.archive_exports_path.mkdir(parents=True, exist_ok=True)
-    (settings.storage_path.parent / "data").mkdir(parents=True, exist_ok=True)
+    (PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
 
 
 def save_signature_from_data_url(data_url: str, submission_public_id: str) -> str:

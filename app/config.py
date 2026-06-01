@@ -24,7 +24,8 @@ class Settings(BaseSettings):
 
     database_url: str = f"sqlite:///{PROJECT_ROOT / 'data' / 'guest_registry.db'}"
 
-    storage_path: Path = PROJECT_ROOT / "storage"
+    # Under data/ so one Railway volume at /app/data keeps DB + uploads
+    storage_path: Path = PROJECT_ROOT / "data" / "storage"
     signatures_dir: str = "signatures"
     pdfs_dir: str = "pdfs"
     id_documents_dir: str = "id_documents"

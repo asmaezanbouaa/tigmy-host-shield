@@ -12,8 +12,7 @@ fi
 
 "$PIP" install -r requirements.txt
 
-mkdir -p data
-mkdir -p storage/signatures storage/pdfs storage/id_documents storage/archive_exports
+mkdir -p data/storage/signatures data/storage/pdfs data/storage/id_documents data/storage/archive_exports
 
 "$PYTHON" scripts/run_all_migrations.py
 "$PYTHON" scripts/init_db.py
