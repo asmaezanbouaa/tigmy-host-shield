@@ -22,10 +22,10 @@ app = FastAPI(
 )
 
 class ProxyHTTPSRedirectMiddleware(BaseHTTPMiddleware):
-    """Redirect external HTTP only; Railway healthchecks use plain HTTP internally."""
+    """Redirect external HTTP only; never redirect Railway's /health probe."""
 
     async def dispatch(self, request, call_next):
-        if settings.force_https:
+        if settings.force_https and request.url.path != "/health":
             proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
             if proto == "http":
                 return RedirectResponse(str(request.url.replace(scheme="https")), status_code=308)
