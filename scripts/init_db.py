@@ -25,9 +25,9 @@ def main():
     Base.metadata.create_all(bind=engine)
 
     try:
-        from scripts.migrate_v2 import run_migrations
+        from scripts.run_all_migrations import run_all_migrations
 
-        run_migrations()
+        run_all_migrations()
     except Exception as exc:
         print(f"Migration note: {exc}")
 
