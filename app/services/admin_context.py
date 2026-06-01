@@ -20,6 +20,83 @@ def parse_filter_date(value: str | None) -> datetime | None:
         return None
 
 
+def get_overview_dashboard(db: Session) -> dict:
+    """Today's arrivals, ID verifications pending, and submissions needing action."""
+    today = date.today().isoformat()
+    base_active = db.query(Submission).filter(
+        Submission.status.in_(ACTIVE_SUBMISSION_STATUSES)
+    )
+
+    today_arrivals = (
+        base_active.filter(Submission.arrival_date == today)
+        .order_by(Submission.submitted_at.desc())
+        .limit(8)
+        .all()
+    )
+
+    pending_id = (
+        db.query(func.count(Submission.id))
+        .filter(
+            Submission.status == SubmissionStatus.SUBMITTED.value,
+            Submission.id_document_path.isnot(None),
+            Submission.id_document_path != "",
+            Submission.id_document_verified_at.is_(None),
+        )
+        .scalar()
+        or 0
+    )
+
+    need_action_count = (
+        db.query(func.count(Submission.id))
+        .filter(
+            Submission.status.in_(
+                (SubmissionStatus.SUBMITTED.value, SubmissionStatus.ISSUE.value)
+            )
+        )
+        .scalar()
+        or 0
+    )
+
+    need_action = (
+        db.query(Submission)
+        .filter(
+            Submission.status.in_(
+                (SubmissionStatus.SUBMITTED.value, SubmissionStatus.ISSUE.value)
+            )
+        )
+        .order_by(Submission.submitted_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    departing_today = (
+        base_active.filter(Submission.departure_date == today)
+        .order_by(Submission.last_name)
+        .limit(5)
+        .all()
+    )
+
+    today_arrivals_count = (
+        db.query(func.count(Submission.id))
+        .filter(
+            Submission.status.in_(ACTIVE_SUBMISSION_STATUSES),
+            Submission.arrival_date == today,
+        )
+        .scalar()
+        or 0
+    )
+
+    return {
+        "today_iso": today,
+        "today_arrivals_count": today_arrivals_count,
+        "today_arrivals": today_arrivals,
+        "departing_today": departing_today,
+        "pending_id_count": pending_id,
+        "need_action": need_action,
+        "need_action_count": need_action_count,
+    }
+
+
 def get_admin_counts(db: Session) -> dict[str, int]:
     current_archived = (
         db.query(func.count(Submission.id))

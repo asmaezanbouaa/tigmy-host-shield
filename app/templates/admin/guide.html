@@ -1,0 +1,69 @@
+{% extends "admin/base.html" %}
+{% set active = 'guide' %}
+{% block title %}Host guide{% endblock %}
+
+{% block content %}
+<h1 class="admin-page-title">Host guide</h1>
+<p class="admin-page-lead">Quick reference for {{ app_name }} — share the guest link, review registrations, and keep records for authorities.</p>
+
+<div class="host-guide">
+  <section class="host-guide__section">
+    <h2>1. Share the guest registration link</h2>
+    <p>Send guests this link <strong>before they arrive</strong> (Airbnb message, WhatsApp, or QR code in the apartment):</p>
+    <div class="host-guide__url-box">
+      <code id="guide-guest-url">{{ guest_register_url }}</code>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('guide-guest-url').textContent); this.textContent='Copied!'">Copy</button>
+    </div>
+    <p class="subtitle">Or open <a href="/admin/share">Share with guests</a> to copy the link or download a QR code.</p>
+  </section>
+
+  <section class="host-guide__section">
+    <h2>2. Sign in to the admin dashboard</h2>
+    <p>Bookmark this page for you and your co-host:</p>
+    <div class="host-guide__url-box">
+      <code>{{ admin_login_url }}</code>
+    </div>
+    <p class="subtitle">Use your username and password. Change your password anytime under <a href="/admin/profile">Profile</a>.</p>
+  </section>
+
+  <section class="host-guide__section">
+    <h2>3. When a guest submits</h2>
+    <ol class="host-guide__steps">
+      <li>Open <strong>Submissions</strong> or check the <strong>Dashboard</strong> for “Needs action”.</li>
+      <li>Open the guest record and review their details and ID scan.</li>
+      <li>Click <strong>Verify ID</strong> once you have checked the document matches the form.</li>
+      <li>Optionally run <strong>AI check</strong> if enabled (local OCR or API).</li>
+      <li>Click <strong>Confirm</strong> when everything is correct, or mark <strong>Issue</strong> if something is wrong.</li>
+    </ol>
+    <p class="guest-note" style="margin-top:1rem">ID scans are automatically deleted {{ id_retention_hours | default(14) }} hours after you verify them (data protection).</p>
+  </section>
+
+  <section class="host-guide__section">
+    <h2>4. Download PDFs for authorities</h2>
+    <p>From a submission detail page you can download:</p>
+    <ul>
+      <li><strong>Fiche de police</strong> — official guest record (French + English pages)</li>
+      <li><strong>Signed rules</strong> — rental rules the guest accepted</li>
+    </ul>
+    <p>These PDFs include Morocco header styling and are generated for each registration.</p>
+  </section>
+
+  <section class="host-guide__section">
+    <h2>5. Calendar and archive</h2>
+    <ul>
+      <li><strong>Calendar</strong> — see who arrives and departs each month.</li>
+      <li><strong>Archive</strong> — move old records out of the active list; export quarterly ZIPs for your records.</li>
+      <li><strong>Export CSV</strong> — from Submissions, filter and export a spreadsheet.</li>
+    </ul>
+  </section>
+
+  <section class="host-guide__section host-guide__section--tip">
+    <h2>Daily routine (2 minutes)</h2>
+    <ol class="host-guide__steps">
+      <li>Check <a href="/admin/">Dashboard</a> for arrivals today and pending ID verifications.</li>
+      <li>Verify any new submissions before check-in.</li>
+      <li>Confirm guests once ID and dates look correct.</li>
+    </ol>
+  </section>
+</div>
+{% endblock %}

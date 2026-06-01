@@ -57,6 +57,7 @@
 
       requestAnimationFrame(() => {
         formScreen?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setProgressStep(1);
         if (typeof window.dispatchEvent === "function") {
           window.dispatchEvent(new Event("signature-resize"));
         }
@@ -140,6 +141,58 @@
     }
 
     if (!form) return;
+
+    const progressCurrent = document.getElementById("progress-current");
+    const progressFill = document.getElementById("progress-fill");
+    const progressBar = document.getElementById("progress-bar");
+    const progressSteps = document.querySelectorAll(".guest-progress__step");
+    const formSteps = document.querySelectorAll("[data-form-step]");
+    const TOTAL_STEPS = 4;
+
+    function setProgressStep(step) {
+      const n = Math.min(Math.max(step, 1), TOTAL_STEPS);
+      if (progressCurrent) progressCurrent.textContent = String(n);
+      if (progressFill) progressFill.style.width = `${(n / TOTAL_STEPS) * 100}%`;
+      if (progressBar) progressBar.setAttribute("aria-valuenow", String(n));
+      progressSteps.forEach((el) => {
+        const s = parseInt(el.getAttribute("data-step"), 10);
+        el.classList.toggle("guest-progress__step--active", s === n);
+        el.classList.toggle("guest-progress__step--done", s < n);
+      });
+    }
+
+    function initProgressObserver() {
+      if (!formSteps.length || typeof IntersectionObserver === "undefined") {
+        setProgressStep(1);
+        return;
+      }
+      const observer = new IntersectionObserver(
+        (entries) => {
+          let best = 1;
+          let bestRatio = 0;
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio >= bestRatio) {
+              bestRatio = entry.intersectionRatio;
+              const step = parseInt(entry.target.getAttribute("data-form-step"), 10);
+              if (step) best = step;
+            }
+          });
+          if (bestRatio > 0) setProgressStep(best);
+        },
+        { root: null, rootMargin: "-20% 0px -55% 0px", threshold: [0.15, 0.4, 0.7] }
+      );
+      formSteps.forEach((el) => observer.observe(el));
+      setProgressStep(1);
+    }
+
+    initProgressObserver();
+
+    const idUploadOk = document.getElementById("id-upload-ok");
+    document.getElementById("id_scan")?.addEventListener("change", (e) => {
+      if (idUploadOk) {
+        idUploadOk.hidden = !(e.target.files && e.target.files.length);
+      }
+    });
 
     function msg(key) {
       const lang = I18n.getLang() || "fr";

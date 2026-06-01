@@ -25,6 +25,7 @@ from app.services.admin_context import (
     build_export_url,
     filters_active,
     get_admin_counts,
+    get_overview_dashboard,
     query_submissions,
 )
 from app.services.auth import create_access_token, hash_password, verify_password
@@ -132,7 +133,33 @@ async def admin_overview(
 ):
     return templates.TemplateResponse(
         "admin/overview.html",
-        {"request": request, "admin": admin, **_counts_context(db)},
+        {
+            "request": request,
+            "admin": admin,
+            "guest_register_url": guest_register_url(),
+            "admin_login_url": admin_login_url(),
+            **_counts_context(db),
+            **get_overview_dashboard(db),
+        },
+    )
+
+
+@router.get("/guide", response_class=HTMLResponse)
+async def admin_guide(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    return templates.TemplateResponse(
+        "admin/guide.html",
+        {
+            "request": request,
+            "admin": admin,
+            "guest_register_url": guest_register_url(),
+            "admin_login_url": admin_login_url(),
+            "id_retention_hours": settings.id_retention_hours_after_verify,
+            **_counts_context(db),
+        },
     )
 
 

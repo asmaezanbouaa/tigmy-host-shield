@@ -16,43 +16,97 @@
 <div class="alert alert-success">Password changed successfully.</div>
 {% endif %}
 
-<h1 class="admin-page-title">Overview</h1>
-<p class="admin-page-lead">Welcome back, <strong>{{ admin.username }}</strong>. Here is a snapshot of your guest registry.</p>
+<h1 class="admin-page-title">Dashboard</h1>
+<p class="admin-page-lead">Welcome back, <strong>{{ admin.username }}</strong>. Here is what needs your attention today.</p>
 
 <div class="admin-stats">
   <a href="/admin/submissions?status_filter=submitted" class="admin-stat admin-stat--pending admin-stat--link">
     <p class="admin-stat__value">{{ pending_count }}</p>
     <p class="admin-stat__label">Awaiting review</p>
   </a>
+  <a href="/admin/submissions?arrival_from={{ today_iso }}&arrival_to={{ today_iso }}" class="admin-stat admin-stat--today admin-stat--link">
+    <p class="admin-stat__value">{{ today_arrivals_count }}</p>
+    <p class="admin-stat__label">Arriving today</p>
+  </a>
+  <a href="/admin/submissions?status_filter=submitted" class="admin-stat admin-stat--id admin-stat--link">
+    <p class="admin-stat__value">{{ pending_id_count }}</p>
+    <p class="admin-stat__label">ID to verify</p>
+  </a>
   <a href="/admin/submissions?status_filter=confirmed" class="admin-stat admin-stat--confirmed admin-stat--link">
     <p class="admin-stat__value">{{ confirmed_count }}</p>
     <p class="admin-stat__label">Confirmed</p>
   </a>
-  <div class="admin-stat admin-stat--total">
-    <p class="admin-stat__value">{{ total_active }}</p>
-    <p class="admin-stat__label">Active records</p>
-  </div>
-  <a href="/admin/archive" class="admin-stat admin-stat--archive admin-stat--link">
-    <p class="admin-stat__value">{{ archive_count }}</p>
-    <p class="admin-stat__label">Archived</p>
-  </a>
+</div>
+
+<div class="admin-dashboard-grid">
+  <section class="admin-dashboard-panel">
+    <div class="admin-dashboard-panel__head">
+      <h2>Needs action{% if need_action_count %} ({{ need_action_count }}){% endif %}</h2>
+      <a href="/admin/submissions?status_filter=submitted" class="admin-dashboard-panel__link">View all</a>
+    </div>
+    {% if need_action %}
+    <ul class="admin-action-list">
+      {% for s in need_action %}
+      <li>
+        <a href="/admin/submissions/{{ s.public_id }}" class="admin-action-list__item">
+          <span class="admin-action-list__name">{{ s.first_name }} {{ s.last_name }}</span>
+          <span class="admin-badge admin-badge--{{ s.status }}">{{ s.status }}</span>
+          <span class="admin-action-list__meta">Arrival {{ s.arrival_date }}</span>
+          {% if s.id_document_path and not s.id_document_verified_at %}
+          <span class="admin-action-list__flag">ID pending</span>
+          {% endif %}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="admin-dashboard-empty">No submissions waiting — you're all caught up.</p>
+    {% endif %}
+  </section>
+
+  <section class="admin-dashboard-panel">
+    <div class="admin-dashboard-panel__head">
+      <h2>Arriving today</h2>
+      <a href="/admin/calendar" class="admin-dashboard-panel__link">Calendar</a>
+    </div>
+    {% if today_arrivals %}
+    <ul class="admin-action-list">
+      {% for s in today_arrivals %}
+      <li>
+        <a href="/admin/submissions/{{ s.public_id }}" class="admin-action-list__item">
+          <span class="admin-action-list__name">{{ s.first_name }} {{ s.last_name }}</span>
+          <span class="admin-badge admin-badge--{{ s.status }}">{{ s.status }}</span>
+          <span class="admin-action-list__meta">Until {{ s.departure_date }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="admin-dashboard-empty">No arrivals scheduled for today.</p>
+    {% endif %}
+  </section>
 </div>
 
 <div class="admin-overview-grid">
   <a href="/admin/share" class="admin-overview-card">
     <span class="admin-overview-card__icon">🔗</span>
     <h3>Share with guests</h3>
-    <p>Copy the registration link or download a QR code for guests.</p>
+    <p>Copy the registration link or download a QR code.</p>
+  </a>
+  <a href="/admin/guide" class="admin-overview-card">
+    <span class="admin-overview-card__icon">📖</span>
+    <h3>Host guide</h3>
+    <p>How to share the link, verify IDs, and export PDFs.</p>
   </a>
   <a href="/admin/submissions" class="admin-overview-card">
     <span class="admin-overview-card__icon">📋</span>
-    <h3>Guest submissions</h3>
-    <p>Review, confirm, or reject registrations. {{ pending_count }} waiting now.</p>
+    <h3>All submissions</h3>
+    <p>Review, confirm, edit, and download documents.</p>
   </a>
   <a href="/admin/calendar" class="admin-overview-card">
     <span class="admin-overview-card__icon">📅</span>
     <h3>Calendar</h3>
-    <p>See arrivals and departures by month.</p>
+    <p>Arrivals and departures by month.</p>
   </a>
 </div>
 {% endblock %}

@@ -14,12 +14,32 @@
     </div>
     {% else %}
 
-    <!-- Language selection -->
+    <!-- Intro: plain-language welcome before language choice -->
     <div id="lang-screen" class="guest-screen {% if selected_lang %}guest-screen--hidden{% else %}guest-screen--active{% endif %}">
       <div class="guest-hero">
-        <p class="guest-hero__badge">{{ app_name }}</p>
+        <img src="/static/img/tigmy-logo.svg" alt="" class="brand-logo brand-logo--hero" width="56" height="56">
+        <p class="guest-hero__badge" data-i18n="hero_badge">{{ app_name }}</p>
         <h1 class="guest-hero__title" data-i18n="intro_title">Welcome</h1>
         <p class="guest-hero__lead" data-i18n="intro_lead">We are delighted to host you. Please complete your official guest registration before your stay — it only takes a few minutes.</p>
+        <p class="guest-hero__time" data-i18n="intro_time">About 5 minutes</p>
+      </div>
+
+      <div class="guest-intro-grid">
+        <div class="guest-intro-card">
+          <span class="guest-intro-card__icon" aria-hidden="true">📋</span>
+          <h3 data-i18n="intro_need_title">What you need</h3>
+          <p data-i18n="intro_need_body">A photo or PDF of your ID (passport or ID card), your travel dates, and a quick signature on screen.</p>
+        </div>
+        <div class="guest-intro-card">
+          <span class="guest-intro-card__icon" aria-hidden="true">✓</span>
+          <h3 data-i18n="intro_next_title">What happens next</h3>
+          <p data-i18n="intro_next_body">Your host receives your registration, verifies your ID, and prepares your arrival. You will not need to fill this form again for this stay.</p>
+        </div>
+        <div class="guest-intro-card guest-intro-card--secure">
+          <span class="guest-intro-card__icon" aria-hidden="true">🔒</span>
+          <h3 data-i18n="intro_secure_title">Your data is protected</h3>
+          <p data-i18n="intro_secure_body">Your ID scan is deleted {{ id_retention_hours }} hours after the host verifies it. We only keep what is required for legal guest registration.</p>
+        </div>
       </div>
 
       <div class="card guest-card">
@@ -29,7 +49,6 @@
           <li><span data-i18n="step2">Fill in your details and stay dates</span></li>
           <li><span data-i18n="step3">Upload your ID, sign, and submit</span></li>
         </ol>
-        <p class="guest-note" data-i18n="intro_id_note">You will upload a scan of your identity document. It is deleted {{ id_retention_hours }} hours after the host verifies it.</p>
 
         <p class="subtitle guest-lang-label" data-i18n="intro_subtitle">Select your language</p>
         <div class="lang-picker">
@@ -52,8 +71,29 @@
     <!-- Registration form -->
     <div id="form-screen" class="guest-screen {% if selected_lang %}guest-screen--active{% else %}guest-screen--hidden{% endif %}">
       <div class="guest-form-banner">
-        <p class="guest-form-banner__label">{{ app_name }}</p>
-        <p class="guest-form-banner__text" data-i18n="form_welcome_text">Thank you for choosing to stay with us. Your information helps us prepare a smooth arrival.</p>
+        <img src="/static/img/tigmy-logo.svg" alt="" class="brand-logo brand-logo--banner" width="32" height="32">
+        <div>
+          <p class="guest-form-banner__label" data-i18n="form_welcome_label">{{ app_name }}</p>
+          <p class="guest-form-banner__text" data-i18n="form_welcome_text">Thank you for choosing to stay with us. Your information helps us prepare a smooth arrival.</p>
+        </div>
+      </div>
+
+      <div class="guest-progress" id="guest-progress" aria-label="Form progress">
+        <p class="guest-progress__label">
+          <span data-i18n="progress_step_of">Step</span>
+          <strong id="progress-current">1</strong>
+          <span data-i18n="progress_of">of</span>
+          <span id="progress-total">4</span>
+        </p>
+        <div class="guest-progress__bar" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" id="progress-bar">
+          <div class="guest-progress__fill" id="progress-fill" style="width:25%"></div>
+        </div>
+        <ol class="guest-progress__steps">
+          <li class="guest-progress__step guest-progress__step--active" data-step="1" data-i18n="progress_step_info">Information</li>
+          <li class="guest-progress__step" data-step="2" data-i18n="progress_step_rules">Rules</li>
+          <li class="guest-progress__step" data-step="3" data-i18n="progress_step_sign">Signature</li>
+          <li class="guest-progress__step" data-step="4" data-i18n="progress_step_submit">Submit</li>
+        </ol>
       </div>
 
       <div class="card guest-card">
@@ -66,7 +106,7 @@
         <div id="form-error" class="alert alert-error" hidden></div>
 
         <form id="guest-form" data-token="{{ token }}" novalidate>
-          <div class="card inner-section">
+          <div class="card inner-section guest-form-step" id="step-info" data-form-step="1">
             <h2 data-i18n="section_info">Your information</h2>
             <div class="grid-2">
               <div class="field">
@@ -135,10 +175,11 @@
               <label class="required" data-i18n="id_scan">Upload ID scan (photo or PDF)</label>
               <input type="file" name="id_scan" id="id_scan" accept="image/jpeg,image/png,application/pdf" required>
               <span class="field-hint" data-i18n="hint_id_scan">JPG, PNG or PDF — max 10 MB. Deleted {{ id_retention_hours }}h after host verification.</span>
+              <p id="id-upload-ok" class="id-upload-ok" hidden data-i18n="id_upload_ok">Photo received ✓</p>
             </div>
           </div>
 
-          <div class="card inner-section">
+          <div class="card inner-section guest-form-step" id="step-rules" data-form-step="2">
             <h2 data-i18n="section_confirm">Confirmations</h2>
             <div class="checkbox-field">
               <input type="checkbox" id="accept_internal_rules" name="accept_internal_rules" required>
@@ -151,7 +192,7 @@
             </div>
           </div>
 
-          <div class="card inner-section">
+          <div class="card inner-section guest-form-step" id="step-sign" data-form-step="3">
             <h2 data-i18n="section_signature">Signature</h2>
             <p class="subtitle sig-hint" data-i18n="signature_hint">Sign with your finger or mouse</p>
             <div class="signature-wrap">
@@ -162,9 +203,13 @@
             </div>
           </div>
 
-          <p class="guest-submit-note" data-i18n="submit_note">After submitting, our team will review your registration. Your ID scan is kept only until verified, then deleted within {{ id_retention_hours }} hours.</p>
-          <div id="form-loading" class="loading" data-i18n="loading" hidden>Submitting…</div>
-          <button type="submit" class="btn btn-primary" id="submit-btn" disabled data-i18n="submit">Submit registration</button>
+          <div class="card inner-section guest-form-step guest-form-step--submit" id="step-submit" data-form-step="4">
+            <h2 data-i18n="section_submit">Ready to submit</h2>
+            <p class="subtitle" data-i18n="section_submit_hint">Check your details above, then send your registration to your host.</p>
+            <p class="guest-submit-note" data-i18n="submit_note">After submitting, our team will review your registration. Your ID scan is kept only until verified, then deleted within {{ id_retention_hours }} hours.</p>
+            <div id="form-loading" class="loading" data-i18n="loading" hidden>Submitting…</div>
+            <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" disabled data-i18n="submit">Submit registration</button>
+          </div>
         </form>
       </div>
     </div>
