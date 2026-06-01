@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str = "https://api.openai.com/v1"
 
+    ai_auto_verify_on_submit: bool = True
+    ai_auto_confirm_threshold: float = 0.5
+
     @property
     def ai_provider_normalized(self) -> str:
         return (self.ai_provider or "local").strip().lower()

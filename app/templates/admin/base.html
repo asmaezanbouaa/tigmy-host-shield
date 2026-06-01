@@ -10,10 +10,7 @@
 <body class="admin-body">
   <header class="admin-header">
     <div class="admin-header__brand">
-      <a href="/admin/" class="admin-header__logo">
-        <img src="/static/img/tigmy-logo.svg" alt="" class="brand-logo brand-logo--header" width="28" height="28">
-        <span>{{ app_name }}</span>
-      </a>
+      <a href="/admin/" class="admin-header__logo">{{ app_name }}</a>
     </div>
     <div class="admin-header__user">
       <a href="/admin/profile" class="admin-profile-chip {% if active == 'profile' %}admin-profile-chip--active{% endif %}" title="Your profile">
@@ -28,10 +25,12 @@
 
   <nav class="admin-tabs" aria-label="Admin sections">
     <a href="/admin/" class="admin-tab {% if active == 'overview' %}admin-tab--active{% endif %}">Overview</a>
-    <a href="/admin/guide" class="admin-tab {% if active == 'guide' %}admin-tab--active{% endif %}">Host guide</a>
     <a href="/admin/share" class="admin-tab {% if active == 'share' %}admin-tab--active{% endif %}">Share with guests</a>
     <a href="/admin/submissions" class="admin-tab {% if active == 'submissions' %}admin-tab--active{% endif %}">
       Submissions{% if pending_count %}<span class="admin-tab__badge">{{ pending_count }}</span>{% endif %}
+    </a>
+    <a href="/admin/ai-approved" class="admin-tab {% if active == 'ai_approved' %}admin-tab--active{% endif %}">
+      AI approved{% if ai_auto_confirmed_count %}<span class="admin-tab__badge admin-tab__badge--ai">{{ ai_auto_confirmed_count }}</span>{% endif %}
     </a>
     <a href="/admin/calendar" class="admin-tab {% if active == 'calendar' %}admin-tab--active{% endif %}">Calendar</a>
     <a href="/admin/archive" class="admin-tab {% if active == 'archive' %}admin-tab--active{% endif %}">

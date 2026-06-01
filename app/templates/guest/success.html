@@ -9,18 +9,36 @@
 <body class="guest-body">
   <div class="container guest-container">
     <div class="success-page">
-      <img src="/static/img/tigmy-logo.svg" alt="" class="brand-logo brand-logo--hero" width="48" height="48">
-      <p class="guest-hero__badge">{{ app_name }}</p>
-      <div class="success-icon" aria-hidden="true">✓</div>
+      <div class="success-icon" aria-hidden="true">{% if ai_outcome == 'approved' %}✓{% else %}✓{% endif %}</div>
+
+      {% if ai_outcome == 'approved' %}
+      <h1 class="success-title" data-i18n="success_ai_approved_title">You're all set!</h1>
+      <p class="success-lead" data-i18n="success_ai_approved_lead">Your registration was verified by AI and confirmed automatically. No further steps needed.</p>
+      <div class="guest-powered-by guest-powered-by--success" data-i18n="powered_by_ai">✨ Powered by AI — fast, secure guest verification</div>
+      {% elif ai_outcome == 'review' %}
+      <h1 class="success-title" data-i18n="success_ai_review_title">Thank you!</h1>
+      <p class="success-lead" data-i18n="success_ai_review_lead">Your registration was received. Our team will quickly review a few details — we'll be in touch if needed.</p>
+      {% else %}
       <h1 class="success-title" data-i18n="success_title">Thank you!</h1>
       <p class="success-lead" data-i18n="success_lead">Your registration has been received successfully.</p>
+      {% endif %}
 
       <div class="card guest-card success-card">
         <h2 data-i18n="success_next_title">What happens next?</h2>
         <ul class="success-steps">
+          {% if ai_outcome == 'approved' %}
+          <li data-i18n="success_ai_step1">Your details matched your ID scan</li>
+          <li data-i18n="success_ai_step2">Your registration is confirmed — welcome!</li>
+          <li data-i18n="success_step3">Your ID file is deleted {{ id_retention_hours }} hours after verification (data protection)</li>
+          {% elif ai_outcome == 'review' %}
+          <li data-i18n="success_ai_review_step1">AI checked your ID — a host will review shortly</li>
+          <li data-i18n="success_ai_review_step2">You usually hear back within a few hours</li>
+          <li data-i18n="success_step3">Your ID file is deleted {{ id_retention_hours }} hours after verification (data protection)</li>
+          {% else %}
           <li data-i18n="success_step1">Our team will review your information</li>
           <li data-i18n="success_step2">Your ID scan will be checked by the host</li>
           <li data-i18n="success_step3">Your ID file is deleted {{ id_retention_hours }} hours after verification (data protection)</li>
+          {% endif %}
         </ul>
         <div class="alert" style="margin-top:1rem;background:#ecfdf5;border-color:#6ee7b7;font-size:0.9rem">
           <p data-i18n="success_id_notice" style="margin:0">For your privacy: once the host has verified your identity document, the uploaded scan is automatically removed from our servers within {{ id_retention_hours }} hours.</p>

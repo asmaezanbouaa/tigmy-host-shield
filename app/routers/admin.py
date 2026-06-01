@@ -25,6 +25,7 @@ from app.services.admin_context import (
     build_export_url,
     filters_active,
     get_admin_counts,
+    query_ai_auto_confirmed,
     query_submissions,
 )
 from app.services.auth import create_access_token, hash_password, verify_password
@@ -108,7 +109,9 @@ async def logout():
 
 
 def _counts_context(db: Session) -> dict:
-    return get_admin_counts(db)
+    ctx = get_admin_counts(db)
+    ctx["ai_threshold_pct"] = int(settings.ai_auto_confirm_threshold * 100)
+    return ctx
 
 
 def _ai_setup_hint() -> str:
@@ -131,6 +134,32 @@ async def admin_overview(
     return templates.TemplateResponse(
         "admin/overview.html",
         {"request": request, "admin": admin, **_counts_context(db)},
+    )
+
+
+@router.get("/ai-approved", response_class=HTMLResponse)
+async def admin_ai_approved(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    submissions = query_ai_auto_confirmed(db)
+    rows = []
+    for sub in submissions:
+        ai = load_verification_result(sub)
+        confidence_pct = None
+        if ai and ai.get("confidence") is not None:
+            confidence_pct = int(float(ai["confidence"]) * 100)
+        rows.append({"submission": sub, "confidence_pct": confidence_pct, "ai_summary": (ai or {}).get("summary")})
+    return templates.TemplateResponse(
+        "admin/ai_approved.html",
+        {
+            "request": request,
+            "admin": admin,
+            **_counts_context(db),
+            "rows": rows,
+            "ai_threshold_pct": int(settings.ai_auto_confirm_threshold * 100),
+        },
     )
 
 
@@ -162,6 +191,7 @@ async def admin_submissions(
     admin: AdminUser = Depends(get_current_admin),
     q: str | None = Query(default=None),
     status_filter: str | None = Query(default=None),
+    ai_filter: str | None = Query(default=None),
     arrival_from: str | None = Query(default=None),
     arrival_to: str | None = Query(default=None),
     submitted_from: str | None = Query(default=None),
@@ -172,6 +202,7 @@ async def admin_submissions(
             db,
             q=q,
             status_filter=status_filter,
+            ai_filter=ai_filter,
             arrival_from=arrival_from,
             arrival_to=arrival_to,
             submitted_from=submitted_from,
@@ -201,6 +232,7 @@ async def admin_submissions(
             "export_url": export_url,
             "q": q or "",
             "status_filter": status_filter or "",
+            "ai_filter": ai_filter or "",
             "arrival_from": (arrival_from or "").strip()[:10],
             "arrival_to": (arrival_to or "").strip()[:10],
             "submitted_from": (submitted_from or "").strip()[:10],
@@ -210,6 +242,7 @@ async def admin_submissions(
             "filters_active": filters_active(
                 q=q,
                 status_filter=status_filter,
+                ai_filter=ai_filter,
                 arrival_from=arrival_from,
                 arrival_to=arrival_to,
                 submitted_from=submitted_from,
@@ -326,6 +359,11 @@ async def submission_detail(
     id_file_exists = False
     if has_id_file:
         id_file_exists = absolute_path(sub.id_document_path).exists()
+    needs_manual_review = (
+        sub.status == SubmissionStatus.SUBMITTED.value
+        and sub.ai_verification_at is not None
+        and not sub.ai_auto_confirmed
+    )
     return templates.TemplateResponse(
         "admin/submission_detail.html",
         {
@@ -343,6 +381,9 @@ async def submission_detail(
             "ai_provider_label": settings.ai_provider_label,
             "ai_setup_hint": _ai_setup_hint(),
             "ai_result": ai_result,
+            "ai_auto_confirmed": sub.ai_auto_confirmed,
+            "needs_manual_review": needs_manual_review,
+            "ai_threshold_pct": int(settings.ai_auto_confirm_threshold * 100),
             "can_edit": sub.status in (
                 SubmissionStatus.SUBMITTED.value,
                 SubmissionStatus.CONFIRMED.value,

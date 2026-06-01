@@ -15,6 +15,7 @@ from app.services.registration import get_or_create_shared_link
 from app.services.sanitize import clean_text
 from app.services.storage import ensure_storage_dirs, save_id_document, save_signature_from_data_url
 from app.services.submission_pdfs import create_submission_pdfs
+from app.services.auto_ai_verify import run_auto_ai_verification
 
 from app.templating import templates
 
@@ -125,12 +126,15 @@ async def guest_form_page(request: Request, token: str, db: Session = Depends(ge
 
 @router.get("/f/{token}/success", response_class=HTMLResponse)
 async def guest_success_page(request: Request, token: str):
+    outcome = request.query_params.get("outcome", "").strip().lower()
     return templates.TemplateResponse(
         "guest/success.html",
         {
             "request": request,
             "token": token,
             "id_retention_hours": ID_RETENTION_HOURS,
+            "ai_outcome": outcome,
+            "ai_enabled": settings.ai_verification_enabled and settings.ai_auto_verify_on_submit,
         },
     )
 
@@ -235,13 +239,21 @@ async def submit_guest_form(
 
     create_submission_pdfs(db, submission, sig_rel)
 
+    ai_outcome = "skipped"
+    ai_result = run_auto_ai_verification(db, submission)
+    if ai_result:
+        ai_outcome = "approved" if ai_result.get("auto_confirmed") else "review"
+
     if link.single_use and not link.is_shared:
         link.status = FormLinkStatus.SUBMITTED.value
 
     db.commit()
 
+    redirect_url = f"/f/{token}/success?outcome={ai_outcome}"
+
     return {
         "success": True,
         "submission_id": submission.public_id,
-        "redirect_url": f"/f/{token}/success",
+        "redirect_url": redirect_url,
+        "ai_outcome": ai_outcome,
     }

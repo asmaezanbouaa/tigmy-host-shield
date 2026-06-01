@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+{% set active = 'ai_approved' %}
+{% block title %}AI-approved{% endblock %}
+
+{% block content %}
+<h1 class="admin-page-title">AI-approved registrations</h1>
+<p class="admin-page-lead">
+  These guests were <strong>automatically confirmed</strong> at submit time — AI matched their form to their ID
+  with at least <strong>{{ ai_threshold_pct }}%</strong> confidence. No manual review was required.
+</p>
+
+<div class="admin-ai-banner admin-ai-banner--success">
+  <span class="admin-ai-banner__icon" aria-hidden="true">✨</span>
+  <div>
+    <strong>Powered by AI</strong>
+    <p class="subtitle" style="margin:0.25rem 0 0">
+      {{ app_name }} compares each registration to the uploaded ID scan in seconds — saving you time on clear matches.
+    </p>
+  </div>
+</div>
+
+<div class="admin-panel">
+  <div class="admin-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Guest</th>
+          <th>Stay</th>
+          <th>AI confidence</th>
+          <th>Confirmed</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% set sub = row.submission %}
+        <tr>
+          <td>
+            <strong>{{ sub.last_name }}</strong> {{ sub.first_name }}
+            <br><span class="ai-badge ai-badge--auto">AI approved</span>
+          </td>
+          <td>{{ sub.arrival_date }} → {{ sub.departure_date }}</td>
+          <td>
+            {% if row.confidence_pct is not none %}
+            <span class="ai-confidence-pill ai-confidence-pill--high">{{ row.confidence_pct }}%</span>
+            {% if row.ai_summary %}
+            <br><span class="subtitle">{{ row.ai_summary[:80] }}{% if row.ai_summary|length > 80 %}…{% endif %}</span>
+            {% endif %}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td>
+            {% if sub.confirmed_at %}
+            {{ sub.confirmed_at.strftime('%d %b %Y %H:%M') }}
+            {% else %}
+            —
+            {% endif %}
+          </td>
+          <td class="actions-cell">
+            <a class="btn btn-secondary btn-sm" href="/admin/submissions/{{ sub.public_id }}" style="width:auto;text-decoration:none">View</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5">
+            No AI-approved submissions yet. When a guest submits and AI confidence is ≥ {{ ai_threshold_pct }}%,
+            they appear here automatically.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

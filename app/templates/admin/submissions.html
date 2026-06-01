@@ -18,6 +18,7 @@
     <div class="admin-workflow-hint">
       <span class="pill-submitted"><strong>submitted</strong> = needs action</span>
       <span class="pill-confirmed"><strong>confirmed</strong> = approved</span>
+      <span class="pill-ai"><strong>AI approved</strong> = auto-confirmed</span>
     </div>
     <div class="admin-quick-actions">
       <a class="btn btn-secondary btn-sm" href="/admin/calendar">Calendar</a>
@@ -32,6 +33,11 @@
       {% for s in statuses %}
       <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
+    </select>
+    <select name="ai_filter" aria-label="AI filter">
+      <option value="">All AI states</option>
+      <option value="needs_review" {% if ai_filter == 'needs_review' %}selected{% endif %}>AI needs review</option>
+      <option value="auto_confirmed" {% if ai_filter == 'auto_confirmed' %}selected{% endif %}>AI auto-approved</option>
     </select>
     <input type="date" name="arrival_from" value="{{ arrival_from }}" title="Arrival from">
     <input type="date" name="arrival_to" value="{{ arrival_to }}" title="Arrival to">
@@ -69,7 +75,14 @@
           <td style="font-size:0.85rem">{{ sub.id_document_number }}</td>
           <td>{{ sub.arrival_date }} → {{ sub.departure_date }}<br><span class="subtitle">{{ sub.number_of_guests }} guests</span></td>
           <td>{{ sub.submitted_at.strftime('%d %b %Y %H:%M') }}</td>
-          <td><span class="status-pill status-{{ sub.status }}">{{ sub.status }}</span></td>
+          <td>
+            <span class="status-pill status-{{ sub.status }}">{{ sub.status }}</span>
+            {% if sub.ai_auto_confirmed %}
+            <br><span class="ai-badge ai-badge--auto">AI approved</span>
+            {% elif sub.ai_verification_at and sub.status == 'submitted' %}
+            <br><span class="ai-badge ai-badge--review">AI review</span>
+            {% endif %}
+          </td>
           <td class="actions-cell">
             <a class="btn btn-secondary btn-sm" href="/admin/submissions/{{ sub.public_id }}" style="width:auto;text-decoration:none">
               {% if sub.status == 'submitted' %}Review{% else %}View{% endif %}

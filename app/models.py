@@ -127,6 +127,7 @@ class Submission(Base):
     ai_verification_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    ai_auto_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     accept_internal_rules: Mapped[bool] = mapped_column(Boolean, default=False)
     accept_terms: Mapped[bool] = mapped_column(Boolean, default=False)

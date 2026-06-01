@@ -16,6 +16,24 @@
 <div class="alert alert-error">{{ flash_error }}</div>
 {% endif %}
 
+{% if ai_auto_confirmed %}
+<div class="admin-ai-banner admin-ai-banner--success">
+  <span class="admin-ai-banner__icon" aria-hidden="true">✨</span>
+  <div>
+    <strong>Auto-approved by AI</strong>
+    <p class="subtitle" style="margin:0.25rem 0 0">This registration was confirmed automatically at submit time (confidence ≥ {{ ai_threshold_pct }}%).</p>
+  </div>
+</div>
+{% elif needs_manual_review %}
+<div class="admin-ai-banner admin-ai-banner--review">
+  <span class="admin-ai-banner__icon" aria-hidden="true">🔍</span>
+  <div>
+    <strong>AI flagged for manual review</strong>
+    <p class="subtitle" style="margin:0.25rem 0 0">Confidence was below {{ ai_threshold_pct }}%. Check what AI saw below, then confirm or edit.</p>
+  </div>
+</div>
+{% endif %}
+
 <div class="admin-panel review-page">
   <header class="review-header">
     <h1 class="review-header__title">{{ submission.last_name }} {{ submission.first_name }}</h1>
@@ -24,6 +42,11 @@
     </p>
     <p class="review-header__status">
       <span class="status-pill status-{{ submission.status }}">{{ submission.status }}</span>
+      {% if ai_auto_confirmed %}
+      <span class="ai-badge ai-badge--auto">AI approved</span>
+      {% elif needs_manual_review %}
+      <span class="ai-badge ai-badge--review">Needs review</span>
+      {% endif %}
       {% if submission.status == 'submitted' %}
       <span class="subtitle">Review details and ID below, then take your decision at the bottom.</span>
       {% endif %}
@@ -107,7 +130,13 @@
       <div class="review-ai-sidebar__inner">
         <h2 class="review-ai-sidebar__title">AI assistant</h2>
         <p class="review-ai-disclaimer">
-          <strong>Admin decides.</strong> AI only suggests whether the form matches the ID. You confirm or edit yourself.
+          {% if ai_auto_confirmed %}
+          <strong>Confirmed automatically.</strong> AI matched this form to the ID at submit time.
+          {% elif needs_manual_review %}
+          <strong>Needs your decision.</strong> AI checked this submission but confidence was below {{ ai_threshold_pct }}%.
+          {% else %}
+          <strong>Admin decides.</strong> AI suggests whether the form matches the ID. You confirm or edit yourself.
+          {% endif %}
         </p>
         {% if ai_provider_label %}
         <p class="subtitle" style="margin:0 0 0.75rem;font-size:0.8rem">
@@ -115,7 +144,7 @@
         </p>
         {% endif %}
 
-        {% if has_id_preview and not submission.id_document_verified_at %}
+        {% if has_id_preview and not submission.id_document_verified_at and not ai_result %}
           {% if ai_enabled %}
           <form id="ai-verify-form" method="post" action="/admin/submissions/{{ submission.public_id }}/ai-verify" class="review-ai-form">
             <button type="submit" class="btn btn-primary btn-sm" style="width:100%" id="ai-verify-btn">
@@ -137,10 +166,16 @@
             <span class="ai-result__badge ai-result__badge--{{ ai_result.overall }}">{{ ai_result.overall }}</span>
           </div>
           {% if ai_result.confidence is defined %}
-          <p class="subtitle">{{ (ai_result.confidence * 100)|int }}% confidence — not a final verdict</p>
+          <p class="subtitle">{{ (ai_result.confidence * 100)|int }}% confidence{% if not ai_auto_confirmed %} — below {{ ai_threshold_pct }}% threshold{% endif %}</p>
           {% endif %}
           {% if ai_result.summary %}
           <p class="ai-result__summary">{{ ai_result.summary }}</p>
+          {% endif %}
+          {% if ai_result.ocr_preview %}
+          <details class="ai-ocr-preview">
+            <summary>What AI read on the ID</summary>
+            <pre class="ai-ocr-preview__text">{{ ai_result.ocr_preview }}</pre>
+          </details>
           {% endif %}
           {% if ai_result.fields %}
           <table class="ai-result__table">

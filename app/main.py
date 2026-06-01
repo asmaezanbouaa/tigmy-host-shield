@@ -87,6 +87,7 @@ def on_startup():
         from scripts.migrate_v4 import run_migrations as migrate_v4
         from scripts.migrate_v5 import run_migrations as migrate_v5
         from scripts.migrate_v6 import run_migrations as migrate_v6
+        from scripts.migrate_v7 import run_migrations as migrate_v7
         from app.services.id_documents import purge_expired_id_documents
         from app.database import SessionLocal
 
@@ -95,6 +96,7 @@ def on_startup():
         migrate_v4()
         migrate_v5()
         migrate_v6()
+        migrate_v7()
         with SessionLocal() as db:
             n = purge_expired_id_documents(db)
             if n:
