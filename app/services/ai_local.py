@@ -2,12 +2,54 @@
 
 import difflib
 import io
+import os
 import re
+import shutil
 from pathlib import Path
 
 from PIL import Image
 
 from app.models import Submission
+
+_TESSERACT_CANDIDATES = (
+    "/usr/bin/tesseract",
+    "/bin/tesseract",
+    "/usr/local/bin/tesseract",
+)
+
+
+def _configure_tesseract() -> str:
+    """Resolve tesseract binary for pytesseract (Railway, Docker, or local dev)."""
+    import pytesseract
+
+    configured = (os.environ.get("TESSERACT_CMD") or "").strip()
+    if configured and Path(configured).is_file():
+        pytesseract.pytesseract.tesseract_cmd = configured
+        return configured
+
+    found = shutil.which("tesseract")
+    if found:
+        pytesseract.pytesseract.tesseract_cmd = found
+        return found
+
+    for candidate in _TESSERACT_CANDIDATES:
+        if Path(candidate).is_file():
+            pytesseract.pytesseract.tesseract_cmd = candidate
+            return candidate
+
+    raise ValueError(
+        "Tesseract OCR is not installed. "
+        "Ubuntu/Debian: sudo apt install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra "
+        "(then restart ./run.sh). On Railway, redeploy after nixpacks.toml is in the repo."
+    )
+
+
+def tesseract_available() -> bool:
+    try:
+        _configure_tesseract()
+        return True
+    except ValueError:
+        return False
 
 
 def _norm(text: str) -> str:
@@ -23,11 +65,15 @@ def _ocr_text(image_bytes: bytes) -> str:
             "and sudo apt install tesseract-ocr tesseract-ocr-fra"
         ) from exc
 
+    _configure_tesseract()
     img = Image.open(io.BytesIO(image_bytes))
     try:
         return pytesseract.image_to_string(img, lang="eng+fra+ara")
-    except Exception:
-        return pytesseract.image_to_string(img, lang="eng")
+    except pytesseract.TesseractError:
+        try:
+            return pytesseract.image_to_string(img, lang="eng+fra")
+        except pytesseract.TesseractError:
+            return pytesseract.image_to_string(img, lang="eng")
 
 
 def _find_in_ocr(form_value: str, ocr: str) -> tuple[str, str, str]:

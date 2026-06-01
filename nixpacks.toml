@@ -1,3 +1,7 @@
 # Tesseract for AI_PROVIDER=local (unlimited free OCR on Railway)
 [phases.setup]
-aptPkgs = ["tesseract-ocr", "tesseract-ocr-eng", "tesseract-ocr-fra"]
+nixPkgs = ["...", "tesseract"]
+aptPkgs = ["...", "tesseract-ocr", "tesseract-ocr-eng", "tesseract-ocr-fra"]
+
+[phases.build]
+cmds = ["tesseract --version || (echo 'Tesseract missing from image' && exit 1)"]

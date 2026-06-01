@@ -64,6 +64,15 @@ def on_startup():
             s.ai_provider_normalized,
             s.ai_provider_label,
         )
+        if s.ai_provider_normalized == "local":
+            from app.services.ai_local import tesseract_available
+
+            if tesseract_available():
+                logger.info("Tesseract OCR ready for local AI checks")
+            else:
+                logger.warning(
+                    "Tesseract not found — install: sudo apt install tesseract-ocr tesseract-ocr-fra"
+                )
     except Exception as exc:
         logger.warning("PDF header banner prep failed: %s", exc)
     Base.metadata.create_all(bind=engine)

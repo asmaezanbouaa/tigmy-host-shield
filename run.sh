@@ -24,6 +24,13 @@ python scripts/migrate_v2.py
 python scripts/init_db.py
 alembic upgrade head 2>/dev/null || true
 
+if grep -qE '^AI_PROVIDER=local' .env 2>/dev/null && ! command -v tesseract >/dev/null 2>&1; then
+  echo ""
+  echo "⚠  AI_PROVIDER=local but Tesseract is not installed."
+  echo "   Run: sudo apt install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra"
+  echo ""
+fi
+
 BASE_URL="$(grep -E '^BASE_URL=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '\r' || echo "http://localhost:${PORT}")"
 BASE_URL="${BASE_URL:-http://localhost:${PORT}}"
 echo ""
