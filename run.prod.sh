@@ -21,6 +21,6 @@ python scripts/migrate_v6.py 2>/dev/null || true
 
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
-WORKERS="${WORKERS:-2}"
+WORKERS="${WORKERS:-1}"
 
 exec uvicorn app.main:app --host "$HOST" --port "$PORT" --workers "$WORKERS"

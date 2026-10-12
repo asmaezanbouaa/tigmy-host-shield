@@ -12,6 +12,7 @@ from app.services.date_validation import date_limits_for_form, parse_iso_date, v
 from app.services.property_placeholder import get_or_create_placeholder_apartment
 from app.services.form_links import is_link_usable
 from app.services.registration import get_or_create_shared_link
+from app.services.rate_limit import client_ip, guest_submissions
 from app.services.sanitize import clean_text
 from app.services.storage import ensure_storage_dirs, save_id_document, save_signature_from_data_url
 from app.services.submission_pdfs import create_submission_pdfs
@@ -160,6 +161,13 @@ async def submit_guest_form(
     signature_data_url: str = Form(...),
     id_scan: UploadFile = File(...),
 ):
+    ip_key = client_ip(request)
+    if guest_submissions.is_limited(ip_key):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many registrations from this connection. Please try again later.",
+        )
+
     ensure_storage_dirs()
     link = _get_link_by_token(db, token)
     ok, message = is_link_usable(link)
@@ -248,6 +256,7 @@ async def submit_guest_form(
         link.status = FormLinkStatus.SUBMITTED.value
 
     db.commit()
+    guest_submissions.hit(ip_key)
 
     redirect_url = f"/f/{token}/success?outcome={ai_outcome}"
 

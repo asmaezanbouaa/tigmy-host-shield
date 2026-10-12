@@ -39,6 +39,7 @@ from app.services.public_urls import (
 from app.services.registration import get_or_create_shared_link
 from app.services.sanitize import clean_text
 from app.services.id_preview import get_preview_image
+from app.services.rate_limit import client_ip, login_failures
 from app.services.storage import absolute_path
 from app.services.calendar_data import (
     build_month_calendar,
@@ -81,13 +82,24 @@ async def login_submit(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
     username = str(form.get("username", "")).strip()
     password = str(form.get("password", ""))
+    keys = (f"ip:{client_ip(request)}", f"user:{username.lower()}")
+    if any(login_failures.is_limited(k) for k in keys):
+        return templates.TemplateResponse(
+            "admin/login.html",
+            {"request": request, "error": "Too many failed attempts. Try again in 15 minutes."},
+            status_code=429,
+        )
     admin = db.query(AdminUser).filter(AdminUser.username == username, AdminUser.is_active).first()
     if not admin or not verify_password(password, admin.password_hash):
+        for k in keys:
+            login_failures.hit(k)
         return templates.TemplateResponse(
             "admin/login.html",
             {"request": request, "error": "Invalid username or password"},
             status_code=401,
         )
+    for k in keys:
+        login_failures.reset(k)
     token = create_access_token(admin.username)
     redirect = RedirectResponse(url="/admin/", status_code=303)
     redirect.set_cookie(
@@ -926,10 +938,17 @@ api_router = APIRouter(prefix="/api/admin", tags=["admin-api"])
 
 
 @api_router.post("/login")
-def api_login(body: AdminLogin, response: Response, db: Session = Depends(get_db)):
+def api_login(body: AdminLogin, request: Request, response: Response, db: Session = Depends(get_db)):
+    keys = (f"ip:{client_ip(request)}", f"user:{body.username.strip().lower()}")
+    if any(login_failures.is_limited(k) for k in keys):
+        raise HTTPException(status_code=429, detail="Too many failed attempts. Try again in 15 minutes.")
     admin = db.query(AdminUser).filter(AdminUser.username == body.username, AdminUser.is_active).first()
     if not admin or not verify_password(body.password, admin.password_hash):
+        for k in keys:
+            login_failures.hit(k)
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    for k in keys:
+        login_failures.reset(k)
     token = create_access_token(admin.username)
     response.set_cookie(
         key=settings.session_cookie_name,

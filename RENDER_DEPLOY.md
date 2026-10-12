@@ -1,5 +1,9 @@
 # Deploy Tigmy Host Shield on Render (free)
 
+> ⚠️ **Free Render does not keep data.** Its disk is wiped whenever the service restarts, sleeps
+> (after ~15 min idle) or redeploys — guest registrations, signatures, ID scans and PDFs are lost.
+> For real use, follow **[ORACLE_FREE_DEPLOY.md](ORACLE_FREE_DEPLOY.md)** instead.
+
 **Live URL:** `https://tigmy-host-shield.onrender.com`
 
 Guest link: `https://tigmy-host-shield.onrender.com/register`  
@@ -12,7 +16,7 @@ Admin: `https://tigmy-host-shield.onrender.com/admin/login`
 From your project folder:
 
 ```bash
-cd ~/Desktop/airbnb_form
+cd ~/Desktop/tigmy-host-shield
 git init
 git add .
 git commit -m "Deploy Tigmy Host Shield to Render"
@@ -60,8 +64,8 @@ In **Render → tigmy-host-shield → Environment**, you can add later:
 ## Free tier notes
 
 - **Cold start:** If nobody visits for ~15 minutes, the next visit may take 30–60 seconds to load.
-- **Data:** SQLite and uploaded files live on the server disk. They survive normal restarts but can be lost on a **full redeploy** or service recreate. For heavy production use, add [Render Postgres](https://render.com/docs/databases) later.
-- **AI:** Default is `AI_PROVIDER=local` (Tesseract OCR, unlimited). Use Gemini with a valid `AIza…` API key if you prefer cloud vision.
+- **Data:** SQLite and uploaded files live on a temporary disk that is wiped on every restart, sleep or redeploy. Use it only for demos.
+- **AI:** `render.yaml` sets `AI_PROVIDER=off` because Tesseract (needed for `local`) can't be installed on Render's Python runtime. Use Gemini with a valid `AIza…` API key if you want ID checks here.
 
 ---
 

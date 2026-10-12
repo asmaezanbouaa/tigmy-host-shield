@@ -15,9 +15,17 @@ from app.services.storage import ensure_storage_dirs
 logger = logging.getLogger("uvicorn.error")
 settings = get_settings()
 
+if settings.is_production:
+    _problems = settings.production_problems()
+    if _problems:
+        raise RuntimeError(
+            "Refusing to start in production (APP_ENV=production). Fix these settings:\n  - "
+            + "\n  - ".join(_problems)
+        )
+
 app = FastAPI(
     title=settings.app_name,
-    docs_url="/api/docs" if settings.debug else None,
+    docs_url="/api/docs" if settings.debug and not settings.is_production else None,
     redoc_url=None,
 )
 
@@ -118,7 +126,7 @@ def on_startup():
 async def unhandled_exception(request: Request, exc: Exception):
     logger.error("Unhandled error on %s %s", request.method, request.url.path)
     logger.error(traceback.format_exc())
-    if settings.debug:
+    if settings.debug and not settings.is_production:
         return HTMLResponse(
             content=(
                 "<h1>Internal Server Error</h1>"

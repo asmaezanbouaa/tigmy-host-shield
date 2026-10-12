@@ -11,13 +11,17 @@ from app.services.ai_verification import save_verification_result, verify_submis
 
 logger = logging.getLogger("uvicorn.error")
 
+# Never auto-confirm unless these match the ID scan, whatever the overall score.
+CRITICAL_FIELDS = ("last_name", "id_document_number")
+
 
 def run_auto_ai_verification(db: Session, submission: Submission) -> dict | None:
     """
     Compare form vs ID scan after submit.
 
-    If confidence >= threshold (default 50%), mark confirmed automatically.
-    Otherwise keep status submitted and store AI results for admin review.
+    Auto-confirm only when confidence >= threshold AND the critical fields
+    (last name, ID number) both match the scan. Otherwise keep status
+    submitted and store AI results for admin review.
     """
     settings = get_settings()
     if not settings.ai_verification_enabled or not settings.ai_auto_verify_on_submit:
@@ -40,7 +44,11 @@ def run_auto_ai_verification(db: Session, submission: Submission) -> dict | None
     result["auto_checked"] = True
     result["auto_confirm_threshold"] = threshold
 
-    if confidence >= threshold:
+    statuses = {f.get("field"): f.get("status") for f in result.get("fields") or []}
+    critical_ok = all(statuses.get(k) == "match" for k in CRITICAL_FIELDS)
+    result["critical_fields_matched"] = critical_ok
+
+    if confidence >= threshold and critical_ok:
         submission.status = SubmissionStatus.CONFIRMED.value
         submission.confirmed_at = datetime.now(timezone.utc)
         submission.ai_auto_confirmed = True

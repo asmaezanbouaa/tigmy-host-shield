@@ -52,7 +52,12 @@ chmod +x run.sh
 
 ---
 
-## Deploy on Render (free)
+## Deploy for free (recommended): Oracle Cloud
+
+Keeps your data, free forever, HTTPS on a free `duckdns.org` address.
+Full steps: **[ORACLE_FREE_DEPLOY.md](ORACLE_FREE_DEPLOY.md)**
+
+## Deploy on Render (free, demo only — data is wiped on restart)
 
 Stable hostname: **`https://tigmy-host-shield.onrender.com`**
 
@@ -113,7 +118,8 @@ python scripts/regenerate_pdfs.py
 
 ## Other docs
 
-- **[RENDER_DEPLOY.md](RENDER_DEPLOY.md)** — Render hosting  
+- **[ORACLE_FREE_DEPLOY.md](ORACLE_FREE_DEPLOY.md)** — free hosting that keeps data  
+- **[RENDER_DEPLOY.md](RENDER_DEPLOY.md)** — Render hosting (demo only)  
 - **[DEPLOY.md](DEPLOY.md)** — VPS + custom domain  
 - **[CUSTOM_URL.md](CUSTOM_URL.md)** — URL options explained  
 

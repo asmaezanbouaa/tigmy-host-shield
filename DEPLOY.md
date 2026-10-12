@@ -56,7 +56,7 @@ Type=simple
 User=www-data
 WorkingDirectory=/opt/guest-registry
 Environment=PATH=/opt/guest-registry/.venv/bin
-ExecStart=/opt/guest-registry/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
+ExecStart=/opt/guest-registry/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
 Restart=always
 RestartSec=5
 
@@ -94,7 +94,7 @@ Caddy obtains a Let’s Encrypt certificate automatically.
 
 ## Persistence
 
-Back up regularly:
+Run `scripts/backup.sh` daily from cron (see ORACLE_FREE_DEPLOY.md step 10). It backs up:
 
 - `data/guest_registry.db`
 - `storage/` (signatures, ID scans, PDFs, archive ZIPs)

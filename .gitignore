@@ -28,3 +28,6 @@ config/*.png
 
 # Local tunnel binary
 bin/cloudflared
+
+# Local backups (contain guest personal data)
+backups/

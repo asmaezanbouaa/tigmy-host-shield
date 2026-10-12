@@ -59,7 +59,28 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
 
     ai_auto_verify_on_submit: bool = True
-    ai_auto_confirm_threshold: float = 0.5
+    ai_auto_confirm_threshold: float = 0.8
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() == "production"
+
+    def production_problems(self) -> list[str]:
+        """Settings that are unsafe to run with in production (guest IDs are stored here)."""
+        problems = []
+        if self.debug:
+            problems.append("DEBUG must be false (it shows code errors to visitors)")
+        if len(self.secret_key) < 32 or "change" in self.secret_key.lower():
+            problems.append("SECRET_KEY must be a random string of 32+ characters")
+        weak = {"changeme", "admin", "password", "your-secure-password"}
+        for name, pw in (("ADMIN_PASSWORD", self.admin_password), ("ADMIN_PASSWORD_2", self.admin_password_2)):
+            if name == "ADMIN_PASSWORD_2" and not self.admin_username_2.strip():
+                continue
+            if pw.strip().lower() in weak or len(pw) < 10:
+                problems.append(f"{name} must be at least 10 characters and not a default")
+        if "localhost" in self.base_url or "127.0.0.1" in self.base_url:
+            problems.append("BASE_URL must be your public https:// address")
+        return problems
 
     @property
     def ai_provider_normalized(self) -> str:
