@@ -146,7 +146,8 @@ EOF
 sudo systemctl reload caddy || sudo systemctl restart caddy
 
 step "Daily backup at 03:15 (keeps 14 days in backups/)"
-( crontab -l 2>/dev/null | grep -v "scripts/backup.sh" ; echo "15 3 * * * ${APP_DIR}/scripts/backup.sh >> ${APP_DIR}/backups/backup.log 2>&1" ) | crontab -
+# (no crontab yet / nothing to filter is fine: don't let set -e/pipefail stop here)
+( crontab -l 2>/dev/null | grep -v "scripts/backup.sh" || true ; echo "15 3 * * * ${APP_DIR}/scripts/backup.sh >> ${APP_DIR}/backups/backup.log 2>&1" ) | crontab -
 
 step "Checking"
 sleep 4
