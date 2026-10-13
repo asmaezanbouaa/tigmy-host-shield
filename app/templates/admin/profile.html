@@ -17,7 +17,7 @@
   <div class="admin-panel admin-profile-card-side">
     <div class="admin-profile-avatar">{{ admin.username[0]|upper }}</div>
     <h2 style="margin:0.5rem 0 0;font-size:1.25rem">{{ admin.username }}</h2>
-    <p class="subtitle" style="margin:0.25rem 0 0">Administrator</p>
+    <p class="subtitle" style="margin:0.25rem 0 0">{{ "Platform owner" if admin.is_superadmin else "Section admin" }}{% if section %} · {{ section.name }}{% endif %}</p>
     {% if admin.created_at %}
     <p class="subtitle" style="margin-top:1rem">Member since {{ admin.created_at.strftime('%d %B %Y') }}</p>
     {% endif %}
@@ -34,11 +34,11 @@
         </div>
         <div class="field">
           <label class="required">New password</label>
-          <input type="password" name="new_password" required minlength="4" autocomplete="new-password">
+          <input type="password" name="new_password" required minlength="10" autocomplete="new-password">
         </div>
         <div class="field">
           <label class="required">Confirm new password</label>
-          <input type="password" name="confirm_password" required minlength="4" autocomplete="new-password">
+          <input type="password" name="confirm_password" required minlength="10" autocomplete="new-password">
         </div>
         <button type="submit" class="btn btn-primary" style="width:auto">Update password</button>
       </form>

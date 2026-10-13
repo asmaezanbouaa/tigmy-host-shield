@@ -1,77 +1,94 @@
 {% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
 {% set active = 'apartments' %}
 {% block title %}Apartments{% endblock %}
 
 {% block content %}
-{% if request.query_params.get('apt') == 'created' %}
-<div class="alert alert-success">Apartment added successfully.</div>
-{% elif request.query_params.get('apt') == 'updated' %}
-<div class="alert alert-success">Apartment updated.</div>
-{% elif request.query_params.get('apt') == 'deleted' %}
-<div class="alert alert-success">Apartment deleted.</div>
-{% endif %}
+<div class="page-head">
+  <div>
+    <h1 class="admin-page-title">Apartments</h1>
+    <p class="admin-page-lead">The apartments of <strong>{{ section.name }}</strong>. Before confirming a guest you choose one of them; its name and address go on the fiche de police.</p>
+  </div>
+</div>
 
-<h1 class="admin-page-title">Apartments</h1>
-<p class="admin-page-lead">Properties used on police PDFs and admin filters. Guests do not pick an apartment — the first active one (or <code>DEFAULT_APARTMENT_PUBLIC_ID</code> in <code>.env</code>) is used automatically.</p>
+{% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 
-<div class="admin-panel">
-  <h2 style="font-size:1rem;margin:0 0 1rem">Add apartment</h2>
-  <form method="post" action="/admin/apartments/create" class="grid-2" style="margin-bottom:0">
+<div class="admin-panel" id="add">
+  <h2>Add an apartment</h2>
+  <form method="post" action="/admin/apartments" class="inline-form">
     <div class="field">
-      <label class="required">Name</label>
-      <input type="text" name="name" required placeholder="e.g. Apartment 2 — Floor 3">
+      <label class="required" for="apt-name">Name</label>
+      <input id="apt-name" type="text" name="name" required maxlength="128" placeholder="e.g. Riad Atlas — Apt 2">
     </div>
     <div class="field">
-      <label class="required">Full address</label>
-      <input type="text" name="address" required placeholder="Street, city, postal code">
+      <label class="required" for="apt-address">Full address</label>
+      <input id="apt-address" type="text" name="address" required maxlength="500" placeholder="Street, number, neighbourhood, city">
     </div>
-    <div style="grid-column: 1 / -1">
-      <button type="submit" class="btn btn-primary" style="width:auto">Add apartment</button>
+    <div class="field">
+      <label for="apt-rate">Nightly rate (MAD)</label>
+      <input id="apt-rate" type="number" name="nightly_rate" min="1" step="1" inputmode="numeric" placeholder="e.g. 850">
     </div>
+    <button type="submit" class="btn btn-primary">{{ icon("building") }}Add apartment</button>
   </form>
 </div>
 
-<div class="admin-panel" style="margin-top:1.25rem">
-  <div class="admin-table-wrap">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Address</th>
-          <th>Status</th>
-          <th>Registrations</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for apt in apartments %}
-        <tr>
-          <td><strong>{{ apt.name }}</strong></td>
-          <td>{{ apt.address[:55] }}{% if apt.address|length > 55 %}…{% endif %}</td>
-          <td>
-            <span class="status-pill {% if apt.is_active %}status-confirmed{% else %}status-cancelled{% endif %}">
-              {{ 'active' if apt.is_active else 'hidden' }}
-            </span>
-          </td>
-          <td>{{ submission_counts[apt.id] if apt.id in submission_counts else 0 }}</td>
-          <td class="actions-cell">
-            <a class="btn-link" href="/admin/apartments/{{ apt.public_id }}/edit">Edit</a>
-            <form method="post" action="/admin/apartments/{{ apt.public_id }}/toggle" style="display:inline">
-              <button type="submit" class="btn btn-secondary btn-sm">{{ 'Hide' if apt.is_active else 'Show' }}</button>
-            </form>
-            {% if (submission_counts[apt.id] if apt.id in submission_counts else 0) == 0 %}
-            <form method="post" action="/admin/apartments/{{ apt.public_id }}/delete" style="display:inline"
-                  onsubmit="return confirm('Delete this apartment?');">
-              <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-            </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="5">No apartments yet — add one above.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{% set visible = apartments | selectattr("is_active") | list %}
+{% set hidden = apartments | rejectattr("is_active") | list %}
+
+{% if not apartments %}
+<div class="admin-panel empty-state">
+  <div class="empty-state__icon">{{ icon("building") }}</div>
+  <h2>No apartments yet</h2>
+  <p>Add your first apartment above. You need at least one to confirm guests.</p>
 </div>
+{% else %}
+<div class="apt-list">
+  {% for apt in visible + hidden %}
+  <article class="apt-card {% if not apt.is_active %}apt-card--hidden{% endif %}">
+    <span class="apt-card__icon">{{ icon("building") }}</span>
+    <div>
+      <p class="apt-card__name">{{ apt.name }}</p>
+      <p class="apt-card__addr">{{ apt.address }}</p>
+      <div class="apt-card__meta">
+        {% set n = guest_counts.get(apt.id, 0) %}
+        <span class="chip">{{ icon("users") }}{{ n }} guest{{ "s" if n != 1 }}</span>
+        {% if apt.nightly_rate %}<span class="chip chip--amber">{{ "{:,}".format(apt.nightly_rate).replace(",", " ") }} MAD / night</span>{% endif %}
+        {% if not apt.is_active %}<span class="chip chip--muted">Hidden</span>{% endif %}
+      </div>
+    </div>
+    <div class="apt-card__actions">
+      {% if apt.is_active %}
+      <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('.apt-card').querySelector('.apt-card__edit').hidden = false; this.hidden = true">{{ icon("pen") }}Edit</button>
+      <form method="post" action="/admin/apartments/{{ apt.public_id }}/delete"
+            onsubmit="return confirm('{% if guest_counts.get(apt.id, 0) %}This apartment has guests, so it will be hidden (not deleted). Continue?{% else %}Delete {{ apt.name|e }}?{% endif %}');">
+        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+      </form>
+      {% else %}
+      <form method="post" action="/admin/apartments/{{ apt.public_id }}/restore">
+        <button type="submit" class="btn btn-secondary btn-sm">Show again</button>
+      </form>
+      {% endif %}
+    </div>
+    {% if apt.is_active %}
+    <form method="post" action="/admin/apartments/{{ apt.public_id }}/edit" class="apt-card__edit inline-form" hidden>
+      <div class="field">
+        <label class="required">Name</label>
+        <input type="text" name="name" required maxlength="128" value="{{ apt.name }}">
+      </div>
+      <div class="field">
+        <label class="required">Full address</label>
+        <input type="text" name="address" required maxlength="500" value="{{ apt.address }}">
+      </div>
+      <div class="field">
+        <label>Nightly rate (MAD)</label>
+        <input type="number" name="nightly_rate" min="1" step="1" inputmode="numeric" value="{{ apt.nightly_rate or '' }}">
+      </div>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
 {% endblock %}

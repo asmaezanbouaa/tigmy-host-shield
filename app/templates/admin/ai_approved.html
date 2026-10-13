@@ -1,20 +1,21 @@
 {% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
 {% set active = 'ai_approved' %}
 {% block title %}AI-approved{% endblock %}
 
 {% block content %}
-<h1 class="admin-page-title">AI-approved registrations</h1>
+<h1 class="admin-page-title">AI-approved guests</h1>
 <p class="admin-page-lead">
-  These guests were <strong>automatically confirmed</strong> at submit time — AI matched their form to their ID
-  with at least <strong>{{ ai_threshold_pct }}%</strong> confidence. No manual review was required.
+  AI matched these guests' forms to their ID with at least <strong>{{ ai_threshold_pct }}%</strong> confidence.
+  Open each one waiting for an apartment, choose it, and confirm.
 </p>
 
 <div class="admin-ai-banner admin-ai-banner--success">
-  <span class="admin-ai-banner__icon" aria-hidden="true">✨</span>
+  <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("sparkles") }}</span>
   <div>
     <strong>Powered by AI</strong>
     <p class="subtitle" style="margin:0.25rem 0 0">
-      {{ app_name }} compares each registration to the uploaded ID scan in seconds — saving you time on clear matches.
+      {{ app_name }} compares each registration to the uploaded ID scan in seconds. You only choose the apartment.
     </p>
   </div>
 </div>
@@ -27,7 +28,7 @@
           <th>Guest</th>
           <th>Stay</th>
           <th>AI confidence</th>
-          <th>Confirmed</th>
+          <th>Apartment</th>
           <th>Action</th>
         </tr>
       </thead>
@@ -37,10 +38,10 @@
         <tr>
           <td>
             <strong>{{ sub.last_name }}</strong> {{ sub.first_name }}
-            <br><span class="ai-badge ai-badge--auto">AI approved</span>
+            <br><span class="status-pill status-{{ sub.status }}">{{ sub.status }}</span>
           </td>
-          <td>{{ sub.arrival_date }} → {{ sub.departure_date }}</td>
-          <td>
+          <td data-label="Stay">{{ sub.arrival_date }} → {{ sub.departure_date }}</td>
+          <td data-label="AI confidence"><span>
             {% if row.confidence_pct is not none %}
             <span class="ai-confidence-pill ai-confidence-pill--high">{{ row.confidence_pct }}%</span>
             {% if row.ai_summary %}
@@ -49,23 +50,20 @@
             {% else %}
             —
             {% endif %}
-          </td>
-          <td>
-            {% if sub.confirmed_at %}
-            {{ sub.confirmed_at.strftime('%d %b %Y %H:%M') }}
-            {% else %}
-            —
-            {% endif %}
+          </span></td>
+          <td data-label="Apartment">
+            {% if sub.apartment and sub.apartment.section_id %}{{ sub.apartment.name }}
+            {% else %}<span class="chip chip--amber">Choose apartment</span>{% endif %}
           </td>
           <td class="actions-cell">
-            <a class="btn btn-secondary btn-sm" href="/admin/submissions/{{ sub.public_id }}" style="width:auto;text-decoration:none">View</a>
+            <a class="btn {% if sub.status == 'submitted' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" href="/admin/submissions/{{ sub.public_id }}#apartment">{% if sub.status == 'submitted' %}Choose apartment{% else %}View{% endif %}</a>
           </td>
         </tr>
         {% else %}
         <tr>
           <td colspan="5">
-            No AI-approved submissions yet. When a guest submits and AI confidence is ≥ {{ ai_threshold_pct }}%,
-            they appear here automatically.
+            No AI-approved guests yet. When a guest's form matches their ID (≥ {{ ai_threshold_pct }}%),
+            they appear here for you to choose the apartment.
           </td>
         </tr>
         {% endfor %}

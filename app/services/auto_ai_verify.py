@@ -1,12 +1,10 @@
 """Run AI verification on guest submit; auto-confirm when confidence is high enough."""
 
 import logging
-from datetime import datetime, timezone
-
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Submission, SubmissionStatus
+from app.models import Submission
 from app.services.ai_verification import save_verification_result, verify_submission_id
 
 logger = logging.getLogger("uvicorn.error")
@@ -19,9 +17,9 @@ def run_auto_ai_verification(db: Session, submission: Submission) -> dict | None
     """
     Compare form vs ID scan after submit.
 
-    Auto-confirm only when confidence >= threshold AND the critical fields
-    (last name, ID number) both match the scan. Otherwise keep status
-    submitted and store AI results for admin review.
+    Mark as AI-approved only when confidence >= threshold AND the critical fields
+    (last name, ID number) both match the scan. The submission stays "submitted"
+    either way: the host confirms it after choosing the apartment.
     """
     settings = get_settings()
     if not settings.ai_verification_enabled or not settings.ai_auto_verify_on_submit:
@@ -49,12 +47,11 @@ def run_auto_ai_verification(db: Session, submission: Submission) -> dict | None
     result["critical_fields_matched"] = critical_ok
 
     if confidence >= threshold and critical_ok:
-        submission.status = SubmissionStatus.CONFIRMED.value
-        submission.confirmed_at = datetime.now(timezone.utc)
+        # AI approved the ID. The host still confirms after choosing the apartment.
         submission.ai_auto_confirmed = True
         result["auto_confirmed"] = True
         logger.info(
-            "Auto-confirmed submission %s (AI confidence %.0f%%)",
+            "AI approved submission %s (confidence %.0f%%), waiting for apartment",
             submission.public_id,
             confidence * 100,
         )

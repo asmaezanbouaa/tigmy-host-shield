@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 360" role="img" aria-label="">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F6C27A"/>
+      <stop offset="0.55" stop-color="#E8885A"/>
+      <stop offset="1" stop-color="#B8532D"/>
+    </linearGradient>
+    <linearGradient id="dune" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9A4222"/>
+      <stop offset="1" stop-color="#6E2E17"/>
+    </linearGradient>
+    <clipPath id="arch">
+      <path d="M60 350V170C60 98 104 40 160 40s100 58 100 130v180z"/>
+    </clipPath>
+    <pattern id="zl" width="24" height="24" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#1F6E5A" stroke-width="1.2">
+        <rect x="6" y="6" width="12" height="12"/>
+        <rect x="6" y="6" width="12" height="12" transform="rotate(45 12 12)"/>
+      </g>
+    </pattern>
+  </defs>
+
+  <!-- Tiled frame -->
+  <path d="M36 356V168C36 84 92 16 160 16s124 68 124 152v188z" fill="#FBF3E6"/>
+  <path d="M36 356V168C36 84 92 16 160 16s124 68 124 152v188z" fill="url(#zl)" opacity="0.35"/>
+  <path d="M48 356V169C48 92 98 28 160 28s112 64 112 141v187z" fill="none" stroke="#1F6E5A" stroke-width="3" opacity="0.7"/>
+
+  <!-- View through the arch -->
+  <g clip-path="url(#arch)">
+    <rect x="40" y="30" width="240" height="330" fill="url(#sky)"/>
+    <circle cx="200" cy="150" r="30" fill="#FCE3A8" opacity="0.95"/>
+    <!-- Koutoubia-style minaret -->
+    <g fill="#7A3319">
+      <rect x="96" y="150" width="34" height="140"/>
+      <rect x="102" y="128" width="22" height="24"/>
+      <rect x="108" y="112" width="10" height="18"/>
+      <circle cx="113" cy="108" r="4"/>
+      <rect x="104" y="170" width="8" height="12" rx="4" fill="#E8885A" opacity="0.6"/>
+      <rect x="114" y="170" width="8" height="12" rx="4" fill="#E8885A" opacity="0.6"/>
+    </g>
+    <!-- Palms -->
+    <g fill="#6E2E17">
+      <rect x="226" y="200" width="5" height="90" rx="2"/>
+      <path d="M228 202c-18-10-34-6-42 2 14-2 28 0 42-2zM229 202c16-14 34-12 42-4-14-2-28 2-42 4zM228 200c-6-16-2-30 6-36-2 12-4 24-6 36zM229 201c-20 2-30 14-32 22 10-8 20-14 32-22zM229 201c18 4 26 16 28 24-10-8-18-16-28-24z"/>
+    </g>
+    <!-- Dunes / rooftops -->
+    <path d="M40 290c40-22 90-26 130-12s80 10 110-6v90H40z" fill="url(#dune)"/>
+    <path d="M40 318c50-16 110-12 150 0s70 6 90-4v50H40z" fill="#5A2410" opacity="0.8"/>
+  </g>
+
+  <!-- Hanging lantern -->
+  <g transform="translate(160 40)">
+    <line x1="0" y1="0" x2="0" y2="34" stroke="#5A2410" stroke-width="1.5"/>
+    <path d="M-10 34h20l-4 6h-12z" fill="#D99A2B"/>
+    <path d="M-12 40h24l-3 26h-18z" fill="#F2C46B" opacity="0.95"/>
+    <path d="M-12 40h24l-3 26h-18z" fill="none" stroke="#9A4222" stroke-width="1.2"/>
+    <path d="M-6 40v26M0 40v26M6 40v26" stroke="#9A4222" stroke-width="0.8" opacity="0.6"/>
+    <path d="M-9 66h18l-4 7h-10z" fill="#D99A2B"/>
+    <circle cx="0" cy="53" r="9" fill="#FFF3C4" opacity="0.35"/>
+  </g>
+</svg>

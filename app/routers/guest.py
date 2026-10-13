@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -7,12 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.models import FormLink, FormLinkStatus, Submission, SubmissionStatus
+from app.models import FormLink, FormLinkStatus, HostSection, Submission, SubmissionStatus
 from app.services.date_validation import date_limits_for_form, parse_iso_date, validate_date_of_birth, validate_stay_dates
 from app.services.property_placeholder import get_or_create_placeholder_apartment
 from app.services.form_links import is_link_usable
 from app.services.registration import get_or_create_shared_link
-from app.services.rate_limit import client_ip, guest_submissions
+from app.services.sections import section_by_slug
+from app.services.id_quality import check_id_image
+from app.services.rate_limit import client_ip, guest_submissions, id_photo_checks
 from app.services.sanitize import clean_text
 from app.services.storage import ensure_storage_dirs, save_id_document, save_signature_from_data_url
 from app.services.submission_pdfs import create_submission_pdfs
@@ -88,8 +91,16 @@ def _get_link_by_token(db: Session, token: str) -> FormLink:
     return link
 
 
+def _link_usable(db: Session, link: FormLink) -> tuple[bool, str]:
+    if link.section_id is not None:
+        section = db.get(HostSection, link.section_id)
+        if not section or not section.is_active:
+            return False, "This registration link is no longer active."
+    return is_link_usable(link)
+
+
 def _form_context(request: Request, token: str, db: Session, link: FormLink):
-    ok, message = is_link_usable(link)
+    ok, message = _link_usable(db, link)
 
     fresh = request.query_params.get("fresh") == "1"
     lang_param = request.query_params.get("lang", "").strip().lower()
@@ -115,7 +126,17 @@ def _form_context(request: Request, token: str, db: Session, link: FormLink):
 
 @router.get("/register", response_class=HTMLResponse)
 async def guest_register_redirect(db: Session = Depends(get_db)):
+    """Default section's guest link (kept for links and QR codes already shared)."""
     link = get_or_create_shared_link(db)
+    return RedirectResponse(url=f"/f/{link.token}?fresh=1", status_code=302)
+
+
+@router.get("/register/{section_slug}", response_class=HTMLResponse)
+async def guest_register_section_redirect(section_slug: str, db: Session = Depends(get_db)):
+    section = section_by_slug(db, section_slug)
+    if not section:
+        raise HTTPException(status_code=404, detail="Registration link not found")
+    link = get_or_create_shared_link(db, section.id)
     return RedirectResponse(url=f"/f/{link.token}?fresh=1", status_code=302)
 
 
@@ -138,6 +159,33 @@ async def guest_success_page(request: Request, token: str):
             "ai_enabled": settings.ai_verification_enabled and settings.ai_auto_verify_on_submit,
         },
     )
+
+
+def _id_quality_error(result) -> HTTPException:
+    return HTTPException(status_code=400, detail={"code": f"id_{result.code}", "message": result.message})
+
+
+@router.post("/api/form/{token}/check-id")
+async def check_id_photo(
+    token: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    id_scan: UploadFile = File(...),
+):
+    """Instant quality check while the guest is still on the ID step (same rules as on submit)."""
+    ip_key = client_ip(request)
+    if id_photo_checks.is_limited(ip_key):
+        raise HTTPException(status_code=429, detail="Too many photo checks. Please try again later.")
+    link = _get_link_by_token(db, token)
+    ok, message = _link_usable(db, link)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    data = await id_scan.read()
+    if not data or len(data) > 10 * 1024 * 1024:
+        return {"ok": False, "code": "id_too_large" if data else "id_unreadable"}
+    id_photo_checks.hit(ip_key)
+    result = await asyncio.to_thread(check_id_image, data, id_scan.filename or "")
+    return {"ok": result.ok, "code": "ok" if result.ok else f"id_{result.code}", "message": result.message}
 
 
 @router.post("/api/form/{token}/submit")
@@ -170,7 +218,7 @@ async def submit_guest_form(
 
     ensure_storage_dirs()
     link = _get_link_by_token(db, token)
-    ok, message = is_link_usable(link)
+    ok, message = _link_usable(db, link)
     if not ok:
         raise HTTPException(status_code=400, detail=message)
 
@@ -203,9 +251,13 @@ async def submit_guest_form(
     id_bytes = await id_scan.read()
     if not id_bytes:
         raise HTTPException(status_code=400, detail="ID document file is empty")
+    quality = await asyncio.to_thread(check_id_image, id_bytes, id_scan.filename or "")
+    if not quality.ok:
+        raise _id_quality_error(quality)
 
     submission = Submission(
         form_link_id=link.id,
+        section_id=link.section_id,
         apartment_id=placeholder_apt.id,
         last_name=clean_text(payload.last_name, 128),
         first_name=clean_text(payload.first_name, 128),

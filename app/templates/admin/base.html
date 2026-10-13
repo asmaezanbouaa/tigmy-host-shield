@@ -1,47 +1,116 @@
-<!DOCTYPE html>
+{% from "_icons.html" import icon, fonts %}<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}Admin{% endblock %} — {{ app_name }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  {{ fonts() }}
+  <link rel="stylesheet" href="/static/css/app.css?v={{ asset_v }}">
   {% block head %}{% endblock %}
 </head>
 <body class="admin-body">
-  <header class="admin-header">
-    <div class="admin-header__brand">
-      <a href="/admin/" class="admin-header__logo">{{ app_name }}</a>
-    </div>
-    <div class="admin-header__user">
-      <a href="/admin/profile" class="admin-profile-chip {% if active == 'profile' %}admin-profile-chip--active{% endif %}" title="Your profile">
-        <span class="admin-profile-chip__avatar">{{ admin.username[0]|upper }}</span>
-        <span class="admin-profile-chip__name">{{ admin.username }}</span>
+  {% set nav = [
+    ("overview", "/admin/", "home", "Overview", None, ""),
+    ("submissions", "/admin/submissions", "inbox", "Submissions", pending_count, ""),
+    ("ai_approved", "/admin/ai-approved", "sparkles", "AI approved", ai_auto_confirmed_count, "ai"),
+    ("calendar", "/admin/calendar", "calendar", "Calendar", None, ""),
+    ("apartments", "/admin/apartments", "building", "Apartments", None, ""),
+    ("share", "/admin/share", "share", "Share with guests", None, ""),
+    ("archive", "/admin/archive", "archive", "Archive", archive_count, "muted"),
+  ] %}
+
+  <div class="a-shell">
+    <aside class="a-sidebar" id="a-sidebar">
+      <a href="/admin/" class="a-brand">
+        <img src="/static/img/tigmy-logo.svg" alt="" width="38" height="38">
+        <span><span class="a-brand__name">{{ app_name }}</span><span class="a-brand__tag">Host dashboard</span></span>
       </a>
-      <form method="post" action="/admin/logout" class="admin-logout-form">
-        <button type="submit" class="btn btn-secondary btn-sm">Logout</button>
-      </form>
+      {% if section %}
+      <div class="a-section-chip" title="Your section: you only see this section's guests and apartments">
+        <span class="a-section-chip__label">Section</span>
+        <span class="a-section-chip__name">{{ section.name }}</span>
+      </div>
+      {% endif %}
+      <nav class="a-nav" aria-label="Admin sections">
+        {% for key, href, ic, label, badge, tone in nav %}
+        <a href="{{ href }}" class="a-nav__item {% if active == key %}is-active{% endif %}" {% if active == key %}aria-current="page"{% endif %}>
+          {{ icon(ic) }}<span>{{ label }}</span>
+          {% if badge %}<span class="a-badge {% if tone %}a-badge--{{ tone }}{% endif %}">{{ badge }}</span>{% endif %}
+        </a>
+        {% endfor %}
+        {% if admin.is_superadmin %}
+        <p class="a-nav__heading">Platform owner</p>
+        <a href="/admin/stats" class="a-nav__item {% if active == 'stats' %}is-active{% endif %}" {% if active == 'stats' %}aria-current="page"{% endif %}>
+          {{ icon("chart") }}<span>Platform stats</span>
+        </a>
+        <a href="/admin/sections" class="a-nav__item {% if active == 'sections' %}is-active{% endif %}" {% if active == 'sections' %}aria-current="page"{% endif %}>
+          {{ icon("users") }}<span>Sections &amp; admins</span>
+        </a>
+        {% endif %}
+      </nav>
+      <div class="a-sidebar__foot">
+        <a href="/admin/profile" class="a-user {% if active == 'profile' %}is-active{% endif %}">
+          <span class="a-avatar">{{ admin.username[0]|upper }}</span>
+          <span class="a-user__name">{{ admin.username }}<span class="a-user__role">{{ "Platform owner" if admin.is_superadmin else "Section admin" }}</span></span>
+          {{ icon("settings") }}
+        </a>
+        <form method="post" action="/admin/logout">
+          <button type="submit" class="a-nav__item a-nav__item--btn">{{ icon("logout") }}<span>Log out</span></button>
+        </form>
+      </div>
+    </aside>
+    <div class="a-scrim" id="a-scrim" hidden></div>
+
+    <div class="a-content">
+      <header class="a-topbar">
+        <a href="/admin/" class="a-brand a-brand--compact">
+          <img src="/static/img/tigmy-logo.svg" alt="" width="32" height="32">
+          <span class="a-brand__name">{{ app_name }}</span>
+        </a>
+        <a href="/admin/profile" class="a-avatar a-avatar--sm" title="Your profile">{{ admin.username[0]|upper }}</a>
+      </header>
+
+      <main class="a-main">
+        {% if admin.is_viewing_other_section %}
+        <div class="owner-view-bar" role="status">
+          {{ icon("eye") }}
+          <span>You are inside <strong>{{ admin.active_section.name }}</strong> as platform owner. Everything you do here happens in that section.</span>
+          <form method="post" action="/admin/view/exit"><button type="submit" class="btn btn-secondary btn-sm">Back to my section</button></form>
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
     </div>
-  </header>
-
-  <nav class="admin-tabs" aria-label="Admin sections">
-    <a href="/admin/" class="admin-tab {% if active == 'overview' %}admin-tab--active{% endif %}">Overview</a>
-    <a href="/admin/share" class="admin-tab {% if active == 'share' %}admin-tab--active{% endif %}">Share with guests</a>
-    <a href="/admin/submissions" class="admin-tab {% if active == 'submissions' %}admin-tab--active{% endif %}">
-      Submissions{% if pending_count %}<span class="admin-tab__badge">{{ pending_count }}</span>{% endif %}
-    </a>
-    <a href="/admin/ai-approved" class="admin-tab {% if active == 'ai_approved' %}admin-tab--active{% endif %}">
-      AI approved{% if ai_auto_confirmed_count %}<span class="admin-tab__badge admin-tab__badge--ai">{{ ai_auto_confirmed_count }}</span>{% endif %}
-    </a>
-    <a href="/admin/calendar" class="admin-tab {% if active == 'calendar' %}admin-tab--active{% endif %}">Calendar</a>
-    <a href="/admin/archive" class="admin-tab {% if active == 'archive' %}admin-tab--active{% endif %}">
-      Archive{% if archive_count %}<span class="admin-tab__badge admin-tab__badge--muted">{{ archive_count }}</span>{% endif %}
-    </a>
-  </nav>
-
-  <div class="container-wide admin-main">
-    {% block content %}{% endblock %}
   </div>
 
+  <nav class="a-tabbar" aria-label="Quick navigation">
+    {% for key, href, ic, label, badge, tone in nav[:4] %}
+    <a href="{{ href }}" class="a-tabbar__item {% if active == key %}is-active{% endif %}">
+      <span class="a-tabbar__icon">{{ icon(ic) }}{% if badge and key == 'submissions' %}<span class="a-dot"></span>{% endif %}</span>
+      <span>{{ label.split(' ')[0] if key != 'ai_approved' else 'AI' }}</span>
+    </a>
+    {% endfor %}
+    <button type="button" class="a-tabbar__item {% if active in ('apartments', 'share', 'archive', 'profile', 'sections', 'stats') %}is-active{% endif %}" id="a-menu-btn" aria-controls="a-sidebar" aria-expanded="false">
+      <span class="a-tabbar__icon">{{ icon("more") }}</span><span>More</span>
+    </button>
+  </nav>
+
+  <script>
+    (function () {
+      const sb = document.getElementById("a-sidebar");
+      const scrim = document.getElementById("a-scrim");
+      const btn = document.getElementById("a-menu-btn");
+      function set(open) {
+        sb.classList.toggle("is-open", open);
+        scrim.hidden = !open;
+        btn.setAttribute("aria-expanded", String(open));
+        document.body.classList.toggle("a-lock", open);
+      }
+      btn?.addEventListener("click", () => set(!sb.classList.contains("is-open")));
+      scrim?.addEventListener("click", () => set(false));
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") set(false); });
+    })();
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

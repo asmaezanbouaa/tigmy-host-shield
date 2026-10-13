@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
 {% set active = 'submissions' %}
 {% block title %}{{ submission.last_name }} {{ submission.first_name }}{% endblock %}
 
@@ -18,15 +19,18 @@
 
 {% if ai_auto_confirmed %}
 <div class="admin-ai-banner admin-ai-banner--success">
-  <span class="admin-ai-banner__icon" aria-hidden="true">✨</span>
+  <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("sparkles") }}</span>
   <div>
-    <strong>Auto-approved by AI</strong>
-    <p class="subtitle" style="margin:0.25rem 0 0">This registration was confirmed automatically at submit time (confidence ≥ {{ ai_threshold_pct }}%).</p>
+    <strong>AI approved this guest's ID</strong>
+    <p class="subtitle" style="margin:0.25rem 0 0">
+      {% if submission.status == 'submitted' %}The form matched the ID scan (confidence ≥ {{ ai_threshold_pct }}%). Choose the apartment, then confirm.
+      {% else %}The form matched the ID scan at submit time (confidence ≥ {{ ai_threshold_pct }}%).{% endif %}
+    </p>
   </div>
 </div>
 {% elif needs_manual_review %}
 <div class="admin-ai-banner admin-ai-banner--review">
-  <span class="admin-ai-banner__icon" aria-hidden="true">🔍</span>
+  <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("search") }}</span>
   <div>
     <strong>AI flagged for manual review</strong>
     <p class="subtitle" style="margin:0.25rem 0 0">Confidence was below {{ ai_threshold_pct }}%. Check what AI saw below, then confirm or edit.</p>
@@ -57,9 +61,6 @@
     <div class="review-main">
       <section class="review-card">
         <h2 class="review-section-label"><span class="review-step">1</span> Guest details</h2>
-        <p class="subtitle" style="margin:0 0 1rem;padding:0.65rem 0.85rem;background:var(--surface-alt, #f4f6f8);border-radius:8px;border-left:3px solid var(--primary, #1e3a5f)">
-          <strong>Établissement (PDF):</strong> {{ property_placeholder }}
-        </p>
         <dl class="review-dl">
           <div><dt>Name</dt><dd>{{ submission.first_name }} {{ submission.last_name }}</dd></div>
           <div><dt>Nationality</dt><dd>{{ submission.nationality }}</dd></div>
@@ -107,12 +108,52 @@
         {% endif %}
       </section>
 
+      <section class="review-card" id="apartment">
+        <h2 class="review-section-label"><span class="review-step">3</span> Apartment</h2>
+        {% if not apartments and not assigned_apartment %}
+        <div class="apt-missing">{{ icon("alert") }}<span>No apartments yet. <a href="/admin/apartments#add">Add your apartments</a> to confirm guests.</span></div>
+        {% elif submission.status == 'submitted' %}
+        <p class="subtitle" style="margin:0 0 10px">Which apartment is this guest staying in? It is printed on the fiche de police.</p>
+        <div class="apt-choice">
+          {% for apt in apartments %}
+          <label>
+            <input type="radio" name="apartment" value="{{ apt.public_id }}" form="confirm-form" required {% if assigned_apartment and assigned_apartment.id == apt.id %}checked{% endif %}>
+            <span>{{ apt.name }}<small>{{ apt.address }}</small></span>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="subtitle" style="margin:10px 0 0">Then press <strong>Confirm registration</strong> below. <a href="/admin/apartments">Manage apartments</a></p>
+        {% else %}
+          {% if assigned_apartment %}
+          <div class="apt-assigned">{{ icon("building") }}<span><strong>{{ assigned_apartment.name }}</strong><br><span style="font-size:0.86rem">{{ assigned_apartment.address }}</span></span></div>
+          {% else %}
+          <div class="apt-missing">{{ icon("alert") }}<span>No apartment chosen. The PDFs say “waiting for dynamic assigning”.</span></div>
+          {% endif %}
+          {% if submission.status != 'archived' and apartments %}
+          <details class="disclose" style="margin-top:12px" {% if not assigned_apartment %}open{% endif %}>
+            <summary class="btn btn-secondary btn-sm">{{ icon("pen") }}{{ "Change apartment" if assigned_apartment else "Choose apartment" }}</summary>
+            <form method="post" action="/admin/submissions/{{ submission.public_id }}/apartment" style="margin-top:12px">
+              <div class="apt-choice">
+                {% for apt in apartments %}
+                <label>
+                  <input type="radio" name="apartment" value="{{ apt.public_id }}" required {% if assigned_apartment and assigned_apartment.id == apt.id %}checked{% endif %}>
+                  <span>{{ apt.name }}<small>{{ apt.address }}</small></span>
+                </label>
+                {% endfor %}
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm" style="margin-top:10px">Save apartment &amp; update PDFs</button>
+            </form>
+          </details>
+          {% endif %}
+        {% endif %}
+      </section>
+
       <section class="review-card">
-        <h2 class="review-section-label"><span class="review-step">3</span> Generated documents</h2>
+        <h2 class="review-section-label"><span class="review-step">4</span> Generated documents</h2>
         {% if submission.document %}
         <div class="review-docs">
-          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf">Fiche de police</a>
-          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf/rules">Règlement signé</a>
+          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf">{{ icon("file") }}Fiche de police</a>
+          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf/rules">{{ icon("pen") }}Règlement signé</a>
         </div>
         {% else %}
         <p class="subtitle">PDFs not generated.</p>
@@ -201,20 +242,21 @@
   </div>
 
   {% if can_edit or can_confirm or can_archive %}
-  <section class="review-actions review-actions--footer" aria-label="Your decision">
+  <section class="review-actions review-actions--footer" aria-label="Your decision" id="decision">
     <h2 class="review-section-label">Your decision</h2>
     <p class="subtitle review-actions__hint">
-      After reviewing details and ID{% if ai_result %} (and the AI suggestion){% endif %}, choose an action.
+      After reviewing details and ID{% if ai_result %} (and the AI suggestion){% endif %}, choose the apartment and an action.
     </p>
     <div class="review-actions__bar">
       {% if can_edit %}
       <a class="btn btn-secondary review-actions__btn" href="/admin/submissions/{{ submission.public_id }}/edit">
-        ✎ Edit &amp; resave
+        {{ icon("pen") }}Edit &amp; resave
       </a>
       {% endif %}
       {% if can_confirm %}
-      <form method="post" action="/admin/submissions/{{ submission.public_id }}/confirm" class="review-actions__form">
-        <button type="submit" class="btn btn-confirm review-actions__btn">✓ Confirm registration</button>
+      <form method="post" action="/admin/submissions/{{ submission.public_id }}/confirm" class="review-actions__form" id="confirm-form"
+            onsubmit="if (!this.querySelector('[name=apartment]') &amp;&amp; !document.querySelector('input[form=confirm-form]:checked')) { document.getElementById('apartment').scrollIntoView({behavior:'smooth'}); document.getElementById('apartment').classList.add('needs-choice'); return false; }">
+        <button type="submit" class="btn btn-confirm review-actions__btn" {% if not apartments %}disabled title="Add an apartment first"{% endif %}>{{ icon("check") }}Confirm registration</button>
       </form>
       {% endif %}
       {% if can_archive %}

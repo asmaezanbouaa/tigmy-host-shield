@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
 {% set active = 'calendar' %}
 {% block title %}Calendar{% endblock %}
 
@@ -10,9 +11,9 @@
   <div class="admin-panel__head admin-panel__head--row">
     <div></div>
     <div class="calendar-nav">
-      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ prev_year }}&month={{ prev_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}">← Prev</a>
+      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ prev_year }}&month={{ prev_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}">{{ icon("arrow-left") }}<span class="sr-hide">Prev</span></a>
       <strong class="calendar-nav__title">{{ month_name }}</strong>
-      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ next_year }}&month={{ next_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}">Next →</a>
+      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ next_year }}&month={{ next_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}"><span class="sr-hide">Next</span>{{ icon("arrow-right") }}</a>
     </div>
   </div>
 
@@ -51,7 +52,7 @@
         <span class="calendar-day__num">{{ cell.day }}</span>
         <div class="calendar-day__events">
           {% for ev in cell.events[:3] %}
-          <a href="{{ ev.detail_url }}" class="calendar-event status-{{ ev.status }}" title="{{ ev.guest_name }}">
+          <a href="{{ ev.detail_url }}" class="calendar-event status-{{ ev.status }}" title="{{ ev.guest_name }}{% if ev.apartment %} · {{ ev.apartment }}{% endif %}">
             <span class="calendar-event__name">{{ ev.guest_name }}</span>
           </a>
           {% endfor %}
@@ -78,6 +79,7 @@
           <th>Guest</th>
           <th>Arrival</th>
           <th>Departure</th>
+          <th>Apartment</th>
           <th>Nights</th>
           <th>Guests</th>
           <th>Status</th>
@@ -88,15 +90,16 @@
         {% for ev in list_events %}
         <tr>
           <td><strong>{{ ev.guest_name }}</strong><br><span class="subtitle">{{ ev.id_number }}</span></td>
-          <td>{{ ev.arrival_date }}</td>
-          <td>{{ ev.departure_date }}</td>
-          <td>{{ ev.nights }}</td>
-          <td>{{ ev.guests }}</td>
-          <td><span class="status-pill status-{{ ev.status }}">{{ ev.status }}</span></td>
-          <td><a class="btn btn-secondary btn-sm" href="{{ ev.detail_url }}" style="width:auto;text-decoration:none">Open</a></td>
+          <td data-label="Arrival">{{ ev.arrival_date }}</td>
+          <td data-label="Departure">{{ ev.departure_date }}</td>
+          <td data-label="Apartment">{{ ev.apartment or "—" }}</td>
+          <td data-label="Nights">{{ ev.nights }}</td>
+          <td data-label="Guests">{{ ev.guests }}</td>
+          <td data-label="Status"><span class="status-pill status-{{ ev.status }}">{{ ev.status }}</span></td>
+          <td class="actions-cell"><a class="btn btn-secondary btn-sm" href="{{ ev.detail_url }}">Open</a></td>
         </tr>
         {% else %}
-        <tr><td colspan="7">No stays in this month.</td></tr>
+        <tr><td colspan="8">No stays in this month.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -106,5 +109,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/admin-dashboard.js"></script>
+<script src="/static/js/admin-dashboard.js?v={{ asset_v }}"></script>
 {% endblock %}

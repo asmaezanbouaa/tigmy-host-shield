@@ -1,0 +1,189 @@
+{% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
+{% set active = 'stats' %}
+{% block title %}Platform stats{% endblock %}
+
+{% macro money(v) -%}{{ "{:,}".format(v).replace(",", " ") }}{%- endmacro %}
+{% macro pct(v) -%}{% if v is none %}—{% else %}{{ v }}%{% endif %}{%- endmacro %}
+
+{% block content %}
+{% set t = stats.total %}
+<div class="page-head">
+  <div>
+    <h1 class="admin-page-title">Platform stats</h1>
+    <p class="admin-page-lead">Every section, admin and guest on {{ app_name }}. Only you, the platform owner, can see this page.</p>
+  </div>
+  {% if has_demo %}
+  <form method="post" action="/admin/stats/demo/remove" onsubmit="return confirm('Remove all demo sections, demo admins, demo apartments and demo guests? Your real data is not touched.');">
+    <button type="submit" class="btn btn-danger btn-sm">Remove demo data</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
+{% if has_demo %}
+<div class="admin-ai-banner admin-ai-banner--review">
+  <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("sparkles") }}</span>
+  <div><strong>Demo data is on.</strong>
+    <p class="subtitle" style="margin:0.25rem 0 0">Sections named “Demo · …” are fake, for trying the platform. Remove them with the button above when you are done.</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="kpi-grid">
+  <div class="kpi"><p class="kpi__label">Sections</p><p class="kpi__value">{{ stats.sections_active }}<small>/ {{ stats.sections_total }}</small></p><p class="kpi__note">active</p></div>
+  <div class="kpi"><p class="kpi__label">Admins</p><p class="kpi__value">{{ stats.admins_total }}</p><p class="kpi__note">{% if stats.admins_blocked %}{{ stats.admins_blocked }} blocked{% else %}none blocked{% endif %}</p></div>
+  <div class="kpi"><p class="kpi__label">Apartments</p><p class="kpi__value">{{ stats.apartments_total }}</p><p class="kpi__note">in all sections</p></div>
+  <div class="kpi"><p class="kpi__label">Guest registrations</p><p class="kpi__value">{{ t.guests }}</p><p class="kpi__note">{{ t.people }} people in total</p></div>
+  <div class="kpi kpi--accent"><p class="kpi__label">Need action</p><p class="kpi__value">{{ t.pending }}</p><p class="kpi__note">{{ t.awaiting_apartment }} AI-approved, waiting for an apartment</p></div>
+  <div class="kpi"><p class="kpi__label">Confirmed stays</p><p class="kpi__value">{{ t.confirmed }}</p><p class="kpi__note">{{ t.nights }} nights booked</p></div>
+  <div class="kpi"><p class="kpi__label">Estimated stay value</p><p class="kpi__value">{{ money(t.revenue) }}<small>MAD</small></p><p class="kpi__note">confirmed nights × nightly rate</p></div>
+  <div class="kpi"><p class="kpi__label">AI approval rate</p><p class="kpi__value">{{ pct(t.ai_approval_rate) }}</p><p class="kpi__note">of {{ t.ai_checked }} ID checks</p></div>
+</div>
+
+<div class="chart-grid">
+  <section class="admin-panel chart-card chart-card--wide">
+    <header class="chart-card__head">
+      <h2>Registrations per day</h2>
+      <p class="subtitle">Last {{ stats.days }} days, all sections · {{ stats.daily_total }} in total</p>
+    </header>
+    {% set ymax = [stats.daily_max, 1]|max %}
+    <div class="bars" role="img" aria-label="Guest registrations per day for the last {{ stats.days }} days">
+      <div class="bars__grid" aria-hidden="true">
+        <span style="bottom:100%"><em>{{ ymax }}</em></span>
+        <span style="bottom:50%"><em>{{ (ymax / 2)|round(1)|string|replace('.0', '') }}</em></span>
+        <span style="bottom:0"><em>0</em></span>
+      </div>
+      <div class="bars__plot">
+        {% for d in stats.daily %}
+        <div class="bars__col" data-tip="{{ d.date.strftime('%a %d %b') }} · {{ d.count }} registration{{ 's' if d.count != 1 }}">
+          <span class="bars__bar" style="height: {{ (100 * d.count / ymax)|round(2) }}%"></span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="bars__x" aria-hidden="true">
+        {% for d in stats.daily %}<span>{% if loop.first or loop.last or (loop.index0 % 7 == 0 and loop.revindex0 > 3) %}{{ d.date.strftime('%d %b') }}{% endif %}</span>{% endfor %}
+      </div>
+    </div>
+    <details class="table-view">
+      <summary>Show as table</summary>
+      <table class="data-table"><thead><tr><th>Day</th><th>Registrations</th></tr></thead><tbody>
+        {% for d in stats.daily|reverse %}<tr><td>{{ d.date.strftime('%a %d %b %Y') }}</td><td data-label="Registrations">{{ d.count }}</td></tr>{% endfor %}
+      </tbody></table>
+    </details>
+  </section>
+
+  <section class="admin-panel chart-card">
+    <header class="chart-card__head"><h2>Guests by status</h2><p class="subtitle">All sections</p></header>
+    <div class="hbars">
+      {% for st in stats.statuses %}
+      <div class="hbars__row" data-tip="{{ st.label }} · {{ st.count }}">
+        <span class="hbars__label"><span class="status-pill status-{{ st.key }}">{{ st.label }}</span></span>
+        <span class="hbars__track"><span class="hbars__bar hbars__bar--{{ st.key }}" style="width: {{ (100 * st.count / ([stats.statuses_max, 1]|max))|round(2) }}%"></span></span>
+        <span class="hbars__value">{{ st.count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="subtitle" style="margin:14px 0 0">Confirmation rate: <strong>{{ pct(t.confirmation_rate) }}</strong> of reviewed guests</p>
+  </section>
+
+  <section class="admin-panel chart-card">
+    <header class="chart-card__head"><h2>Top nationalities</h2><p class="subtitle">All guest registrations</p></header>
+    {% if stats.nationalities %}
+    <div class="hbars">
+      {% for nat, n in stats.nationalities %}
+      <div class="hbars__row" data-tip="{{ nat }} · {{ n }} guest{{ 's' if n != 1 }}">
+        <span class="hbars__label">{{ nat }}</span>
+        <span class="hbars__track"><span class="hbars__bar" style="width: {{ (100 * n / stats.nationalities_max)|round(2) }}%"></span></span>
+        <span class="hbars__value">{{ n }}</span>
+      </div>
+      {% endfor %}
+      {% if stats.nationalities_other %}
+      <div class="hbars__row"><span class="hbars__label">Other</span><span class="hbars__track"><span class="hbars__bar hbars__bar--muted" style="width: {{ (100 * stats.nationalities_other / stats.nationalities_max)|round(2) }}%"></span></span><span class="hbars__value">{{ stats.nationalities_other }}</span></div>
+      {% endif %}
+    </div>
+    {% else %}<p class="subtitle">No guests yet.</p>{% endif %}
+  </section>
+</div>
+
+<section class="admin-panel">
+  <div class="admin-panel__head admin-panel__head--row">
+    <h2 style="margin:0">Sections compared</h2>
+    <a class="btn btn-secondary btn-sm" href="/admin/sections">{{ icon("users") }}Manage sections &amp; admins</a>
+  </div>
+  <div class="admin-table-wrap">
+    <table class="data-table stats-table">
+      <thead>
+        <tr>
+          <th>Section</th><th>Admins</th><th>Apartments</th><th>Guests</th><th>Need action</th>
+          <th>Confirmed</th><th>Confirm rate</th><th>AI approval</th><th>Nights</th><th>Stay value</th><th>Last registration</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in stats.rows %}
+        <tr>
+          <td>
+            <strong>{{ r.section.name }}</strong>
+            {% if not r.section.is_active %}<span class="chip chip--muted">Switched off</span>{% endif %}
+            {% if r.section.id == admin.section_id %}<span class="chip">Yours</span>{% endif %}
+          </td>
+          <td data-label="Admins">
+            <span class="stats-admins">
+            {% for a in r.admins %}
+              <span title="{% if a.last_login_at %}Last sign-in {{ a.last_login_at.strftime('%d %b %H:%M') }}{% else %}Never signed in{% endif %}">{{ a.username }}{% if not a.is_active %} <span class="chip chip--red">blocked</span>{% endif %}</span>
+            {% else %}—{% endfor %}
+            </span>
+          </td>
+          <td data-label="Apartments">{{ r.apartments }}</td>
+          <td data-label="Guests">{{ r.guests }}</td>
+          <td data-label="Need action">{% if r.pending %}<span class="chip chip--amber">{{ r.pending }}</span>{% else %}0{% endif %}</td>
+          <td data-label="Confirmed">{{ r.confirmed }}</td>
+          <td data-label="Confirm rate">{{ pct(r.confirmation_rate) }}</td>
+          <td data-label="AI approval">{{ pct(r.ai_approval_rate) }}</td>
+          <td data-label="Nights">{{ r.nights }}</td>
+          <td data-label="Stay value">{{ money(r.revenue) }} MAD</td>
+          <td data-label="Last registration">{{ r.last_registration.strftime('%d %b %Y') if r.last_registration else '—' }}</td>
+          <td class="actions-cell">
+            <form method="post" action="/admin/sections/{{ r.section.public_id }}/open" style="display:inline">
+              <button type="submit" class="btn btn-secondary btn-sm">{{ icon("eye") }}Open</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="chart-tip" id="chart-tip" role="tooltip" hidden></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    const tip = document.getElementById("chart-tip");
+    function show(e) {
+      const el = e.target.closest("[data-tip]");
+      if (!el) return hide();
+      tip.textContent = el.dataset.tip;
+      tip.hidden = false;
+      const r = el.getBoundingClientRect();
+      const x = Math.min(window.innerWidth - tip.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tip.offsetWidth / 2));
+      tip.style.left = x + "px";
+      tip.style.top = Math.max(8, r.top - tip.offsetHeight - 8) + "px";
+      document.querySelectorAll(".is-hover").forEach((n) => n.classList.remove("is-hover"));
+      el.classList.add("is-hover");
+    }
+    function hide() {
+      tip.hidden = true;
+      document.querySelectorAll(".is-hover").forEach((n) => n.classList.remove("is-hover"));
+    }
+    document.querySelectorAll(".bars__plot, .hbars").forEach((plot) => {
+      plot.addEventListener("pointermove", show);
+      plot.addEventListener("pointerdown", show);
+      plot.addEventListener("pointerleave", hide);
+    });
+    window.addEventListener("scroll", hide, { passive: true });
+  })();
+</script>
+{% endblock %}

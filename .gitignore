@@ -31,3 +31,6 @@ bin/cloudflared
 
 # Local backups (contain guest personal data)
 backups/
+
+# Local Claude preview config (test-only credentials)
+.claude/

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import ACTIVE_SUBMISSION_STATUSES, Submission, SubmissionStatus
-from app.services.property_placeholder import PROPERTY_PLACEHOLDER
+from app.services.property_placeholder import establishment_for
 
 
 CSV_COLUMNS = [
@@ -43,7 +43,7 @@ def submission_to_row(sub: Submission) -> list[str]:
         sub.status,
         sub.last_name,
         sub.first_name,
-        PROPERTY_PLACEHOLDER,
+        establishment_for(sub)[0],
         sub.nationality,
         sub.date_of_birth,
         sub.country_of_residence,
@@ -61,6 +61,7 @@ def submission_to_row(sub: Submission) -> list[str]:
 
 def build_submissions_csv(
     db: Session,
+    section_id: int,
     *,
     include_archived: bool = False,
     status_filter: str | None = None,
@@ -73,7 +74,8 @@ def build_submissions_csv(
 
     query = (
         db.query(Submission)
-        .filter(Submission.status.in_(statuses))
+        .options(joinedload(Submission.apartment))
+        .filter(Submission.section_id == section_id, Submission.status.in_(statuses))
         .order_by(Submission.arrival_date.desc(), Submission.submitted_at.desc())
     )
 

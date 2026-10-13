@@ -8,11 +8,7 @@ from app.config import get_settings
 from app.models import Document, Submission
 from app.services.pdf_assets import ensure_fiche_banner, ensure_rules_banner
 from app.services.pdf_generator import generate_fiche_pdf, generate_rules_pdf
-from app.services.property_placeholder import (
-    pdf_establishment_address,
-    pdf_establishment_name,
-    pdf_property_line,
-)
+from app.services.property_placeholder import establishment_for
 from app.services.storage import absolute_path
 
 settings = get_settings()
@@ -21,9 +17,7 @@ settings = get_settings()
 def regenerate_submission_pdfs(db: Session, submission: Submission) -> None:
     ensure_fiche_banner()
     ensure_rules_banner()
-    name = pdf_establishment_name()
-    address = pdf_establishment_address()
-    property_line = pdf_property_line()
+    name, address = establishment_for(submission)
     sig_full = absolute_path(submission.signature_path)
 
     fiche_name = f"fiche_{submission.public_id}.pdf"
@@ -31,7 +25,7 @@ def regenerate_submission_pdfs(db: Session, submission: Submission) -> None:
     fiche_full = settings.pdfs_path / fiche_name
     rules_full = settings.pdfs_path / rules_name
 
-    generate_fiche_pdf(submission, property_line, name, sig_full, fiche_full)
+    generate_fiche_pdf(submission, address, name, sig_full, fiche_full)
     generate_rules_pdf(submission, name, address, sig_full, rules_full)
 
     fiche_rel = str(fiche_full.relative_to(settings.storage_path.parent))
@@ -61,16 +55,14 @@ def create_submission_pdfs(
 ) -> Document:
     ensure_fiche_banner()
     ensure_rules_banner()
-    name = pdf_establishment_name()
-    address = pdf_establishment_address()
-    property_line = pdf_property_line()
+    name, address = establishment_for(submission)
     sig_full = absolute_path(signature_rel)
     fiche_name = f"fiche_{submission.public_id}.pdf"
     rules_name = f"reglement_{submission.public_id}.pdf"
     fiche_full = settings.pdfs_path / fiche_name
     rules_full = settings.pdfs_path / rules_name
 
-    generate_fiche_pdf(submission, property_line, name, sig_full, fiche_full)
+    generate_fiche_pdf(submission, address, name, sig_full, fiche_full)
     generate_rules_pdf(submission, name, address, sig_full, rules_full)
 
     doc = Document(

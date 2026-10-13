@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run all schema migrations (v2–v7). Safe to call multiple times."""
+"""Run all schema migrations (v2–v8). Safe to call multiple times."""
 
 import sys
 from pathlib import Path
@@ -15,14 +15,21 @@ def run_all_migrations() -> None:
     from scripts.migrate_v5 import run_migrations as migrate_v5
     from scripts.migrate_v6 import run_migrations as migrate_v6
     from scripts.migrate_v7 import run_migrations as migrate_v7
+    from scripts.migrate_v8 import run_migrations as migrate_v8
+
+    from scripts.migrate_v8 import add_columns as add_section_columns
+    from scripts.migrate_v9 import add_columns as add_v9_columns
 
     for name, fn in (
+        ("v8 columns", add_section_columns),
+        ("v9 columns", add_v9_columns),
         ("v2", migrate_v2),
         ("v3", migrate_v3),
         ("v4", migrate_v4),
         ("v5", migrate_v5),
         ("v6", migrate_v6),
         ("v7", migrate_v7),
+        ("v8", migrate_v8),
     ):
         try:
             fn()

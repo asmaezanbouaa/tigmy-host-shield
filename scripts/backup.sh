@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 KEEP="${KEEP:-14}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 DB_FILE="${DB_FILE:-./data/guest_registry.db}"
-STAMP="$(date +%Y-%m-%d_%H%M)"
+STAMP="$(date +%Y-%m-%d_%H%M%S)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -28,10 +28,14 @@ src.close()
 EOF
 
 OUT="$BACKUP_DIR/tigmy-backup-$STAMP.tar.gz"
+# Uploaded files live in ./storage (STORAGE_PATH=./storage) or ./data/storage (default)
+EXTRA=()
+[ -d ./storage ] && EXTRA+=(./storage)
 tar -czf "$OUT" \
   --exclude='./data/guest_registry.db*' \
+  --exclude='./data/logs' \
   -C "$WORK" guest_registry.db \
-  -C "$PWD" ./data
+  -C "$PWD" ./data "${EXTRA[@]}"
 chmod 600 "$OUT"
 
 # Delete old backups beyond $KEEP

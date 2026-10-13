@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
@@ -10,6 +11,8 @@ TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 def create_templates() -> Jinja2Templates:
     t = Jinja2Templates(directory=str(TEMPLATE_DIR))
     t.env.globals["app_name"] = get_settings().app_name
+    # Changes on every app start, so browsers fetch fresh CSS/JS after an update
+    t.env.globals["asset_v"] = str(int(time.time()))
     return t
 
 

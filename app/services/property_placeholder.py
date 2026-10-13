@@ -1,4 +1,4 @@
-"""Property / establishment placeholder until dynamic assignment (no apartments in UI)."""
+"""Property / establishment shown on PDFs: the assigned apartment, or a placeholder until the host picks one."""
 
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,18 @@ def pdf_establishment_address() -> str:
 
 def pdf_property_line() -> str:
     return PROPERTY_PLACEHOLDER
+
+
+def is_placeholder(apartment: Apartment | None) -> bool:
+    return apartment is None or apartment.slug == PLACEHOLDER_SLUG
+
+
+def establishment_for(submission) -> tuple[str, str]:
+    """(name, address) for the submission's PDFs."""
+    apt = submission.apartment
+    if is_placeholder(apt):
+        return PROPERTY_PLACEHOLDER, PROPERTY_PLACEHOLDER
+    return apt.name, (apt.address or "").strip() or apt.name
 
 
 def get_or_create_placeholder_apartment(db: Session) -> Apartment:

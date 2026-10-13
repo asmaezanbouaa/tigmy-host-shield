@@ -1,10 +1,11 @@
 {% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
 {% set active = 'share' %}
 {% block title %}Share with guests{% endblock %}
 
 {% block content %}
 <h1 class="admin-page-title">Share with guests</h1>
-<p class="admin-page-lead">One link for all guests. Send it in Airbnb messages or print the QR code in your properties.</p>
+<p class="admin-page-lead">The guest link for <strong>{{ section.name }}</strong>. Guests who use it only appear in this section. Send it in Airbnb messages or print the QR code in your apartments.</p>
 
 <div class="admin-panel">
   <div class="share-grid">
@@ -12,7 +13,7 @@
       <label class="share-label">Registration link</label>
       <div class="copy-box">
         <input type="text" readonly id="guest-link-main" value="{{ guest_link }}">
-        <button type="button" class="btn btn-primary btn-sm" style="width:auto" onclick="copyLink('guest-link-main', this)">Copy</button>
+        <button type="button" class="btn btn-primary btn-sm" style="width:auto" onclick="copyLink('guest-link-main', this)">{{ icon("copy") }}<span>Copy</span></button>
       </div>
       <p class="subtitle" style="margin:0.75rem 0 0">Direct form URL (optional):</p>
       <code class="share-url-code">{{ guest_link_direct }}</code>
@@ -24,7 +25,7 @@
       <div class="qr-box">
         <img src="/admin/qr.png" width="200" height="200" alt="QR code for guest registration">
       </div>
-      <a class="btn btn-secondary btn-sm" href="/admin/qr.png" download="tigmy-host-shield-qr.png" style="width:100%;margin-top:0.75rem;text-decoration:none;text-align:center">Download PNG</a>
+      <a class="btn btn-secondary btn-sm" href="/admin/qr.png" download="tigmy-host-shield-qr.png" style="width:100%;margin-top:0.75rem">{{ icon("download") }}Download PNG</a>
       <p class="subtitle" style="margin:0.75rem 0 0;text-align:center">Print and place in your property</p>
     </div>
   </div>
@@ -46,9 +47,10 @@
     const el = document.getElementById(id);
     el.select();
     navigator.clipboard.writeText(el.value);
-    const old = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = old; }, 2000);
+    const label = btn.querySelector('span') || btn;
+    const old = label.textContent;
+    label.textContent = 'Copied!';
+    setTimeout(() => { label.textContent = old; }, 2000);
   }
 </script>
 {% endblock %}

@@ -35,6 +35,26 @@ ACTIVE_SUBMISSION_STATUSES = (
 )
 
 
+class HostSection(Base):
+    """A host's private space: its own admins, apartments, guest link and guests."""
+
+    __tablename__ = "host_sections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    public_id: Mapped[str] = mapped_column(
+        String(36), unique=True, index=True, default=new_public_id
+    )
+    name: Mapped[str] = mapped_column(String(128))
+    slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    admins: Mapped[list["AdminUser"]] = relationship(back_populates="section")
+    apartments: Mapped[list["Apartment"]] = relationship(back_populates="section")
+
+
 class AdminUser(Base):
     __tablename__ = "admin_users"
 
@@ -42,9 +62,34 @@ class AdminUser(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Platform owner: manages sections and their admins
+    is_superadmin: Mapped[bool] = mapped_column(Boolean, default=False)
+    section_id: Mapped[int | None] = mapped_column(
+        ForeignKey("host_sections.id"), nullable=True, index=True
+    )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    section: Mapped["HostSection | None"] = relationship(back_populates="admins")
+
+    # Not stored: the platform owner can open another section for this request.
+    viewing_section = None  # HostSection | None
+
+    @property
+    def active_section(self) -> "HostSection | None":
+        """Section whose data this request works on."""
+        return self.viewing_section or self.section
+
+    @property
+    def active_section_id(self) -> int | None:
+        section = self.active_section
+        return section.id if section else None
+
+    @property
+    def is_viewing_other_section(self) -> bool:
+        return self.viewing_section is not None and self.viewing_section.id != self.section_id
 
 
 class Apartment(Base):
@@ -54,16 +99,21 @@ class Apartment(Base):
     public_id: Mapped[str] = mapped_column(
         String(36), unique=True, index=True, default=new_public_id
     )
+    section_id: Mapped[int | None] = mapped_column(
+        ForeignKey("host_sections.id"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(128))
     address: Mapped[str] = mapped_column(Text)
     slug: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    nightly_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)  # MAD per night
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     submissions: Mapped[list["Submission"]] = relationship(back_populates="apartment")
+    section: Mapped["HostSection | None"] = relationship(back_populates="apartments")
 
 
 class FormLink(Base):
@@ -74,6 +124,9 @@ class FormLink(Base):
         String(36), unique=True, index=True, default=new_public_id
     )
     token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    section_id: Mapped[int | None] = mapped_column(
+        ForeignKey("host_sections.id"), nullable=True, index=True
+    )
     property_address: Mapped[str] = mapped_column(Text, default="")
     guest_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
@@ -103,6 +156,9 @@ class Submission(Base):
     )
     form_link_id: Mapped[int | None] = mapped_column(
         ForeignKey("form_links.id"), nullable=True, index=True
+    )
+    section_id: Mapped[int | None] = mapped_column(
+        ForeignKey("host_sections.id"), nullable=True, index=True
     )
     apartment_id: Mapped[int] = mapped_column(
         ForeignKey("apartments.id"), index=True

@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
 {% set active = 'archive' %}
 {% block title %}Archive{% endblock %}
 
@@ -24,7 +25,7 @@
   <p class="subtitle" style="margin:0 0 1rem">{{ purge_msg }}</p>
   <div class="admin-quick-actions">
     {% if archive_current > 0 %}
-    <a class="btn btn-primary btn-sm" href="/admin/archive/download.zip">Download all archived (ZIP)</a>
+    <a class="btn btn-primary btn-sm" href="/admin/archive/download.zip">{{ icon("download") }}Download all archived (ZIP)</a>
     {% endif %}
     {% if purge_ok and archive_current > 0 %}
     <form method="post" action="/admin/archive/purge-quarterly" style="display:inline"
@@ -58,8 +59,8 @@
         {% for sub in submissions %}
         <tr>
           <td>{{ sub.last_name }} {{ sub.first_name }}</td>
-          <td>{{ sub.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
-          <td>{{ sub.archived_at.strftime('%Y-%m-%d %H:%M') if sub.archived_at else '—' }}</td>
+          <td data-label="Submitted">{{ sub.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td data-label="Archived">{{ sub.archived_at.strftime('%Y-%m-%d %H:%M') if sub.archived_at else '—' }}</td>
           <td class="actions-cell">
             <a href="/admin/submissions/{{ sub.public_id }}">View</a>
             {% if sub.document %}

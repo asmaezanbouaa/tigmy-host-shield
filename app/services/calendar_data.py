@@ -7,6 +7,7 @@ from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.models import ACTIVE_SUBMISSION_STATUSES, Submission, SubmissionStatus
+from app.services.property_placeholder import is_placeholder
 
 
 @dataclass
@@ -19,6 +20,7 @@ class CalendarEvent:
     guests: int
     id_number: str
     detail_url: str
+    apartment: str = ""
 
     @property
     def nights(self) -> int:
@@ -57,6 +59,7 @@ def _event_on_day(ev: CalendarEvent, day_iso: str) -> bool:
 
 def fetch_events_for_range(
     db: Session,
+    section_id: int,
     range_start: date,
     range_end: date,
     include_archived: bool = False,
@@ -70,6 +73,7 @@ def fetch_events_for_range(
 
     query = (
         db.query(Submission)
+        .filter(Submission.section_id == section_id)
         .filter(Submission.status.in_(statuses))
         .filter(Submission.arrival_date <= end_s)
         .filter(Submission.departure_date >= start_s)
@@ -88,6 +92,7 @@ def fetch_events_for_range(
                 guests=sub.number_of_guests,
                 id_number=sub.id_document_number or "",
                 detail_url=f"/admin/submissions/{sub.public_id}",
+                apartment="" if is_placeholder(sub.apartment) else sub.apartment.name,
             )
         )
     return events

@@ -96,15 +96,23 @@ def on_startup():
         from scripts.migrate_v5 import run_migrations as migrate_v5
         from scripts.migrate_v6 import run_migrations as migrate_v6
         from scripts.migrate_v7 import run_migrations as migrate_v7
+        from scripts.migrate_v8 import run_migrations as migrate_v8
         from app.services.id_documents import purge_expired_id_documents
         from app.database import SessionLocal
 
+        from scripts.migrate_v8 import add_columns as add_section_columns
+
+        add_section_columns()
+        from scripts.migrate_v9 import add_columns as add_v9_columns
+
+        add_v9_columns()
         migrate_v2()
         migrate_v3()
         migrate_v4()
         migrate_v5()
         migrate_v6()
         migrate_v7()
+        migrate_v8()
         with SessionLocal() as db:
             n = purge_expired_id_documents(db)
             if n:

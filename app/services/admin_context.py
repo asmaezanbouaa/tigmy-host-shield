@@ -7,7 +7,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import ACTIVE_SUBMISSION_STATUSES, Submission, SubmissionStatus
-from app.services.registry_meta import KEY_ARCHIVE_PURGED_TOTAL, get_int
+from app.services.registry_meta import KEY_ARCHIVE_PURGED_TOTAL, get_int, section_key
 
 
 def parse_filter_date(value: str | None) -> datetime | None:
@@ -20,49 +20,32 @@ def parse_filter_date(value: str | None) -> datetime | None:
         return None
 
 
-def get_admin_counts(db: Session) -> dict[str, int]:
-    current_archived = (
-        db.query(func.count(Submission.id))
-        .filter(Submission.status == SubmissionStatus.ARCHIVED.value)
-        .scalar()
-        or 0
-    )
-    purged_total = get_int(db, KEY_ARCHIVE_PURGED_TOTAL, 0)
+def get_admin_counts(db: Session, section_id: int) -> dict[str, int]:
+    def count(*conds) -> int:
+        return (
+            db.query(func.count(Submission.id))
+            .filter(Submission.section_id == section_id, *conds)
+            .scalar()
+            or 0
+        )
+
+    current_archived = count(Submission.status == SubmissionStatus.ARCHIVED.value)
+    purged_total = get_int(db, section_key(KEY_ARCHIVE_PURGED_TOTAL, section_id), 0)
     return {
-        "pending_count": (
-            db.query(func.count(Submission.id))
-            .filter(Submission.status == SubmissionStatus.SUBMITTED.value)
-            .scalar()
-            or 0
+        "pending_count": count(Submission.status == SubmissionStatus.SUBMITTED.value),
+        "confirmed_count": count(Submission.status == SubmissionStatus.CONFIRMED.value),
+        "ai_auto_confirmed_count": count(Submission.ai_auto_confirmed.is_(True)),
+        # AI approved the ID but the host has not picked an apartment / confirmed yet
+        "ai_awaiting_apartment_count": count(
+            Submission.ai_auto_confirmed.is_(True),
+            Submission.status == SubmissionStatus.SUBMITTED.value,
         ),
-        "confirmed_count": (
-            db.query(func.count(Submission.id))
-            .filter(Submission.status == SubmissionStatus.CONFIRMED.value)
-            .scalar()
-            or 0
+        "ai_needs_review_count": count(
+            Submission.status == SubmissionStatus.SUBMITTED.value,
+            Submission.ai_verification_at.isnot(None),
+            Submission.ai_auto_confirmed.is_(False),
         ),
-        "ai_auto_confirmed_count": (
-            db.query(func.count(Submission.id))
-            .filter(Submission.ai_auto_confirmed.is_(True))
-            .scalar()
-            or 0
-        ),
-        "ai_needs_review_count": (
-            db.query(func.count(Submission.id))
-            .filter(
-                Submission.status == SubmissionStatus.SUBMITTED.value,
-                Submission.ai_verification_at.isnot(None),
-                Submission.ai_auto_confirmed.is_(False),
-            )
-            .scalar()
-            or 0
-        ),
-        "total_active": (
-            db.query(func.count(Submission.id))
-            .filter(Submission.status.in_(ACTIVE_SUBMISSION_STATUSES))
-            .scalar()
-            or 0
-        ),
+        "total_active": count(Submission.status.in_(ACTIVE_SUBMISSION_STATUSES)),
         "archive_current": current_archived,
         "archive_purged_total": purged_total,
         "archive_count": current_archived + purged_total,
@@ -71,6 +54,7 @@ def get_admin_counts(db: Session) -> dict[str, int]:
 
 def query_submissions(
     db: Session,
+    section_id: int,
     *,
     q: str | None = None,
     status_filter: str | None = None,
@@ -82,8 +66,11 @@ def query_submissions(
 ) -> list[Submission]:
     query = (
         db.query(Submission)
-        .options(joinedload(Submission.document))
-        .filter(Submission.status.in_(ACTIVE_SUBMISSION_STATUSES))
+        .options(joinedload(Submission.document), joinedload(Submission.apartment))
+        .filter(
+            Submission.section_id == section_id,
+            Submission.status.in_(ACTIVE_SUBMISSION_STATUSES),
+        )
         .order_by(Submission.submitted_at.desc())
     )
     if q and q.strip():
@@ -123,12 +110,16 @@ def query_submissions(
     return query.limit(200).all()
 
 
-def query_ai_auto_confirmed(db: Session, *, limit: int = 100) -> list[Submission]:
+def query_ai_auto_confirmed(db: Session, section_id: int, *, limit: int = 100) -> list[Submission]:
     return (
         db.query(Submission)
-        .options(joinedload(Submission.document))
-        .filter(Submission.ai_auto_confirmed.is_(True))
-        .order_by(Submission.confirmed_at.desc(), Submission.submitted_at.desc())
+        .options(joinedload(Submission.document), joinedload(Submission.apartment))
+        .filter(
+            Submission.section_id == section_id,
+            Submission.ai_auto_confirmed.is_(True),
+            Submission.status != SubmissionStatus.ARCHIVED.value,
+        )
+        .order_by(Submission.submitted_at.desc())
         .limit(limit)
         .all()
     )

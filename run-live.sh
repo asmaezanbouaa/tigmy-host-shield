@@ -69,5 +69,12 @@ echo "  Keep this window open. Ctrl+C stops the site."
 echo "============================================"
 echo ""
 
-# 3. Run the app (one worker: SQLite + in-memory rate limits)
-.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port "$PORT" --workers 1 2>&1 | tee -a "$LOG_DIR/app.log"
+# 3. Run the app (one worker: SQLite + in-memory rate limits).
+# If the app process is stopped on its own (e.g. to load an update), it restarts
+# and the public link stays the same:  ./scripts/restart-app.sh
+while true; do
+  # "|| true": an app exit must not end this script (set -e), or the public link would close too
+  .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port "$PORT" --workers 1 2>&1 | tee -a "$LOG_DIR/app.log" || true
+  echo "App stopped. Restarting in 2 seconds (press Ctrl+C to stop the site)..."
+  sleep 2
+done

@@ -1,60 +1,66 @@
-<!DOCTYPE html>
+{% from "_icons.html" import icon, fonts %}<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{ app_name }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  {{ fonts() }}
+  <link rel="stylesheet" href="/static/css/guest.css?v={{ asset_v }}">
 </head>
-<body class="guest-body">
-  <div class="container guest-container">
-    <div class="success-page">
-      <div class="success-icon" aria-hidden="true">{% if ai_outcome == 'approved' %}✓{% else %}✓{% endif %}</div>
+<body class="g-body">
+  <header class="g-topbar">
+    <span class="g-brand">
+      <img src="/static/img/tigmy-logo.svg" alt="">
+      <span>
+        <span class="g-brand__name">{{ app_name }}</span>
+        <span class="g-brand__tag" data-i18n="brand_tag">Accueil &amp; enregistrement</span>
+      </span>
+    </span>
+  </header>
+
+  <main class="g-shell">
+    <section class="g-success">
+      {% set review = ai_outcome == 'review' %}
+      <div class="g-success__badge {% if review %}g-success__badge--review{% endif %}">{{ icon("check") }}</div>
 
       {% if ai_outcome == 'approved' %}
-      <h1 class="success-title" data-i18n="success_ai_approved_title">You're all set!</h1>
-      <p class="success-lead" data-i18n="success_ai_approved_lead">Your registration was verified by AI and confirmed automatically. No further steps needed.</p>
-      <div class="guest-powered-by guest-powered-by--success" data-i18n="powered_by_ai">✨ Powered by AI — fast, secure guest verification</div>
-      {% elif ai_outcome == 'review' %}
-      <h1 class="success-title" data-i18n="success_ai_review_title">Thank you!</h1>
-      <p class="success-lead" data-i18n="success_ai_review_lead">Your registration was received. Our team will quickly review a few details — we'll be in touch if needed.</p>
+      <h1 class="g-success__title g-display" data-i18n="success_ai_approved_title">C'est tout bon !</h1>
+      <p class="g-success__lead" data-i18n="success_ai_approved_lead">Votre enregistrement a été vérifié et confirmé automatiquement.</p>
+      {% elif review %}
+      <h1 class="g-success__title g-display" data-i18n="success_ai_review_title">Merci !</h1>
+      <p class="g-success__lead" data-i18n="success_ai_review_lead">Votre enregistrement a été reçu. Notre équipe vérifiera quelques détails.</p>
       {% else %}
-      <h1 class="success-title" data-i18n="success_title">Thank you!</h1>
-      <p class="success-lead" data-i18n="success_lead">Your registration has been received successfully.</p>
+      <h1 class="g-success__title g-display" data-i18n="success_title">Merci !</h1>
+      <p class="g-success__lead" data-i18n="success_lead">Votre enregistrement a bien été reçu.</p>
       {% endif %}
 
-      <div class="card guest-card success-card">
-        <h2 data-i18n="success_next_title">What happens next?</h2>
-        <ul class="success-steps">
+      <div class="g-card" style="text-align:start">
+        <p class="g-section-label" data-i18n="success_next_title">Et ensuite ?</p>
+        <ul class="g-timeline">
           {% if ai_outcome == 'approved' %}
-          <li data-i18n="success_ai_step1">Your details matched your ID scan</li>
-          <li data-i18n="success_ai_step2">Your registration is confirmed — welcome!</li>
-          <li data-i18n="success_step3">Your ID file is deleted {{ id_retention_hours }} hours after verification (data protection)</li>
-          {% elif ai_outcome == 'review' %}
-          <li data-i18n="success_ai_review_step1">AI checked your ID — a host will review shortly</li>
-          <li data-i18n="success_ai_review_step2">You usually hear back within a few hours</li>
-          <li data-i18n="success_step3">Your ID file is deleted {{ id_retention_hours }} hours after verification (data protection)</li>
+          <li><span class="g-timeline__dot">{{ icon("check") }}</span><span data-i18n="success_ai_step1">Vos informations correspondent à votre pièce d'identité</span></li>
+          <li><span class="g-timeline__dot">{{ icon("home") }}</span><span data-i18n="success_ai_step2">Votre enregistrement est confirmé — bienvenue !</span></li>
+          {% elif review %}
+          <li><span class="g-timeline__dot">{{ icon("sparkles") }}</span><span data-i18n="success_ai_review_step1">Un hôte validera votre dossier sous peu</span></li>
+          <li><span class="g-timeline__dot">{{ icon("clock") }}</span><span data-i18n="success_ai_review_step2">Vous aurez généralement une réponse en quelques heures</span></li>
           {% else %}
-          <li data-i18n="success_step1">Our team will review your information</li>
-          <li data-i18n="success_step2">Your ID scan will be checked by the host</li>
-          <li data-i18n="success_step3">Your ID file is deleted {{ id_retention_hours }} hours after verification (data protection)</li>
+          <li><span class="g-timeline__dot">{{ icon("user") }}</span><span data-i18n="success_step1">Notre équipe vérifie vos informations</span></li>
+          <li><span class="g-timeline__dot">{{ icon("id") }}</span><span data-i18n="success_step2">L'hôte vérifie votre pièce d'identité</span></li>
           {% endif %}
+          <li><span class="g-timeline__dot">{{ icon("lock") }}</span><span data-i18n="success_step3">Votre fichier d'identité est supprimé {{ id_retention_hours }} heures après vérification</span></li>
         </ul>
-        <div class="alert" style="margin-top:1rem;background:#ecfdf5;border-color:#6ee7b7;font-size:0.9rem">
-          <p data-i18n="success_id_notice" style="margin:0">For your privacy: once the host has verified your identity document, the uploaded scan is automatically removed from our servers within {{ id_retention_hours }} hours.</p>
-        </div>
       </div>
 
-      <p class="success-footer" data-i18n="success_welcome_back">We look forward to welcoming you. You may close this page.</p>
-      <p class="success-footer success-footer--muted" data-i18n="success_close">Have a wonderful stay!</p>
-    </div>
-  </div>
-  <script src="/static/js/i18n.js"></script>
+      <p class="g-success__lead" style="margin:24px auto 4px" data-i18n="success_welcome_back">Nous avons hâte de vous accueillir. Vous pouvez fermer cette page.</p>
+      <p class="g-display" style="font-size:1.35rem;color:var(--clay-600);margin:0" data-i18n="success_close">Excellent séjour !</p>
+    </section>
+  </main>
+
+  <script src="/static/js/i18n.js?v={{ asset_v }}"></script>
   <script>
     (function () {
       const I18n = window.GuestI18n;
-      const lang = I18n.getLang() || "fr";
-      I18n.apply(lang);
+      I18n.apply(I18n.getLang() || "fr");
     })();
   </script>
 </body>

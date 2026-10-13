@@ -1,0 +1,148 @@
+{% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
+{% set active = 'sections' %}
+{% block title %}Sections &amp; admins{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="admin-page-title">Sections &amp; admins</h1>
+    <p class="admin-page-lead">Each section is a separate host space with up to {{ max_admins }} admins, its own guest link, apartments and guests. Admins only see their own section. As platform owner you can <strong>open</strong> any section, <strong>block</strong> an admin, or <strong>switch off</strong> a whole section.</p>
+  </div>
+  <a href="#new" class="btn btn-primary">{{ icon("users") }}New section</a>
+</div>
+
+{% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+{% for row in rows %}
+{% set sec = row.section %}
+<section class="admin-panel section-card {% if not sec.is_active %}section-card--off{% endif %}" id="{{ sec.public_id }}">
+  <header class="section-card__head">
+    <div class="section-card__title">
+      <span class="admin-overview-card__icon" style="margin:0">{{ icon("home") }}</span>
+      <div>
+        <h2>{{ sec.name }}</h2>
+        <span class="subtitle" style="margin:0">
+          {% if sec.id == admin.section_id %}Your section · {% endif %}{% if sec.is_active %}<span class="chip chip--green">Active</span>{% else %}<span class="chip chip--muted">Switched off</span>{% endif %}
+        </span>
+      </div>
+    </div>
+    <div class="admin-quick-actions">
+    <form method="post" action="/admin/sections/{{ sec.public_id }}/open">
+      <button type="submit" class="btn btn-primary btn-sm">{{ icon("eye") }}{% if sec.id == admin.active_section_id %}Open (current){% else %}Open section{% endif %}</button>
+    </form>
+    <details class="disclose">
+      <summary class="btn btn-secondary btn-sm">{{ icon("pen") }}Rename</summary>
+      <form method="post" action="/admin/sections/{{ sec.public_id }}/rename" class="mini-form">
+        <input type="text" name="name" value="{{ sec.name }}" required maxlength="128" aria-label="Section name">
+        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+      </form>
+    </details>
+    </div>
+  </header>
+
+  <div class="section-card__body">
+    <div class="section-card__col">
+      <p class="share-label">Admins ({{ row.admins|length }}/{{ max_admins }})</p>
+      {% for a in row.admins %}
+      <div class="admin-row">
+        <span class="a-avatar a-avatar--sm">{{ a.username[0]|upper }}</span>
+        <span class="admin-row__name">{{ a.username }}
+          <small>{% if a.is_superadmin %}Platform owner{% else %}Section admin{% endif %}{% if a.username|lower in env_usernames %} · set in .env{% endif %}
+            · {% if a.last_login_at %}last sign-in {{ a.last_login_at.strftime('%d %b, %H:%M') }}{% else %}never signed in{% endif %}</small>
+        </span>
+        {% if not a.is_active %}<span class="chip chip--red">{{ icon("ban") }}Blocked</span>{% endif %}
+        {% if a.username|lower not in env_usernames and not a.is_superadmin %}
+        <div class="admin-row__actions">
+          <form method="post" action="/admin/sections/{{ sec.public_id }}/admins/{{ a.id }}/block"
+                onsubmit="return confirm('{% if a.is_active %}Block {{ a.username|e }}? They are signed out immediately and cannot sign in.{% else %}Unblock {{ a.username|e }}?{% endif %}');">
+            <button type="submit" class="btn btn-secondary btn-sm">{% if a.is_active %}Block{% else %}Unblock{% endif %}</button>
+          </form>
+          <details class="disclose">
+            <summary class="btn btn-secondary btn-sm">New password</summary>
+            <form method="post" action="/admin/sections/{{ sec.public_id }}/admins/{{ a.id }}/password" class="mini-form">
+              <input type="password" name="password" required minlength="{{ min_password }}" placeholder="New password ({{ min_password }}+ chars)" autocomplete="new-password">
+              <button type="submit" class="btn btn-primary btn-sm">Save</button>
+            </form>
+          </details>
+          <form method="post" action="/admin/sections/{{ sec.public_id }}/admins/{{ a.id }}/delete" onsubmit="return confirm('Remove admin {{ a.username|e }}? They will be signed out.');">
+            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {% if row.admins|length < max_admins %}
+      <details class="disclose" {% if not row.admins %}open{% endif %}>
+        <summary class="slot-empty">{{ icon("user") }}Add admin {{ row.admins|length + 1 }}</summary>
+        <form method="post" action="/admin/sections/{{ sec.public_id }}/admins" class="mini-form">
+          <input type="text" name="username" required minlength="3" maxlength="64" placeholder="Username" autocomplete="off" autocapitalize="none">
+          <input type="password" name="password" required minlength="{{ min_password }}" placeholder="Password ({{ min_password }}+ chars)" autocomplete="new-password">
+          <button type="submit" class="btn btn-primary btn-sm">Add</button>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+
+    <div class="section-card__col">
+      <div class="section-stats">
+        <div><strong>{{ row.stats.apartments }}</strong><span>Apartments</span></div>
+        <div><strong>{{ row.stats.guests }}</strong><span>Guest records</span></div>
+      </div>
+      <p class="share-label">Guest link</p>
+      <div class="link-row">
+        <code>{{ row.guest_url }}</code>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('{{ row.guest_url }}'); this.querySelector('span').textContent='Copied!'">{{ icon("copy") }}<span>Copy</span></button>
+      </div>
+      {% if sec.id != admin.section_id %}
+      <div class="admin-quick-actions" style="margin-top:16px">
+        <form method="post" action="/admin/sections/{{ sec.public_id }}/toggle"
+              onsubmit="return confirm('{% if sec.is_active %}Switch off {{ sec.name|e }}? Its admins will not be able to sign in and its guest link will close.{% else %}Switch {{ sec.name|e }} back on?{% endif %}');">
+          <button type="submit" class="btn btn-secondary btn-sm">{% if sec.is_active %}Switch off{% else %}Switch on{% endif %}</button>
+        </form>
+        {% if row.stats.guests == 0 %}
+        <form method="post" action="/admin/sections/{{ sec.public_id }}/delete" onsubmit="return confirm('Delete section {{ sec.name|e }} with its admins and apartments? This cannot be undone.');">
+          <button type="submit" class="btn btn-danger btn-sm">Delete section</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endfor %}
+
+<div class="admin-panel" id="new">
+  <h2>New section</h2>
+  <p class="subtitle">Create a host space and its admins. Share the admins' usernames and passwords with them privately.</p>
+  <form method="post" action="/admin/sections">
+    <div class="field">
+      <label class="required" for="sec-name">Section name</label>
+      <input id="sec-name" type="text" name="name" required maxlength="128" placeholder="e.g. Riad Atlas — Marrakech">
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="required" for="u1">Admin 1 username</label>
+        <input id="u1" type="text" name="username1" required minlength="3" maxlength="64" autocomplete="off" autocapitalize="none">
+      </div>
+      <div class="field">
+        <label class="required" for="p1">Admin 1 password</label>
+        <input id="p1" type="password" name="password1" required minlength="{{ min_password }}" autocomplete="new-password" placeholder="{{ min_password }}+ characters">
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="u2">Admin 2 username <span class="subtitle">(optional)</span></label>
+        <input id="u2" type="text" name="username2" maxlength="64" autocomplete="off" autocapitalize="none">
+      </div>
+      <div class="field">
+        <label for="p2">Admin 2 password</label>
+        <input id="p2" type="password" name="password2" autocomplete="new-password" placeholder="{{ min_password }}+ characters">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Create section</button>
+  </form>
+</div>
+{% endblock %}

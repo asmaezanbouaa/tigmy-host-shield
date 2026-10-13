@@ -1,186 +1,264 @@
-<!DOCTYPE html>
+{% from "_icons.html" import icon, fonts %}<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{ app_name }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  {{ fonts() }}
+  <link rel="stylesheet" href="/static/css/guest.css?v={{ asset_v }}">
 </head>
-<body class="guest-body">
-  <div class="container guest-container">
+<body class="g-body">
+  <header class="g-topbar">
+    <a class="g-brand" href="/register">
+      <img src="/static/img/tigmy-logo.svg" alt="">
+      <span>
+        <span class="g-brand__name">{{ app_name }}</span>
+        <span class="g-brand__tag" data-i18n="brand_tag">Accueil &amp; enregistrement</span>
+      </span>
+    </a>
+    {% if usable %}
+    <button type="button" class="g-chip-btn" id="change-lang-btn" hidden>
+      {{ icon("globe") }}<span id="current-lang-label">FR</span>
+    </button>
+    {% endif %}
+  </header>
+
+  <main class="g-shell">
     {% if not usable %}
-    <div class="card guest-card" style="margin-top: 1rem;">
-      <div class="alert alert-error">{{ error_message }}</div>
+    <div class="g-card" style="margin-top:24px">
+      <div class="g-alert g-alert--error">{{ icon("alert") }}<span>{{ error_message }}</span></div>
     </div>
     {% else %}
 
-    <!-- Language selection -->
-    <div id="lang-screen" class="guest-screen {% if selected_lang %}guest-screen--hidden{% else %}guest-screen--active{% endif %}">
-      <div class="guest-hero">
-        <p class="guest-hero__badge">{{ app_name }}</p>
-        <p class="guest-powered-by" data-i18n="powered_by_ai">✨ Powered by AI — fast, secure guest verification</p>
-        <h1 class="guest-hero__title" data-i18n="intro_title">Welcome</h1>
-        <p class="guest-hero__lead" data-i18n="intro_lead">We are delighted to host you. Please complete your official guest registration before your stay — it only takes a few minutes.</p>
-      </div>
-
-      <div class="card guest-card">
-        <h2 class="guest-steps-title" data-i18n="intro_steps_title">How it works</h2>
-        <ol class="guest-steps">
-          <li><span data-i18n="step1">Choose your language</span></li>
-          <li><span data-i18n="step2">Fill in your details and stay dates</span></li>
-          <li><span data-i18n="step3">Upload your ID, sign, and submit</span></li>
-          <li><span data-i18n="step4_ai">Our AI instantly checks your ID against your details</span></li>
-        </ol>
-        <p class="guest-note" data-i18n="intro_id_note">You will upload a scan of your identity document. It is deleted {{ id_retention_hours }} hours after the host verifies it.</p>
-
-        <p class="subtitle guest-lang-label" data-i18n="intro_subtitle">Select your language</p>
-        <div class="lang-picker">
-          <a href="?lang=fr" class="lang-btn" data-lang="fr">
-            <span class="lang-flag">🇫🇷</span>
-            <span data-i18n="lang_fr">Français</span>
-          </a>
-          <a href="?lang=en" class="lang-btn" data-lang="en">
-            <span class="lang-flag">🇬🇧</span>
-            <span data-i18n="lang_en">English</span>
-          </a>
-          <a href="?lang=ar" class="lang-btn" data-lang="ar">
-            <span class="lang-flag">🇸🇦</span>
-            <span data-i18n="lang_ar">العربية</span>
-          </a>
+    <!-- ===== Welcome + language ===== -->
+    <section id="lang-screen" class="g-screen {% if selected_lang %}g-screen--hidden{% endif %}">
+      <div class="g-hero">
+        <img class="g-hero__art" src="/static/img/hero-arch.svg" alt="" width="200" height="225">
+        <span class="g-eyebrow">{{ icon("sparkles") }}<span data-i18n="meta_ai">Vérification instantanée</span></span>
+        <h1 class="g-hero__title g-display" data-i18n="intro_title">Bienvenue</h1>
+        <p class="g-hero__lead" data-i18n="intro_lead">Nous sommes ravis de vous accueillir. Merci de compléter votre enregistrement officiel avant votre séjour — cela ne prend que quelques minutes.</p>
+        <div class="g-meta-row">
+          <span class="g-meta">{{ icon("clock") }}<span data-i18n="meta_time">≈ 3 minutes</span></span>
+          <span class="g-meta">{{ icon("lock") }}<span data-i18n="meta_secure">Données protégées</span></span>
         </div>
       </div>
-    </div>
 
-    <!-- Registration form -->
-    <div id="form-screen" class="guest-screen {% if selected_lang %}guest-screen--active{% else %}guest-screen--hidden{% endif %}">
-      <div class="guest-form-banner">
-        <p class="guest-form-banner__label">{{ app_name }}</p>
-        <p class="guest-powered-by guest-powered-by--compact" data-i18n="powered_by_ai">✨ Powered by AI — fast, secure guest verification</p>
-        <p class="guest-form-banner__text" data-i18n="form_welcome_text">Thank you for choosing to stay with us. Your information helps us prepare a smooth arrival.</p>
-      </div>
-
-      <div class="card guest-card">
-        <div class="form-top-bar">
-          <h1 data-i18n="page_title">{{ app_name }}</h1>
-          <button type="button" class="btn btn-secondary btn-sm" id="change-lang-btn" data-i18n="change_lang">Change language</button>
+      <div class="g-card" style="margin-top:18px">
+        <p class="g-section-label" data-i18n="intro_subtitle">Choisissez votre langue</p>
+        <div class="g-langs">
+          <a href="?lang=fr" class="g-lang lang-btn" data-lang="fr" lang="fr">
+            <span class="g-lang__code">FR</span>
+            <span class="g-lang__name">Français<span class="g-lang__sub">Continuer en français</span></span>
+            {{ icon("chevron", "g-lang__arrow") }}
+          </a>
+          <a href="?lang=en" class="g-lang lang-btn" data-lang="en" lang="en">
+            <span class="g-lang__code">EN</span>
+            <span class="g-lang__name">English<span class="g-lang__sub">Continue in English</span></span>
+            {{ icon("chevron", "g-lang__arrow") }}
+          </a>
+          <a href="?lang=ar" class="g-lang lang-btn" data-lang="ar" lang="ar" dir="rtl">
+            <span class="g-lang__code">ع</span>
+            <span class="g-lang__name">العربية<span class="g-lang__sub">المتابعة بالعربية</span></span>
+            {{ icon("chevron", "g-lang__arrow") }}
+          </a>
         </div>
-        <p class="subtitle" data-i18n="form_subtitle">Fill in your details, accept the rules, and sign below.</p>
 
-        <div id="form-error" class="alert alert-error" hidden></div>
+        <div class="g-how">
+          <p class="g-section-label" data-i18n="intro_steps_title">Comment ça marche</p>
+          <ol class="g-how__list">
+            <li class="g-how__item"><span class="g-how__icon">{{ icon("user") }}</span><span class="g-how__text" data-i18n="step2">Renseignez vos informations et dates de séjour</span></li>
+            <li class="g-how__item"><span class="g-how__icon">{{ icon("camera") }}</span><span class="g-how__text" data-i18n="step3">Téléversez votre pièce d'identité, signez et envoyez</span></li>
+            <li class="g-how__item"><span class="g-how__icon">{{ icon("shield") }}</span><span class="g-how__text" data-i18n="step4_ai">Notre IA vérifie instantanément votre pièce d'identité</span></li>
+          </ol>
+        </div>
 
-        <form id="guest-form" data-token="{{ token }}" novalidate>
-          <div class="card inner-section">
-            <h2 data-i18n="section_info">Your information</h2>
-            <div class="grid-2">
-              <div class="field">
-                <label class="required" data-i18n="first_name">First name</label>
-                <input type="text" name="first_name" required maxlength="128" autocomplete="given-name">
-              </div>
-              <div class="field">
-                <label class="required" data-i18n="last_name">Last name</label>
-                <input type="text" name="last_name" required maxlength="128" autocomplete="family-name">
-              </div>
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label class="required" data-i18n="nationality">Nationality</label>
-                <input type="text" name="nationality" required maxlength="128">
-              </div>
-              <div class="field">
-                <label class="required" data-i18n="date_of_birth">Date of birth</label>
-                <input type="date" name="date_of_birth" required autocomplete="bday">
-                <span class="field-hint" data-i18n="hint_dob">Age 16–120 years</span>
-              </div>
-            </div>
-            <div class="field">
-              <label class="required" data-i18n="country_of_residence">Country of residence</label>
-              <input type="text" name="country_of_residence" required maxlength="128">
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label class="required" data-i18n="number_of_guests">Number of guests</label>
-                <input type="number" name="number_of_guests" min="1" max="50" step="1" value="1" inputmode="numeric" required>
-              </div>
-              <div class="field">
-                <label class="required" data-i18n="number_of_kids">Number of children</label>
-                <input type="number" name="number_of_kids" min="0" max="30" step="1" value="0" inputmode="numeric" required>
-              </div>
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label class="required" data-i18n="arrival_date">Arrival date</label>
-                <input type="date" name="arrival_date" required>
-                <span class="field-hint" data-i18n="hint_arrival">From 30 days ago up to 2 years ahead</span>
-              </div>
-              <div class="field">
-                <label class="required" data-i18n="departure_date">Departure date</label>
-                <input type="date" name="departure_date" required>
-                <span class="field-hint" data-i18n="hint_departure">After arrival, max 365 nights</span>
-              </div>
-            </div>
-            <div class="grid-2">
-              <div class="field">
-                <label class="required" data-i18n="id_type">ID document type</label>
-                <select name="id_document_type" required>
-                  <option value="" data-i18n="select_option">—</option>
-                  <option value="Passeport / Passport" data-i18n-opt="id_passport">Passport</option>
-                  <option value="Carte d'identité / ID card" data-i18n-opt="id_card">ID card</option>
-                  <option value="Permis de conduire / Driving licence" data-i18n-opt="id_licence">Driving licence</option>
-                  <option value="Autre / Other" data-i18n-opt="id_other">Other</option>
-                </select>
-              </div>
-              <div class="field">
-                <label class="required" data-i18n="id_number">ID document number</label>
-                <input type="text" name="id_document_number" required maxlength="128">
-              </div>
-            </div>
-            <div class="field id-upload-field">
-              <label class="required" data-i18n="id_scan">Upload ID scan (photo or PDF)</label>
-              <input type="file" name="id_scan" id="id_scan" accept="image/jpeg,image/png,application/pdf" required>
-              <span class="field-hint" data-i18n="hint_id_scan">JPG, PNG or PDF — max 10 MB. Deleted {{ id_retention_hours }}h after host verification.</span>
-            </div>
-          </div>
-
-          <div class="card inner-section">
-            <h2 data-i18n="section_confirm">Confirmations</h2>
-            <div class="checkbox-field">
-              <input type="checkbox" id="accept_internal_rules" name="accept_internal_rules" required>
-              <label for="accept_internal_rules" data-i18n="accept_rules">I accept the rental rules</label>
-            </div>
-            <p class="rules-preview" id="rules-preview"></p>
-            <div class="checkbox-field">
-              <input type="checkbox" id="accept_terms" name="accept_terms" required>
-              <label for="accept_terms" data-i18n="accept_terms">I accept the terms and conditions</label>
-            </div>
-          </div>
-
-          <div class="card inner-section">
-            <h2 data-i18n="section_signature">Signature</h2>
-            <p class="subtitle sig-hint" data-i18n="signature_hint">Sign with your finger or mouse</p>
-            <div class="signature-wrap">
-              <canvas id="signature-canvas"></canvas>
-              <div class="signature-actions">
-                <button type="button" class="btn btn-secondary btn-sm" id="clear-signature" data-i18n="clear_signature">Clear</button>
-              </div>
-            </div>
-          </div>
-
-          <p class="guest-submit-note" data-i18n="submit_note">After submitting, our team will review your registration. Your ID scan is kept only until verified, then deleted within {{ id_retention_hours }} hours.</p>
-          <div id="form-loading" class="loading" data-i18n="loading" hidden>Submitting…</div>
-          <button type="submit" class="btn btn-primary" id="submit-btn" disabled data-i18n="submit">Submit registration</button>
-        </form>
+        <div class="g-privacy">{{ icon("lock") }}<p data-i18n="intro_id_note">Vous téléverserez une copie de votre pièce d'identité. Elle sera supprimée {{ id_retention_hours }} heures après vérification par l'hôte.</p></div>
       </div>
-    </div>
+      <p class="g-footer" data-i18n="footer_secure">Connexion sécurisée · Vos données restent confidentielles</p>
+    </section>
 
+    <!-- ===== Registration wizard ===== -->
+    <section id="form-screen" class="g-screen {% if not selected_lang %}g-screen--hidden{% endif %}">
+      <div class="g-progress" aria-live="polite">
+        <div class="g-progress__row">
+          <h1 class="g-progress__title g-display" id="step-title">Vos informations</h1>
+          <span class="g-progress__count" id="step-count">1 / 4</span>
+        </div>
+        <div class="g-progress__bar" id="progress-bar" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1">
+          <span class="g-progress__seg" data-seg="1"></span>
+          <span class="g-progress__seg" data-seg="2"></span>
+          <span class="g-progress__seg" data-seg="3"></span>
+          <span class="g-progress__seg" data-seg="4"></span>
+        </div>
+      </div>
+
+      <form id="guest-form" class="g-card" data-token="{{ token }}" novalidate>
+
+        <!-- Step 1: guest -->
+        <div class="g-step is-active" data-form-step="1" data-title-key="step1_title">
+          <p class="g-step__intro" data-i18n="step1_intro">Exactement comme sur votre pièce d'identité.</p>
+          <div class="g-grid">
+            <div class="g-grid g-grid--2">
+              <div class="g-field">
+                <label class="g-label" for="f-first"><span data-i18n="first_name">Prénom</span><span class="g-req">*</span></label>
+                <input class="g-input" id="f-first" type="text" name="first_name" required maxlength="128" autocomplete="given-name" autocapitalize="words">
+              </div>
+              <div class="g-field">
+                <label class="g-label" for="f-last"><span data-i18n="last_name">Nom</span><span class="g-req">*</span></label>
+                <input class="g-input" id="f-last" type="text" name="last_name" required maxlength="128" autocomplete="family-name" autocapitalize="words">
+              </div>
+            </div>
+            <div class="g-field">
+              <label class="g-label" for="f-dob"><span data-i18n="date_of_birth">Date de naissance</span><span class="g-req">*</span></label>
+              <input class="g-input" id="f-dob" type="date" name="date_of_birth" required autocomplete="bday">
+              <span class="g-hint" data-i18n="hint_dob">Âge entre 16 et 120 ans</span>
+            </div>
+            <div class="g-grid g-grid--2">
+              <div class="g-field">
+                <label class="g-label" for="f-nat"><span data-i18n="nationality">Nationalité</span><span class="g-req">*</span></label>
+                <input class="g-input" id="f-nat" type="text" name="nationality" required maxlength="128" autocapitalize="words">
+              </div>
+              <div class="g-field">
+                <label class="g-label" for="f-country"><span data-i18n="country_of_residence">Pays de résidence</span><span class="g-req">*</span></label>
+                <input class="g-input" id="f-country" type="text" name="country_of_residence" required maxlength="128" autocomplete="country-name" autocapitalize="words">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: stay -->
+        <div class="g-step" data-form-step="2" data-title-key="step2_title">
+          <p class="g-step__intro" data-i18n="step2_intro">Vos dates et le nombre de voyageurs.</p>
+          <div class="g-grid">
+            <div class="g-grid g-grid--2">
+              <div class="g-field">
+                <label class="g-label" for="f-arr"><span data-i18n="arrival_date">Date d'arrivée</span><span class="g-req">*</span></label>
+                <input class="g-input" id="f-arr" type="date" name="arrival_date" required>
+              </div>
+              <div class="g-field">
+                <label class="g-label" for="f-dep"><span data-i18n="departure_date">Date de départ</span><span class="g-req">*</span></label>
+                <input class="g-input" id="f-dep" type="date" name="departure_date" required>
+              </div>
+            </div>
+            <div class="g-stay-summary" id="stay-summary" hidden>{{ icon("moon") }}<span id="stay-nights"></span></div>
+            <div class="g-grid g-grid--2">
+              <div class="g-field">
+                <span class="g-label"><span data-i18n="number_of_guests">Nombre de voyageurs</span><span class="g-req">*</span></span>
+                <div class="g-stepper" data-stepper>
+                  <button type="button" data-step-dir="-1" aria-label="−">−</button>
+                  <input type="number" name="number_of_guests" min="1" max="50" step="1" value="1" inputmode="numeric" required aria-labelledby="">
+                  <button type="button" data-step-dir="1" aria-label="+">+</button>
+                </div>
+                <span class="g-hint" data-i18n="guests_hint">Vous inclus</span>
+              </div>
+              <div class="g-field">
+                <span class="g-label"><span data-i18n="number_of_kids">Nombre d'enfants</span></span>
+                <div class="g-stepper" data-stepper>
+                  <button type="button" data-step-dir="-1" aria-label="−">−</button>
+                  <input type="number" name="number_of_kids" min="0" max="30" step="1" value="0" inputmode="numeric" required>
+                  <button type="button" data-step-dir="1" aria-label="+">+</button>
+                </div>
+                <span class="g-hint" data-i18n="kids_hint">Inclus dans le nombre de voyageurs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: ID -->
+        <div class="g-step" data-form-step="3" data-title-key="step3_title">
+          <p class="g-step__intro" data-i18n="step3_intro">Une photo nette de votre pièce, toutes les informations lisibles.</p>
+          <div class="g-grid">
+            <div class="g-field">
+              <span class="g-label"><span data-i18n="id_type">Type de pièce d'identité</span><span class="g-req">*</span></span>
+              <div class="g-choices" id="id-type-choices">
+                <label class="g-choice"><input type="radio" name="id_document_type" value="Passeport / Passport" required><span class="g-choice__box">{{ icon("passport") }}<span data-i18n="id_passport">Passeport</span></span></label>
+                <label class="g-choice"><input type="radio" name="id_document_type" value="Carte d'identité / ID card"><span class="g-choice__box">{{ icon("id") }}<span data-i18n="id_card">Carte d'identité</span></span></label>
+                <label class="g-choice"><input type="radio" name="id_document_type" value="Permis de conduire / Driving licence"><span class="g-choice__box">{{ icon("car") }}<span data-i18n="id_licence">Permis de conduire</span></span></label>
+                <label class="g-choice"><input type="radio" name="id_document_type" value="Autre / Other"><span class="g-choice__box">{{ icon("file") }}<span data-i18n="id_other">Autre</span></span></label>
+              </div>
+            </div>
+            <div class="g-field">
+              <label class="g-label" for="f-idnum"><span data-i18n="id_number">N° pièce d'identité</span><span class="g-req">*</span></label>
+              <input class="g-input" id="f-idnum" type="text" name="id_document_number" required maxlength="128" autocapitalize="characters" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="g-field">
+              <span class="g-label"><span data-i18n="id_scan">Photo de la pièce d'identité</span><span class="g-req">*</span></span>
+              <div class="g-tips">
+                <p class="g-tips__title" data-i18n="id_tips_title">Pour une photo acceptée :</p>
+                <ul>
+                  <li>{{ icon("id") }}<span data-i18n="id_tip_corners">Les 4 coins du document visibles</span></li>
+                  <li>{{ icon("building") }}<span data-i18n="id_tip_flat">À plat sur une surface unie et plus sombre</span></li>
+                  <li>{{ icon("sparkles") }}<span data-i18n="id_tip_light">Bonne lumière, sans flash ni reflet</span></li>
+                  <li>{{ icon("camera") }}<span data-i18n="id_tip_steady">Téléphone stable, photo nette</span></li>
+                </ul>
+              </div>
+              <label class="g-upload" id="id-upload">
+                <input type="file" name="id_scan" id="id_scan" accept="image/jpeg,image/png,application/pdf" required>
+                <img class="g-upload__preview" id="id-preview" alt="" hidden>
+                <span class="g-upload__icon" id="id-upload-icon">{{ icon("camera") }}</span>
+                <span class="g-upload__title" id="id-upload-title" data-i18n="upload_title">Touchez pour prendre une photo</span>
+                <span class="g-upload__sub" id="id-upload-sub" data-i18n="upload_sub">ou choisir un fichier · JPG, PNG, PDF · 10 Mo max</span>
+              </label>
+              <div class="g-check-result" id="id-check" hidden role="status" aria-live="polite">
+                <span class="g-check-result__icon" id="id-check-icon"></span>
+                <span id="id-check-text"></span>
+              </div>
+              <div class="g-privacy" style="margin-top:6px">{{ icon("lock") }}<p data-i18n="id_privacy">Votre pièce est chiffrée en transit et supprimée {{ id_retention_hours }} h après vérification par l'hôte.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: rules + sign -->
+        <div class="g-step" data-form-step="4" data-title-key="step4_title">
+          <p class="g-step__intro" data-i18n="step4_intro">Vérifiez, acceptez le règlement et signez pour terminer.</p>
+          <div class="g-grid">
+            <div>
+              <p class="g-section-label" data-i18n="recap_title">Récapitulatif</p>
+              <div class="g-recap" id="recap"></div>
+            </div>
+            <div>
+              <p class="g-section-label" data-i18n="rules_title">Règlement intérieur</p>
+              <div class="g-rules" id="rules-full" tabindex="0"></div>
+            </div>
+            <label class="g-check"><input type="checkbox" id="accept_internal_rules" name="accept_internal_rules" required><span data-i18n="accept_rules">J'accepte le règlement intérieur</span></label>
+            <label class="g-check"><input type="checkbox" id="accept_terms" name="accept_terms" required><span data-i18n="accept_terms">J'accepte les conditions générales</span></label>
+            <div class="g-field">
+              <span class="g-label"><span data-i18n="section_signature">Signature</span><span class="g-req">*</span></span>
+              <div class="g-sign" id="sign-box">
+                <canvas id="signature-canvas"></canvas>
+                <span class="g-sign__line"></span>
+                <span class="g-sign__placeholder" data-i18n="signature_hint">Signez avec le doigt ou la souris</span>
+                <div class="g-sign__bar">
+                  <button type="button" class="g-btn g-btn--ghost g-btn--sm" id="clear-signature">{{ icon("eraser") }}<span data-i18n="clear_signature">Effacer</span></button>
+                </div>
+              </div>
+            </div>
+            <p class="g-hint" data-i18n="submit_note">Après envoi, notre équipe examinera votre dossier.</p>
+          </div>
+        </div>
+
+        <div id="form-error" class="g-alert g-alert--error" style="margin-top:18px" hidden role="alert"></div>
+
+        <div class="g-actions">
+          <button type="button" class="g-btn g-btn--ghost" id="back-btn" hidden>{{ icon("arrow-left", "g-flip") }}<span data-i18n="back">Retour</span></button>
+          <button type="button" class="g-btn g-btn--primary" id="next-btn"><span data-i18n="next">Continuer</span>{{ icon("arrow-right", "g-flip") }}</button>
+          <button type="submit" class="g-btn g-btn--primary" id="submit-btn" hidden>
+            <span class="g-spinner" id="form-loading" hidden></span>
+            <span id="submit-label" data-i18n="submit">Envoyer mon enregistrement</span>
+          </button>
+        </div>
+      </form>
+      <p class="g-footer" data-i18n="footer_secure">Connexion sécurisée · Vos données restent confidentielles</p>
+    </section>
     {% endif %}
-  </div>
+  </main>
 
   <script id="guest-config" type="application/json">
     {{ {"rules": {"fr": rules_fr, "en": rules_en, "ar": rules_ar}, "date_limits": date_limits, "selected_lang": selected_lang, "fresh_start": fresh_start, "token": token, "id_retention_hours": id_retention_hours} | tojson }}
   </script>
-  <script src="/static/js/i18n.js"></script>
-  <script src="/static/js/date-validation.js"></script>
-  <script src="/static/js/signature.js"></script>
-  <script src="/static/js/guest-form.js"></script>
+  <script src="/static/js/i18n.js?v={{ asset_v }}"></script>
+  <script src="/static/js/date-validation.js?v={{ asset_v }}"></script>
+  <script src="/static/js/signature.js?v={{ asset_v }}"></script>
+  <script src="/static/js/guest-form.js?v={{ asset_v }}"></script>
 </body>
 </html>

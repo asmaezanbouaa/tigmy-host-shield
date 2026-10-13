@@ -10,31 +10,34 @@ from sqlalchemy.orm import Session, joinedload
 from app.config import get_settings
 from app.models import Submission, SubmissionStatus
 from app.services.export_data import build_submissions_csv
-from app.services.registry_meta import KEY_ARCHIVE_LAST_PURGE_AT, get_iso_datetime
+from app.services.registry_meta import KEY_ARCHIVE_LAST_PURGE_AT, get_iso_datetime, section_key
 from app.services.storage import absolute_path
 
 settings = get_settings()
 
 
-def archived_submissions(db: Session) -> list[Submission]:
+def archived_submissions(db: Session, section_id: int) -> list[Submission]:
     return (
         db.query(Submission)
         .options(joinedload(Submission.apartment), joinedload(Submission.document))
-        .filter(Submission.status == SubmissionStatus.ARCHIVED.value)
+        .filter(
+            Submission.section_id == section_id,
+            Submission.status == SubmissionStatus.ARCHIVED.value,
+        )
         .order_by(Submission.archived_at.desc())
         .all()
     )
 
 
-def build_archive_zip(db: Session) -> bytes | None:
-    subs = archived_submissions(db)
+def build_archive_zip(db: Session, section_id: int) -> bytes | None:
+    subs = archived_submissions(db, section_id)
     if not subs:
         return None
 
     buf = io.BytesIO()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        csv_data = build_submissions_csv(db, include_archived=True, status_filter="archived")
+        csv_data = build_submissions_csv(db, section_id, include_archived=True, status_filter="archived")
         zf.writestr(f"archived_registrations_{stamp}.csv", csv_data)
 
         for sub in subs:
@@ -56,9 +59,9 @@ def build_archive_zip(db: Session) -> bytes | None:
     return buf.getvalue()
 
 
-def can_quarterly_purge(db: Session) -> tuple[bool, str]:
-    """True if 90 days passed since last purge (or never purged)."""
-    last = get_iso_datetime(db, KEY_ARCHIVE_LAST_PURGE_AT)
+def can_quarterly_purge(db: Session, section_id: int) -> tuple[bool, str]:
+    """True if 90 days passed since the section's last purge (or never purged)."""
+    last = get_iso_datetime(db, section_key(KEY_ARCHIVE_LAST_PURGE_AT, section_id))
     if last is None:
         return True, "No previous quarterly purge on record."
     days = settings.archive_purge_interval_days

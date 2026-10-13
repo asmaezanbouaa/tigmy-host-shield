@@ -47,3 +47,6 @@ login_failures = RateLimiter(max_events=5, window_seconds=15 * 60)
 
 # 10 guest submissions per IP per hour (a family on one WiFi still fits)
 guest_submissions = RateLimiter(max_events=10, window_seconds=60 * 60)
+
+# ID photo quality checks (guests may retake a few photos)
+id_photo_checks = RateLimiter(max_events=40, window_seconds=60 * 60)

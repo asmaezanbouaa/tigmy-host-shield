@@ -13,8 +13,10 @@ def site_base() -> str:
     return settings.base_url.rstrip("/")
 
 
-def guest_register_url() -> str:
-    """Main link to share with guests (redirects to the active form)."""
+def guest_register_url(section_slug: str | None = None) -> str:
+    """Link to share with guests (redirects to the section's active form)."""
+    if section_slug:
+        return f"{site_base()}/register/{section_slug}"
     return f"{site_base()}/register"
 
 
@@ -30,7 +32,7 @@ def admin_share_url() -> str:
     return f"{site_base()}/admin/share"
 
 
-def shared_guest_form_url(db: Session) -> str:
+def shared_guest_form_url(db: Session, section_id: int | None = None) -> str:
     """Direct form URL with token (same as register after redirect)."""
-    link = get_or_create_shared_link(db)
+    link = get_or_create_shared_link(db, section_id)
     return guest_form_url(link.token)

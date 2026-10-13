@@ -51,3 +51,8 @@ def set_iso_datetime(db: Session, key: str, when: datetime) -> None:
     else:
         db.add(RegistryMeta(key=key, value=val))
     db.commit()
+
+
+def section_key(key: str, section_id: int) -> str:
+    """Per-section variant of a registry key (archive counters are kept per section)."""
+    return f"{key}:s{section_id}"

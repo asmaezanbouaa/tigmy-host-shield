@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
 {% set active = 'overview' %}
 {% block title %}Overview{% endblock %}
 
@@ -16,15 +17,25 @@
 <div class="alert alert-success">Password changed successfully.</div>
 {% endif %}
 
-<h1 class="admin-page-title">Overview</h1>
-<p class="admin-page-lead">Welcome back, <strong>{{ admin.username }}</strong>. Here is a snapshot of your guest registry.</p>
+<h1 class="admin-page-title">Marhaba, {{ admin.username }}</h1>
+<p class="admin-page-lead">Here is what is happening with your guests in <strong>{{ section.name }}</strong> today.</p>
+
+{% if not apartment_count %}
+<div class="admin-ai-banner admin-ai-banner--review">
+  <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("building") }}</span>
+  <div>
+    <strong>Add your apartments first</strong>
+    <p class="subtitle" style="margin:0.25rem 0 0">You choose an apartment for each guest before confirming. <a href="/admin/apartments#add">Add apartments</a></p>
+  </div>
+</div>
+{% endif %}
 
 <div class="admin-ai-banner">
-  <span class="admin-ai-banner__icon" aria-hidden="true">🤖</span>
+  <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("shield") }}</span>
   <div>
     <strong>{{ app_name }} is powered by AI</strong>
     <p class="subtitle" style="margin:0.25rem 0 0">
-      New registrations are checked automatically against the ID scan. High-confidence matches are confirmed instantly — you only review the rest.
+      New registrations are checked automatically against the ID scan. For clear matches you only choose the apartment and confirm.
     </p>
   </div>
 </div>
@@ -35,8 +46,8 @@
     <p class="admin-stat__label">{% if ai_needs_review_count %}AI needs review{% else %}Awaiting review{% endif %}</p>
   </a>
   <a href="/admin/ai-approved" class="admin-stat admin-stat--ai admin-stat--link">
-    <p class="admin-stat__value">{{ ai_auto_confirmed_count }}</p>
-    <p class="admin-stat__label">AI auto-approved</p>
+    <p class="admin-stat__value">{{ ai_awaiting_apartment_count }}</p>
+    <p class="admin-stat__label">AI approved · need apartment</p>
   </a>
   <a href="/admin/submissions?status_filter=confirmed" class="admin-stat admin-stat--confirmed admin-stat--link">
     <p class="admin-stat__value">{{ confirmed_count }}</p>
@@ -50,22 +61,22 @@
 
 <div class="admin-overview-grid">
   <a href="/admin/share" class="admin-overview-card">
-    <span class="admin-overview-card__icon">🔗</span>
+    <span class="admin-overview-card__icon">{{ icon("share") }}</span>
     <h3>Share with guests</h3>
     <p>Copy the registration link or download a QR code for guests.</p>
   </a>
   <a href="/admin/submissions?ai_filter=needs_review" class="admin-overview-card">
-    <span class="admin-overview-card__icon">📋</span>
+    <span class="admin-overview-card__icon">{{ icon("inbox") }}</span>
     <h3>Manual review queue</h3>
     <p>{% if ai_needs_review_count %}{{ ai_needs_review_count }} submission(s) where AI confidence was below {{ ai_threshold_pct }}%.{% else %}All caught up — no AI flags waiting.{% endif %}</p>
   </a>
   <a href="/admin/ai-approved" class="admin-overview-card">
-    <span class="admin-overview-card__icon">✨</span>
+    <span class="admin-overview-card__icon">{{ icon("sparkles") }}</span>
     <h3>AI-approved guests</h3>
-    <p>{{ ai_auto_confirmed_count }} registration(s) confirmed automatically by AI.</p>
+    <p>{% if ai_awaiting_apartment_count %}{{ ai_awaiting_apartment_count }} guest(s) approved by AI, waiting for you to choose the apartment.{% else %}Nothing waiting. AI-approved guests appear here.{% endif %}</p>
   </a>
   <a href="/admin/calendar" class="admin-overview-card">
-    <span class="admin-overview-card__icon">📅</span>
+    <span class="admin-overview-card__icon">{{ icon("calendar") }}</span>
     <h3>Calendar</h3>
     <p>See arrivals and departures by month.</p>
   </a>

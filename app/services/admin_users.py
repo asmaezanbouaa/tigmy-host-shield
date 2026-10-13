@@ -26,11 +26,17 @@ def admin_accounts_from_settings(settings: Settings | None = None) -> list[tuple
 def ensure_admin_users(db: Session, *, sync_passwords: bool = True) -> list[str]:
     """
     Ensure every configured admin exists and passwords match env vars.
+    Env admins live in the default section; the first one is the platform owner.
 
     Called on app startup so Railway redeploys always honor ADMIN_* variables.
     """
+    from app.services.sections import get_or_create_default_section
+
     updated: list[str] = []
-    for username, password in admin_accounts_from_settings():
+    default_section = get_or_create_default_section(db)
+    for index, (username, password) in enumerate(admin_accounts_from_settings()):
+        # The first env admin (ADMIN_USERNAME) is the platform owner.
+        is_owner = index == 0
         admin = db.query(AdminUser).filter(AdminUser.username == username).first()
         if not admin:
             db.add(
@@ -38,12 +44,18 @@ def ensure_admin_users(db: Session, *, sync_passwords: bool = True) -> list[str]
                     username=username,
                     password_hash=hash_password(password),
                     is_active=True,
+                    is_superadmin=is_owner,
+                    section_id=default_section.id,
                 )
             )
             updated.append(f"created:{username}")
             continue
 
         admin.is_active = True
+        if is_owner:
+            admin.is_superadmin = True
+        if admin.section_id is None:
+            admin.section_id = default_section.id
         if sync_passwords:
             admin.password_hash = hash_password(password)
             updated.append(f"synced:{username}")
