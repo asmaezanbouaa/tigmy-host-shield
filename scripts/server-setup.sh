@@ -33,9 +33,13 @@ sudo systemctl enable --now fail2ban >/dev/null 2>&1 || true
 
 step "Firewall: only SSH, HTTP and HTTPS"
 # Oracle's Ubuntu images block web ports in iptables; open 80/443 (idempotent)
+# The rules must come BEFORE the image's final REJECT rule, or they never apply.
 for port in 80 443; do
-  sudo iptables -C INPUT -p tcp --dport "$port" -m state --state NEW -j ACCEPT 2>/dev/null \
-    || sudo iptables -I INPUT 6 -p tcp --dport "$port" -m state --state NEW -j ACCEPT
+  while sudo iptables -D INPUT -p tcp --dport "$port" -m state --state NEW -j ACCEPT 2>/dev/null; do :; done
+done
+REJECT_POS="$(sudo iptables -L INPUT --line-numbers -n | awk '/REJECT/ {print $1; exit}')"
+for port in 443 80; do
+  sudo iptables -I INPUT "${REJECT_POS:-1}" -p tcp --dport "$port" -m state --state NEW -j ACCEPT
 done
 sudo netfilter-persistent save >/dev/null 2>&1 || true
 
