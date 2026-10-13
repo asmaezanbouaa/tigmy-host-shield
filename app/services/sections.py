@@ -27,7 +27,11 @@ def unique_section_slug(db: Session, name: str, exclude_id: int | None = None) -
 
 
 def get_or_create_default_section(db: Session) -> HostSection:
-    section = db.query(HostSection).filter(HostSection.slug == DEFAULT_SECTION_SLUG).first()
+    """Host opened by the plain /register link: the "main" host, else the oldest host."""
+    section = (
+        db.query(HostSection).filter(HostSection.slug == DEFAULT_SECTION_SLUG).first()
+        or db.query(HostSection).order_by(HostSection.id).first()
+    )
     if section:
         return section
     section = HostSection(name=DEFAULT_SECTION_NAME, slug=DEFAULT_SECTION_SLUG, is_active=True)

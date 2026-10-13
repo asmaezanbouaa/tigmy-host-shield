@@ -422,3 +422,21 @@ html[dir="rtl"] .g-btn .g-flip { transform: scaleX(-1); }
 .g-check-result.is-bad .g-check-result__icon { background: var(--danger); color: #fff; }
 .g-check-result.is-wait { background: var(--saffron-50); color: #7a4d06; }
 .g-check-result.is-wait .g-check-result__icon { border: 2.5px solid rgba(122, 77, 6, 0.25); border-top-color: #7a4d06; animation: g-spin .7s linear infinite; }
+
+/* Company logo */
+.g-brand img { width: 42px; height: 42px; }
+.g-login__card .g-brand img { width: 64px; height: 64px; }
+.g-login__logo { width: 240px; height: 240px; align-self: center; padding: 18px; border-radius: 50%; background: #fffdf9; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25); }
+@media (max-width: 899px) {
+  .g-login__card > .g-brand { flex-direction: column; text-align: center; gap: 10px; width: 100%; }
+  .g-login__card > .g-brand img { width: 120px; height: 120px; }
+  .g-login__card > .g-brand .g-brand__name { white-space: normal; font-size: 1.3rem; }
+  .g-login__card h1, .g-login__card > p { text-align: center; }
+}
+
+/* Which host the guest is registering with */
+.g-host { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 7px 14px; border-radius: 999px;
+  background: #fff; border: 1px solid var(--line); color: var(--ink-2); font-size: 0.9rem; }
+.g-host strong { color: var(--clay-700); }
+.g-host svg { width: 16px; height: 16px; color: var(--clay-500); flex: none; }
+.g-host--form { margin: 18px 0 0; }

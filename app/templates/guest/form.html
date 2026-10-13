@@ -10,7 +10,7 @@
 <body class="g-body">
   <header class="g-topbar">
     <a class="g-brand" href="/register">
-      <img src="/static/img/tigmy-logo.svg" alt="">
+      <img src="/static/img/logo-192.png" alt="">
       <span>
         <span class="g-brand__name">{{ app_name }}</span>
         <span class="g-brand__tag" data-i18n="brand_tag">Accueil &amp; enregistrement</span>
@@ -36,6 +36,9 @@
         <img class="g-hero__art" src="/static/img/hero-arch.svg" alt="" width="200" height="225">
         <span class="g-eyebrow">{{ icon("sparkles") }}<span data-i18n="meta_ai">Vérification instantanée</span></span>
         <h1 class="g-hero__title g-display" data-i18n="intro_title">Bienvenue</h1>
+        {% if host_name %}
+        <p class="g-host"><span data-i18n="registration_for">Enregistrement pour</span> <strong>{{ host_name }}</strong></p>
+        {% endif %}
         <p class="g-hero__lead" data-i18n="intro_lead">Nous sommes ravis de vous accueillir. Merci de compléter votre enregistrement officiel avant votre séjour — cela ne prend que quelques minutes.</p>
         <div class="g-meta-row">
           <span class="g-meta">{{ icon("clock") }}<span data-i18n="meta_time">≈ 3 minutes</span></span>
@@ -79,6 +82,9 @@
 
     <!-- ===== Registration wizard ===== -->
     <section id="form-screen" class="g-screen {% if not selected_lang %}g-screen--hidden{% endif %}">
+      {% if host_name %}
+      <p class="g-host g-host--form">{{ icon("home") }}<span><span data-i18n="registration_for">Enregistrement pour</span> <strong>{{ host_name }}</strong></span></p>
+      {% endif %}
       <div class="g-progress" aria-live="polite">
         <div class="g-progress__row">
           <h1 class="g-progress__title g-display" id="step-title">Vos informations</h1>
@@ -184,12 +190,12 @@
             <div class="g-field">
               <span class="g-label"><span data-i18n="id_scan">Photo de la pièce d'identité</span><span class="g-req">*</span></span>
               <div class="g-tips">
-                <p class="g-tips__title" data-i18n="id_tips_title">Pour une photo acceptée :</p>
+                <p class="g-tips__title" data-i18n="id_tips_title">Ce que nous acceptons :</p>
                 <ul>
-                  <li>{{ icon("id") }}<span data-i18n="id_tip_corners">Les 4 coins du document visibles</span></li>
-                  <li>{{ icon("building") }}<span data-i18n="id_tip_flat">À plat sur une surface unie et plus sombre</span></li>
-                  <li>{{ icon("sparkles") }}<span data-i18n="id_tip_light">Bonne lumière, sans flash ni reflet</span></li>
-                  <li>{{ icon("camera") }}<span data-i18n="id_tip_steady">Téléphone stable, photo nette</span></li>
+                  <li>{{ icon("id") }}<span data-i18n="id_tip_corners">Photo ou scan de votre passeport ou carte d'identité</span></li>
+                  <li>{{ icon("building") }}<span data-i18n="id_tip_flat">Le côté avec votre photo</span></li>
+                  <li>{{ icon("sparkles") }}<span data-i18n="id_tip_light">Lisible, sans reflet</span></li>
+                  <li>{{ icon("camera") }}<span data-i18n="id_tip_steady">Photo nette</span></li>
                 </ul>
               </div>
               <label class="g-upload" id="id-upload">

@@ -17,7 +17,7 @@
   <div class="admin-panel admin-profile-card-side">
     <div class="admin-profile-avatar">{{ admin.username[0]|upper }}</div>
     <h2 style="margin:0.5rem 0 0;font-size:1.25rem">{{ admin.username }}</h2>
-    <p class="subtitle" style="margin:0.25rem 0 0">{{ "Platform owner" if admin.is_superadmin else "Section admin" }}{% if section %} · {{ section.name }}{% endif %}</p>
+    <p class="subtitle" style="margin:0.25rem 0 0">{% if admin.is_superadmin %}Admin · sees every host{% else %}Host{% if section %} · {{ section.name }}{% endif %}{% endif %}</p>
     {% if admin.created_at %}
     <p class="subtitle" style="margin-top:1rem">Member since {{ admin.created_at.strftime('%d %B %Y') }}</p>
     {% endif %}

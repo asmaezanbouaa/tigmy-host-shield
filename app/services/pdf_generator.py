@@ -1,645 +1,525 @@
-"""Legal A4 PDFs — Fiche de police + Règlement signé (FR page + EN page)."""
+"""A4 PDFs in the style of a Moroccan administrative form (bilingual French / Arabic):
+Fiche de police (1 page) and Règlement intérieur signé (French, English and Arabic pages).
 
+Layout: "Royaume du Maroc" letterhead (French left, Arabic right, coat of arms centred), a zellige
+ornament rule, bilingual field labels, the platform palette (terracotta / zellige green / saffron),
+the company logo as a light watermark and in the footer, and a stamp box for the host.
+"""
+
+import re
 from datetime import datetime
 from pathlib import Path
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
-from reportlab.lib.utils import ImageReader
-from reportlab.platypus import (
-    Image,
-    PageBreak,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-)
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import Image, PageBreak, Paragraph, Spacer, Table, TableStyle
 from reportlab.platypus.doctemplate import BaseDocTemplate, Frame, PageTemplate
 
-from app.config import get_settings
+from app.config import PROJECT_ROOT, get_settings
 from app.models import Submission
-from app.services.pdf_assets import ensure_coat_header_image
+from app.services.pdf_assets import ensure_coat_header_image, ensure_logo_assets
 
 settings = get_settings()
 
-MOROCCO_GREEN = colors.HexColor("#006233")
-MOROCCO_RED = colors.HexColor("#C1272D")
-GOLD = colors.HexColor("#C5A028")
-BORDER = colors.HexColor("#c5d0c8")
-TEXT_MUTED = colors.HexColor("#4a5c55")
-TEXT_DARK = colors.HexColor("#1a2332")
-BG_SECTION = colors.HexColor("#f4f7f5")
-BG_ROW_ALT = colors.HexColor("#fafcfb")
-SECTION_HEADER_BG = colors.HexColor("#e6f0ea")
+# Platform palette
+CLAY = colors.HexColor("#B8532D")
+CLAY_DARK = colors.HexColor("#7A3319")
+ZELLIGE = colors.HexColor("#1F6E5A")
+SAFFRON = colors.HexColor("#D99A2B")
+INK = colors.HexColor("#2B1F18")
+INK_2 = colors.HexColor("#5C4A3F")
+MUTED = colors.HexColor("#8A776A")
+LINE = colors.HexColor("#E2D4C2")
+SAND = colors.HexColor("#FBF7F1")
+SAND_2 = colors.HexColor("#F5ECDF")
 WHITE = colors.white
-RULES_TOP_GAP = 10 * mm
-RULES_AFTER_TITLE_GAP = 8 * mm
 
 PAGE_W, PAGE_H = A4
-MARGIN_L = 1.75 * cm
-MARGIN_R = 1.75 * cm
-HEADER_H = 2.25 * cm
-FOOTER_H = 2.15 * cm
-SECTION_GAP = 3 * mm
-BLOCK_GAP = 4 * mm
-CELL_PAD_H = 10
-CELL_PAD_V = 6
+MARGIN_L = MARGIN_R = 1.6 * cm
+HEADER_H = 3.35 * cm
+FOOTER_H = 1.9 * cm
+CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R
+
+AR_FONT, AR_FONT_BOLD = "NotoNaskhArabic", "NotoNaskhArabic-Bold"
+_FONTS_READY = False
 
 
-def _escape(text: str) -> str:
-    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace("\n", " ")
+def _register_fonts() -> None:
+    global _FONTS_READY
+    if _FONTS_READY:
+        return
+    fonts = PROJECT_ROOT / "config" / "fonts"
+    pdfmetrics.registerFont(TTFont(AR_FONT, str(fonts / "NotoNaskhArabic-Regular.ttf")))
+    pdfmetrics.registerFont(TTFont(AR_FONT_BOLD, str(fonts / "NotoNaskhArabic-Bold.ttf")))
+    _FONTS_READY = True
 
 
-def _styles():
+def ar(text: str) -> str:
+    """Arabic text in visual order with joined letters (for one line)."""
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+
+    return get_display(arabic_reshaper.reshape(text))
+
+
+def _escape(text) -> str:
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", " ")
+
+
+def _styles() -> dict:
+    base = dict(fontName="Helvetica", textColor=INK, leading=11)
     return {
-        "meta": ParagraphStyle(
-            "Meta",
-            fontName="Helvetica",
-            fontSize=8,
-            textColor=TEXT_MUTED,
-            leading=11,
-            spaceAfter=2,
-        ),
-        "meta_bold": ParagraphStyle(
-            "MetaBold",
-            fontName="Helvetica-Bold",
-            fontSize=8,
-            textColor=MOROCCO_GREEN,
-            leading=11,
-        ),
-        "section_header": ParagraphStyle(
-            "SectionHeader",
-            fontName="Helvetica-Bold",
-            fontSize=9,
-            textColor=MOROCCO_GREEN,
-            leading=12,
-            spaceBefore=0,
-            spaceAfter=2,
-        ),
-        "label": ParagraphStyle(
-            "Label",
-            fontName="Helvetica",
-            fontSize=8,
-            textColor=TEXT_MUTED,
-            leading=11,
-        ),
-        "value": ParagraphStyle(
-            "Value",
-            fontName="Helvetica-Bold",
-            fontSize=8.5,
-            textColor=TEXT_DARK,
-            leading=11,
-        ),
-        "rules_doc_title": ParagraphStyle(
-            "RulesDocTitle",
-            fontName="Helvetica-Bold",
-            fontSize=9.5,
-            textColor=MOROCCO_GREEN,
-            leading=12,
-            spaceBefore=0,
-            spaceAfter=0,
-            alignment=TA_CENTER,
-        ),
-        "rules_article_title": ParagraphStyle(
-            "RulesArticleTitle",
-            fontName="Helvetica-Bold",
-            fontSize=8,
-            textColor=TEXT_DARK,
-            leading=11,
-            spaceBefore=5,
-            spaceAfter=2,
-        ),
-        "rules_article_body": ParagraphStyle(
-            "RulesArticleBody",
-            fontName="Helvetica",
-            fontSize=7.5,
-            leading=10.5,
-            textColor=TEXT_DARK,
-            alignment=TA_JUSTIFY,
-            spaceAfter=3,
-        ),
-        "legal_notice": ParagraphStyle(
-            "LegalNotice",
-            fontName="Helvetica-Oblique",
-            fontSize=7.5,
-            textColor=TEXT_MUTED,
-            alignment=TA_JUSTIFY,
-            leading=10.5,
-        ),
-        "legal_notice_center": ParagraphStyle(
-            "LegalNoticeCenter",
-            fontName="Helvetica-Oblique",
-            fontSize=7.5,
-            textColor=TEXT_MUTED,
-            alignment=TA_CENTER,
-            leading=10.5,
-            spaceBefore=2,
-            spaceAfter=2,
-        ),
+        "label": ParagraphStyle("label", **{**base, "fontSize": 7.6, "textColor": INK_2}),
+        "label_ar": ParagraphStyle("label_ar", fontName=AR_FONT, fontSize=8.5, leading=11, textColor=INK_2, alignment=TA_RIGHT),
+        "value": ParagraphStyle("value", **{**base, "fontName": "Helvetica-Bold", "fontSize": 9}),
+        "section": ParagraphStyle("section", **{**base, "fontName": "Helvetica-Bold", "fontSize": 8.5, "textColor": CLAY_DARK}),
+        "section_ar": ParagraphStyle("section_ar", fontName=AR_FONT_BOLD, fontSize=9.5, leading=12, textColor=CLAY_DARK, alignment=TA_RIGHT),
+        "title": ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=14, leading=17, textColor=INK, alignment=TA_CENTER),
+        "title_ar": ParagraphStyle("title_ar", fontName=AR_FONT_BOLD, fontSize=13, leading=18, textColor=CLAY_DARK, alignment=TA_CENTER),
+        "subtitle": ParagraphStyle("subtitle", fontName="Helvetica", fontSize=7.8, leading=10, textColor=MUTED, alignment=TA_CENTER),
+        "meta": ParagraphStyle("meta", fontName="Helvetica", fontSize=7.6, leading=10, textColor=INK_2),
+        "meta_r": ParagraphStyle("meta_r", fontName="Helvetica", fontSize=7.6, leading=10, textColor=INK_2, alignment=TA_RIGHT),
+        "notice": ParagraphStyle("notice", fontName="Helvetica-Oblique", fontSize=7.4, leading=10, textColor=INK_2, alignment=TA_JUSTIFY),
+        "notice_ar": ParagraphStyle("notice_ar", fontName=AR_FONT, fontSize=8.4, leading=12, textColor=INK_2, alignment=TA_RIGHT),
+        "article_title": ParagraphStyle("article_title", fontName="Helvetica-Bold", fontSize=8.4, leading=11, textColor=CLAY_DARK, spaceBefore=5, spaceAfter=1.5),
+        "article_body": ParagraphStyle("article_body", fontName="Helvetica", fontSize=7.9, leading=11, textColor=INK, alignment=TA_JUSTIFY, spaceAfter=2),
+        "article_title_ar": ParagraphStyle("article_title_ar", fontName=AR_FONT_BOLD, fontSize=9.4, leading=13, textColor=CLAY_DARK, alignment=TA_RIGHT, spaceBefore=5, spaceAfter=1),
+        "article_body_ar": ParagraphStyle("article_body_ar", fontName=AR_FONT, fontSize=8.8, leading=13.5, textColor=INK, alignment=TA_RIGHT),
+        "small": ParagraphStyle("small", fontName="Helvetica", fontSize=6.8, leading=9, textColor=MUTED, alignment=TA_CENTER),
     }
 
 
-def _coat_size_in_header() -> tuple[float, float]:
-    try:
-        from PIL import Image as PILImage
+def _ar_lines(text: str, font: str, size: float, width: float) -> list[str]:
+    """Wrap Arabic text into lines that fit `width` (logical order), then put each line in visual order."""
+    words, lines, current = text.split(), [], ""
+    for word in words:
+        trial = f"{current} {word}".strip()
+        if pdfmetrics.stringWidth(ar(trial), font, size) <= width or not current:
+            current = trial
+        else:
+            lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return [ar(line) for line in lines]
 
-        path = ensure_coat_header_image()
-        if not path.exists():
-            return 1.5 * cm, 1.5 * cm
-        with PILImage.open(path) as im:
-            w, h = im.size
-        max_h = HEADER_H - 0.35 * cm
-        ratio = w / h if h else 1
-        return max_h * ratio, max_h
-    except Exception:
-        return 1.5 * cm, 1.5 * cm
+
+_LATIN_RUN = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’.\- ]*[A-Za-zÀ-ÖØ-öø-ÿ.]|[A-Za-zÀ-ÖØ-öø-ÿ]")
 
 
-def _draw_header(canvas, title_fr: str, title_en: str) -> None:
-    """Full-width green band with coat of arms — fits A4 edge to edge."""
-    coat_path = ensure_coat_header_image()
-    top = PAGE_H
-    bottom = top - HEADER_H
+def _mixed(line: str) -> str:
+    """Paragraph markup for a visual Arabic line: Latin words (names…) use a Latin font."""
+    def arabic_part(text: str) -> str:
+        return _escape(text).replace("-", '<font name="Helvetica">-</font>')
 
+    out, pos = [], 0
+    for m in _LATIN_RUN.finditer(line):
+        out.append(arabic_part(line[pos:m.start()]))
+        out.append(f'<font name="Helvetica">{_escape(m.group(0))}</font>')
+        pos = m.end()
+    out.append(arabic_part(line[pos:]))
+    return "".join(out)
+
+
+def _ar_paragraphs(text: str, style: ParagraphStyle, width: float) -> list:
+    text = text.replace("—", "-").replace("–", "-")  # the Arabic font has no long dashes
+    return [Paragraph(_mixed(line), style) for line in _ar_lines(text, style.fontName, style.fontSize, width)]
+
+
+# ---------------------------------------------------------------- page furniture
+
+
+def _zellige_band(canvas, y: float, x0: float, x1: float, color=SAFFRON, size: float = 2.3 * mm) -> None:
+    """A thin ornament rule: small eight-point stars between two hairlines."""
     canvas.saveState()
-    canvas.setFillColor(MOROCCO_GREEN)
-    canvas.rect(0, bottom, PAGE_W, HEADER_H, fill=1, stroke=0)
-
-    stripe = 0.9 * mm
-    canvas.setFillColor(GOLD)
-    canvas.rect(0, bottom, PAGE_W, stripe, fill=1, stroke=0)
-    canvas.setFillColor(MOROCCO_RED)
-    canvas.rect(0, bottom + stripe, PAGE_W, stripe, fill=1, stroke=0)
-    canvas.setFillColor(GOLD)
-    canvas.rect(0, bottom + 2 * stripe, PAGE_W, stripe, fill=1, stroke=0)
-
-    coat_w, coat_h = _coat_size_in_header()
-    coat_x = 0.35 * cm
-    coat_y = bottom + (HEADER_H - coat_h) / 2 + stripe * 2
-    if coat_path.exists():
-        try:
-            reader = ImageReader(str(coat_path.resolve()))
-            canvas.drawImage(reader, coat_x, coat_y, width=coat_w, height=coat_h, preserveAspectRatio=True, mask="auto")
-        except Exception:
-            canvas.drawImage(str(coat_path.resolve()), coat_x, coat_y, width=coat_w, height=coat_h, preserveAspectRatio=True)
-
-    text_x = coat_x + coat_w + 0.35 * cm
-    canvas.setFillColor(WHITE)
-    canvas.setFont("Helvetica-Bold", 9)
-    canvas.drawString(text_x, bottom + HEADER_H * 0.52, "ROYAUME DU MAROC")
-    canvas.setFont("Helvetica", 7)
-    canvas.drawString(text_x, bottom + HEADER_H * 0.28, "Kingdom of Morocco")
-
-    canvas.setFont("Helvetica-Bold", 10)
-    tw = canvas.stringWidth(title_fr, "Helvetica-Bold", 10)
-    canvas.drawString(PAGE_W - MARGIN_R - tw, bottom + HEADER_H * 0.52, title_fr)
-    canvas.setFont("Helvetica", 7)
-    tw2 = canvas.stringWidth(title_en, "Helvetica", 7)
-    canvas.drawString(PAGE_W - MARGIN_R - tw2, bottom + HEADER_H * 0.28, title_en)
-
+    canvas.setStrokeColor(color)
+    canvas.setLineWidth(0.45)
+    canvas.line(x0, y + size * 0.9, x1, y + size * 0.9)
+    canvas.line(x0, y - size * 0.9, x1, y - size * 0.9)
+    step = size * 2.6
+    x = x0 + step / 2
+    while x < x1 - step / 4:
+        for angle in (0, 45):
+            canvas.saveState()
+            canvas.translate(x, y)
+            canvas.rotate(angle)
+            canvas.rect(-size / 2, -size / 2, size, size, stroke=1, fill=0)
+            canvas.restoreState()
+        x += step
     canvas.restoreState()
 
 
-def _draw_page_footer(canvas, page_num: int, ref_short: str, page_total: int | None = None) -> None:
+def _draw_header(canvas, title_fr: str, title_ar: str) -> None:
+    top = PAGE_H - 0.9 * cm
     canvas.saveState()
-    y_line = FOOTER_H + 0.35 * cm
-    canvas.setStrokeColor(BORDER)
-    canvas.setLineWidth(0.35)
-    canvas.line(MARGIN_L, y_line, PAGE_W - MARGIN_R, y_line)
-    canvas.setFont("Helvetica", 6)
-    canvas.setFillColor(TEXT_MUTED)
-    canvas.drawCentredString(
-        PAGE_W / 2,
-        1.35 * cm,
-        "Document établi conformément à la réglementation marocaine sur l'hébergement des voyageurs.",
-    )
-    canvas.drawCentredString(
-        PAGE_W / 2,
-        1.05 * cm,
-        f"{settings.app_name} — Document généré électroniquement",
-    )
-    canvas.setFont("Helvetica", 6.5)
-    canvas.drawString(MARGIN_L, 0.75 * cm, f"Réf. {ref_short}")
-    label = f"Page {page_num}/{page_total}" if page_total else f"Page {page_num}"
-    canvas.drawRightString(PAGE_W - MARGIN_R, 0.75 * cm, label)
+
+    # Coat of arms, centred
+    coat = ensure_coat_header_image()
+    coat_h = 1.75 * cm
+    if coat.exists():
+        canvas.drawImage(str(coat), PAGE_W / 2 - coat_h / 2, top - coat_h, width=coat_h, height=coat_h,
+                         preserveAspectRatio=True, mask="auto")
+
+    # French letterhead (left)
+    canvas.setFillColor(INK)
+    canvas.setFont("Helvetica-Bold", 10.5)
+    canvas.drawString(MARGIN_L, top - 0.45 * cm, "ROYAUME DU MAROC")
+    canvas.setFont("Helvetica", 7.4)
+    canvas.setFillColor(INK_2)
+    canvas.drawString(MARGIN_L, top - 0.85 * cm, "Hébergement touristique")
+    canvas.drawString(MARGIN_L, top - 1.2 * cm, "Location de courte durée")
+
+    # Arabic letterhead (right)
+    canvas.setFillColor(INK)
+    canvas.setFont(AR_FONT_BOLD, 12)
+    canvas.drawRightString(PAGE_W - MARGIN_R, top - 0.5 * cm, ar("المملكة المغربية"))
+    canvas.setFont(AR_FONT, 8.4)
+    canvas.setFillColor(INK_2)
+    canvas.drawRightString(PAGE_W - MARGIN_R, top - 0.9 * cm, ar("الإيواء السياحي"))
+    canvas.drawRightString(PAGE_W - MARGIN_R, top - 1.27 * cm, ar("الكراء قصير المدة"))
+
+    # Ornament rule
+    _zellige_band(canvas, top - 2.15 * cm, MARGIN_L, PAGE_W - MARGIN_R)
     canvas.restoreState()
 
 
-def _section_table(title: str, rows: list[tuple[str, str]], styles: dict, width: float) -> Table:
-    data = [[Paragraph(title, styles["section_header"]), ""]]
-    for label, value in rows:
-        data.append([Paragraph(label, styles["label"]), Paragraph(_escape(value), styles["value"])])
-    # Full content width — same as meta row and signature block
-    label_w = width * 0.40
-    value_w = width * 0.60
-    t = Table(data, colWidths=[label_w, value_w])
-    n = len(data)
+def _draw_watermark(canvas) -> None:
+    _, watermark = ensure_logo_assets()
+    if watermark.exists():
+        size = 11 * cm
+        canvas.drawImage(str(watermark), PAGE_W / 2 - size / 2, PAGE_H / 2 - size / 2 - 1 * cm,
+                         width=size, height=size, mask="auto")
+
+
+def _draw_footer(canvas, page: int, total: int, ref: str, host_name: str) -> None:
+    canvas.saveState()
+    y = 1.25 * cm
+    canvas.setStrokeColor(CLAY)
+    canvas.setLineWidth(0.8)
+    canvas.line(MARGIN_L, y + 0.55 * cm, PAGE_W - MARGIN_R, y + 0.55 * cm)
+    logo, _ = ensure_logo_assets()
+    if logo.exists():
+        canvas.drawImage(str(logo), MARGIN_L, y - 0.38 * cm, width=0.8 * cm, height=0.8 * cm, mask="auto")
+    canvas.setFillColor(INK)
+    canvas.setFont("Helvetica-Bold", 7.2)
+    canvas.drawString(MARGIN_L + 1 * cm, y + 0.08 * cm, settings.app_name)
+    canvas.setFont("Helvetica", 6.6)
+    canvas.setFillColor(MUTED)
+    host = f"Établissement : {host_name} · " if host_name else ""
+    canvas.drawString(MARGIN_L + 1 * cm, y - 0.25 * cm, f"{host}Document généré électroniquement")
+    canvas.drawRightString(PAGE_W - MARGIN_R, y + 0.08 * cm, f"Réf. {ref}")
+    canvas.drawRightString(PAGE_W - MARGIN_R, y - 0.25 * cm, f"Page {page} / {total}")
+    canvas.restoreState()
+
+
+# ---------------------------------------------------------------- blocks
+
+
+def _title_block(title_fr: str, title_ar: str, subtitle: str, styles: dict) -> Table:
+    t = Table(
+        [[Paragraph(_escape(title_fr), styles["title"])],
+         [Paragraph(_escape(ar(title_ar)), styles["title_ar"])],
+         [Paragraph(_escape(subtitle), styles["subtitle"])]],
+        colWidths=[CONTENT_W],
+    )
+    t.setStyle(TableStyle([
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 2), (-1, 2), 6),
+    ]))
+    return t
+
+
+def _meta_row(submission: Submission, submitted_at: datetime, styles: dict) -> Table:
+    ref = submission.public_id[:8].upper()
+    left = Paragraph(
+        f'<font name="Helvetica-Bold" color="#7A3319">N° {ref}</font>'
+        f'<br/><font size="6.6" color="#8A776A">{submission.public_id}</font>', styles["meta"])
+    right = Paragraph(
+        f'<font name="Helvetica-Bold" color="#7A3319">Enregistré le</font> '
+        f'{submitted_at.strftime("%d/%m/%Y à %H:%M")} UTC<br/>'
+        f'<font name="{AR_FONT}" size="7.6">{_escape(ar("تاريخ التسجيل"))}</font>', styles["meta_r"])
+    t = Table([[left, right]], colWidths=[CONTENT_W * 0.5, CONTENT_W * 0.5])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), SAND),
+        ("BOX", (0, 0), (-1, -1), 0.6, LINE),
+        ("LINEBEFORE", (0, 0), (0, 0), 2.5, CLAY),
+        ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    return t
+
+
+def _section(num: str, title_fr: str, title_ar: str, rows: list[tuple[str, str, str]], styles: dict) -> Table:
+    """Bilingual form section: French label | value | Arabic label."""
+    lw, aw = CONTENT_W * 0.30, CONTENT_W * 0.25
+    vw = CONTENT_W - lw - aw
+    heading = f"{num} — {_escape(title_fr)}" if num else _escape(title_fr)
+    data = [[Paragraph(heading, styles["section"]), "",
+             Paragraph(_escape(ar(title_ar)), styles["section_ar"])]]
+    for fr_label, value, ar_label in rows:
+        data.append([Paragraph(_escape(fr_label), styles["label"]),
+                     Paragraph(_escape(value or "—"), styles["value"]),
+                     Paragraph(_escape(ar(ar_label)), styles["label_ar"])])
+    t = Table(data, colWidths=[lw, vw, aw])
     cmds = [
         ("SPAN", (0, 0), (1, 0)),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6f0ea")),
-        ("LINELEFT", (0, 0), (0, 0), 3, MOROCCO_GREEN),
-        ("TOPPADDING", (0, 0), (-1, 0), CELL_PAD_V + 2),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), CELL_PAD_V + 2),
-        ("LEFTPADDING", (0, 0), (-1, -1), CELL_PAD_H),
-        ("RIGHTPADDING", (0, 0), (-1, -1), CELL_PAD_H),
-        ("TOPPADDING", (0, 1), (-1, -1), CELL_PAD_V),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), CELL_PAD_V),
+        ("BACKGROUND", (0, 0), (-1, 0), SAND_2),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.9, CLAY),
+        ("BOX", (0, 0), (-1, -1), 0.6, LINE),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+        ("TOPPADDING", (0, 0), (-1, -1), 4.2), ("BOTTOMPADDING", (0, 0), (-1, -1), 4.2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9), ("RIGHTPADDING", (0, 0), (-1, -1), 9),
     ]
-    for r in range(1, n):
-        cmds.append(("BACKGROUND", (0, r), (-1, r), BG_ROW_ALT if r % 2 == 0 else colors.white))
-        if r < n - 1:
-            cmds.append(("LINEBELOW", (0, r), (-1, r), 0.2, BORDER))
+    for r in range(1, len(data)):
+        if r < len(data) - 1:
+            cmds.append(("LINEBELOW", (0, r), (-1, r), 0.25, LINE))
+        cmds.append(("BACKGROUND", (0, r), (-1, r), WHITE if r % 2 else SAND))
     t.setStyle(TableStyle(cmds))
     return t
 
 
-def _meta_row(submission: Submission, submitted_at: datetime, styles: dict, width: float) -> Table:
-    ref = submission.public_id[:8].upper()
-    date_str = submitted_at.strftime("%d/%m/%Y à %H:%M")
-    left = Paragraph(
-        f'<font name="Helvetica-Bold" color="#006233">Fiche n° {ref}</font><br/>'
-        f'<font size="7" color="#4a5c55">Réf. complète : {submission.public_id}</font>',
-        styles["meta_bold"],
-    )
-    right = Paragraph(
-        f'<font name="Helvetica-Bold" color="#006233">Date d\'enregistrement</font><br/>{date_str} UTC',
-        styles["meta"],
-    )
-    t = Table([[left, right]], colWidths=[width * 0.58, width * 0.42])
-    t.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), BG_SECTION),
-                ("BOX", (0, 0), (-1, -1), 0.6, MOROCCO_GREEN),
-                ("TOPPADDING", (0, 0), (-1, -1), CELL_PAD_V + 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), CELL_PAD_V + 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), CELL_PAD_H + 2),
-                ("RIGHTPADDING", (0, 0), (-1, -1), CELL_PAD_H + 2),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ALIGN", (1, 0), (1, 0), "RIGHT"),
-            ]
-        )
-    )
-    return t
+def _signatures(signature_file: Path, styles: dict, guest_fr: str, guest_ar: str,
+                stamp_label: str = "Cachet de l'établissement") -> Table:
+    """Guest signature (image) next to an empty box for the host's stamp and signature."""
+    half = (CONTENT_W - 6 * mm) / 2
+    sig = (Image(str(signature_file), width=4.6 * cm, height=1.7 * cm)
+           if signature_file.exists() else Paragraph("(signature non enregistrée)", styles["label"]))
 
+    def box(title_fr, title_ar, body):
+        b = Table([[Paragraph(_escape(title_fr), styles["section"]), Paragraph(_escape(ar(title_ar)), styles["section_ar"])],
+                   [body, ""]], colWidths=[half * 0.55, half * 0.45], rowHeights=[None, 2.3 * cm])
+        b.setStyle(TableStyle([
+            ("SPAN", (0, 1), (1, 1)),
+            ("BACKGROUND", (0, 0), (-1, 0), SAND_2),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.9, CLAY),
+            ("BOX", (0, 0), (-1, -1), 0.6, LINE),
+            ("ALIGN", (0, 1), (-1, 1), "CENTER"), ("VALIGN", (0, 1), (-1, 1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        return b
 
-def _signature_block(signature_file: Path, styles: dict, width: float, label: str) -> Table:
-    sig_w, sig_h = 5 * cm, 1.85 * cm
-    if signature_file.exists():
-        inner = Table([[Image(str(signature_file), width=sig_w, height=sig_h)]], colWidths=[width - 16 * mm])
-        inner.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
-    else:
-        inner = Table([[Paragraph("(signature non enregistrée)", styles["label"])]])
-    title = Paragraph(label, styles["section_header"])
-    outer = Table([[title], [inner]], colWidths=[width])
-    outer.setStyle(TableStyle(_framed_block_style()))
+    stamp = Paragraph("", styles["label"])
+    outer = Table([[box(guest_fr, guest_ar, sig), "", box(stamp_label, "خاتم المؤسسة", stamp)]],
+                  colWidths=[half, 6 * mm, half])
+    outer.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                               ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
     return outer
 
 
-def _framed_block_style() -> list:
-    """Shared frame style for signature block and rules guest-info block."""
-    return [
-        ("BACKGROUND", (0, 0), (-1, 0), SECTION_HEADER_BG),
-        ("LINELEFT", (0, 0), (0, 0), 3, MOROCCO_GREEN),
-        ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
-        ("TOPPADDING", (0, 0), (0, 0), CELL_PAD_V + 2),
-        ("BOTTOMPADDING", (0, 0), (0, 0), CELL_PAD_V),
-        ("TOPPADDING", (0, 1), (-1, 1), CELL_PAD_V + 4),
-        ("BOTTOMPADDING", (0, 1), (-1, 1), CELL_PAD_V + 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), CELL_PAD_H),
-        ("RIGHTPADDING", (0, 0), (-1, -1), CELL_PAD_H),
-    ]
-
-
-def _guest_info_table(
-    submission: Submission,
-    apartment_name: str,
-    apartment_address: str,
-    date_str: str,
-    ref: str,
-    styles: dict,
-    width: float,
-) -> Table:
-    """Guest details — same framed style and colours as the signature block."""
-    guest = f"{_escape(submission.first_name)} {_escape(submission.last_name)}"
-    label_w = width * 0.40
-    value_w = width * 0.60
-    establishment = _escape(apartment_name)
-    addr = (apartment_address or "").strip()
-    if addr and addr != apartment_name:
-        establishment = f"{establishment}, {_escape(addr)}"
-    rows = [
-        [Paragraph("Établissement", styles["label"]), Paragraph(establishment, styles["value"])],
-        [Paragraph("Voyageur", styles["label"]), Paragraph(guest, styles["value"])],
-        [
-            Paragraph("Date du séjour / enregistrement", styles["label"]),
-            Paragraph(f"{date_str} — Réf. {ref}", styles["value"]),
-        ],
-    ]
-    inner = Table(rows, colWidths=[label_w, value_w])
-    n = len(rows)
-    inner_cmds = [
-        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
-        ("TOPPADDING", (0, 0), (-1, -1), CELL_PAD_V + 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), CELL_PAD_V + 2),
-        ("LEFTPADDING", (0, 0), (-1, -1), CELL_PAD_H),
-        ("RIGHTPADDING", (0, 0), (-1, -1), CELL_PAD_H),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]
-    for r in range(n - 1):
-        inner_cmds.append(("LINEBELOW", (0, r), (-1, r), 0.25, BORDER))
-    inner.setStyle(TableStyle(inner_cmds))
-
-    title = Paragraph("RENSEIGNEMENTS DU SÉJOUR", styles["section_header"])
-    outer = Table([[title], [inner]], colWidths=[width])
-    outer.setStyle(TableStyle(_framed_block_style()))
-    return outer
-
-
-def _rules_doc_title(rules_text: str) -> str | None:
-    for raw in rules_text.strip().split("\n"):
-        line = raw.strip()
-        if line and ("RÈGLEMENT" in line or "INTERNAL RULES" in line):
-            return line
-    return None
-
-
-def _rules_articles_flowables(rules_text: str, styles: dict, *, include_doc_title: bool = True) -> list:
-    """One block per article — airy layout instead of a single dense paragraph."""
-    flowables: list = []
-    doc_title: str | None = None
-    article_title: str | None = None
-    body_lines: list[str] = []
-
-    def flush_article() -> None:
-        nonlocal article_title, body_lines
-        if article_title:
-            flowables.append(Paragraph(_escape(article_title), styles["rules_article_title"]))
-        if body_lines:
-            body = " ".join(body_lines)
-            flowables.append(Paragraph(_escape(body), styles["rules_article_body"]))
-        article_title = None
-        body_lines = []
-
-    for raw in rules_text.strip().split("\n"):
-        line = raw.strip()
-        if not line:
-            continue
-        is_doc_title = "RÈGLEMENT" in line or "INTERNAL RULES" in line
-        is_article = len(line) >= 2 and line[0].isdigit() and line[1] in ".)"
-
-        if is_doc_title:
-            flush_article()
-            doc_title = line
-            continue
-        if is_article:
-            flush_article()
-            article_title = line
-            continue
-        body_lines.append(line)
-
-    flush_article()
-    if doc_title and include_doc_title:
-        flowables.insert(0, Paragraph(_escape(doc_title), styles["rules_doc_title"]))
-    return flowables
-
-
-def _attestation_box(text: str, styles: dict, width: float) -> Table:
-    inner = Paragraph(text, styles["legal_notice"])
-    t = Table([[inner]], colWidths=[width])
-    t.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fafcfb")),
-                ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
-                ("LINELEFT", (0, 0), (0, 0), 3, MOROCCO_GREEN),
-                ("TOPPADDING", (0, 0), (-1, -1), CELL_PAD_V + 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), CELL_PAD_V + 6),
-                ("LEFTPADDING", (0, 0), (-1, -1), CELL_PAD_H + 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), CELL_PAD_H + 4),
-            ]
-        )
-    )
+def _notice(text_fr: str, text_ar: str, styles: dict) -> Table:
+    body = [Paragraph(text_fr, styles["notice"]), Spacer(1, 2)] + _ar_paragraphs(text_ar, styles["notice_ar"], CONTENT_W - 24)
+    t = Table([[body]], colWidths=[CONTENT_W])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), SAND),
+        ("BOX", (0, 0), (-1, -1), 0.6, LINE),
+        ("LINEBEFORE", (0, 0), (0, 0), 2.5, ZELLIGE),
+        ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+    ]))
     return t
 
 
-def _build_doc(
-    output_path: Path,
-    story: list,
-    ref_short: str,
-    doc_title: str,
-    header_pages: list[tuple[str, str]],
-    page_total: int | None = None,
-) -> None:
-    page_counter = [0]
-    top_margin = HEADER_H + 5 * mm
+def _build(output_path: Path, story: list, *, ref: str, host_name: str, title: str,
+           headers: list[tuple[str, str]], total_pages: int) -> None:
+    _register_fonts()
+    counter = [0]
 
-    def on_page_end(canvas, _doc):
-        page_counter[0] += 1
-        idx = min(page_counter[0] - 1, len(header_pages) - 1)
-        title_fr, title_en = header_pages[idx]
-        _draw_header(canvas, title_fr, title_en)
-        total = page_total or page_counter[0]
-        _draw_page_footer(canvas, page_counter[0], ref_short, page_total=total if page_total else None)
+    def on_page(canvas, _doc):
+        counter[0] += 1
+        _draw_watermark(canvas)
+        fr, ar_title = headers[min(counter[0] - 1, len(headers) - 1)]
+        _draw_header(canvas, fr, ar_title)
+        _draw_footer(canvas, counter[0], total_pages, ref, host_name)
 
-    doc = BaseDocTemplate(
-        str(output_path),
-        pagesize=A4,
-        leftMargin=MARGIN_L,
-        rightMargin=MARGIN_R,
-        topMargin=top_margin,
-        bottomMargin=FOOTER_H,
-        title=doc_title,
-        author=settings.app_name,
-    )
-    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main")
-    doc.addPageTemplates([PageTemplate(id="Main", frames=[frame], onPageEnd=on_page_end)])
+    doc = BaseDocTemplate(str(output_path), pagesize=A4, leftMargin=MARGIN_L, rightMargin=MARGIN_R,
+                          topMargin=HEADER_H, bottomMargin=FOOTER_H + 0.4 * cm, title=title, author=settings.app_name)
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main",
+                  leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+    doc.addPageTemplates([PageTemplate(id="page", frames=[frame], onPage=on_page)])
     doc.build(story)
 
 
-def generate_fiche_pdf(
-    submission: Submission,
-    property_address: str,
-    apartment_name: str,
-    signature_file: Path,
-    output_path: Path,
-) -> None:
+def _host_name(submission: Submission) -> str:
+    section = getattr(submission, "section", None)
+    return section.name if section else ""
+
+
+def _submitted(submission: Submission) -> datetime:
+    when = submission.submitted_at or datetime.utcnow()
+    return when.replace(tzinfo=None) if when.tzinfo else when
+
+
+# ---------------------------------------------------------------- fiche de police
+
+
+def generate_fiche_pdf(submission: Submission, property_address: str, apartment_name: str,
+                       signature_file: Path, output_path: Path) -> None:
+    _register_fonts()
     styles = _styles()
-    submitted_at = submission.submitted_at
-    if submitted_at.tzinfo:
-        submitted_at = submitted_at.replace(tzinfo=None)
-
-    ref_short = submission.public_id[:8].upper()
-    w = PAGE_W - MARGIN_L - MARGIN_R
-    headers = [("FICHE DE POLICE", "Enregistrement voyageurs — location courte durée")]
-
+    submitted = _submitted(submission)
+    accepted = "Oui — lu et accepté"
     story = [
-        _meta_row(submission, submitted_at, styles, w),
+        _title_block("FICHE INDIVIDUELLE DE POLICE", "استمارة تسجيل النزيل",
+                     "Déclaration d'arrivée d'un voyageur — hébergement de courte durée", styles),
+        _meta_row(submission, submitted, styles),
+        Spacer(1, 3.2 * mm),
+        _section("I", "HÉBERGEMENT", "الإيواء", [
+            ("Établissement", apartment_name, "المؤسسة"),
+            ("Adresse complète", property_address, "العنوان الكامل"),
+            ("Exploitant / hôte", _host_name(submission), "المستغل"),
+        ], styles),
+        Spacer(1, 2.6 * mm),
+        _section("II", "IDENTITÉ DU VOYAGEUR", "هوية النزيل", [
+            ("Nom de famille", submission.last_name, "الاسم العائلي"),
+            ("Prénom(s)", submission.first_name, "الاسم الشخصي"),
+            ("Nationalité", submission.nationality, "الجنسية"),
+            ("Date de naissance", submission.date_of_birth, "تاريخ الازدياد"),
+            ("Pays de résidence", submission.country_of_residence, "بلد الإقامة"),
+        ], styles),
+        Spacer(1, 2.6 * mm),
+        _section("III", "SÉJOUR ET PIÈCE D'IDENTITÉ", "الإقامة ووثيقة الهوية", [
+            ("Date d'arrivée", submission.arrival_date, "تاريخ الوصول"),
+            ("Date de départ", submission.departure_date, "تاريخ المغادرة"),
+            ("Nombre de voyageurs", str(submission.number_of_guests), "عدد النزلاء"),
+            ("Dont enfants", str(submission.number_of_kids), "منهم أطفال"),
+            ("Type de pièce", submission.id_document_type, "نوع الوثيقة"),
+            ("Numéro de la pièce", submission.id_document_number, "رقم الوثيقة"),
+        ], styles),
+        Spacer(1, 2.6 * mm),
+        _section("IV", "DÉCLARATIONS", "التصريحات", [
+            ("Règlement intérieur", accepted if submission.accept_internal_rules else "—", "النظام الداخلي"),
+            ("Conditions générales", accepted if submission.accept_terms else "—", "الشروط العامة"),
+        ], styles),
+        Spacer(1, 3.2 * mm),
+        _signatures(signature_file, styles, "Signature du voyageur", "توقيع النزيل"),
         Spacer(1, 3 * mm),
-        _section_table(
-            "I — HÉBERGEMENT",
-            [
-                ("Établissement", apartment_name),
-                ("Adresse complète", property_address),
-            ],
-            styles,
-            w,
-        ),
-        Spacer(1, SECTION_GAP),
-        _section_table(
-            "II — IDENTITÉ DU VOYAGEUR",
-            [
-                ("Nom de famille", submission.last_name),
-                ("Prénom(s)", submission.first_name),
-                ("Nationalité", submission.nationality),
-                ("Date de naissance", submission.date_of_birth),
-                ("Pays de résidence", submission.country_of_residence),
-            ],
-            styles,
-            w,
-        ),
-        Spacer(1, SECTION_GAP),
-        _section_table(
-            "III — SÉJOUR ET PIÈCE D'IDENTITÉ",
-            [
-                ("Date d'arrivée", submission.arrival_date),
-                ("Date de départ", submission.departure_date),
-                ("Nombre de voyageurs", str(submission.number_of_guests)),
-                ("Enfants", str(submission.number_of_kids)),
-                ("Type de document", submission.id_document_type),
-                ("Numéro du document", submission.id_document_number),
-            ],
-            styles,
-            w,
-        ),
-        Spacer(1, SECTION_GAP),
-        _section_table(
-            "IV — DÉCLARATIONS",
-            [
-                (
-                    "Règlement intérieur",
-                    "✓ Lu et accepté" if submission.accept_internal_rules else "—",
-                ),
-                (
-                    "Conditions générales",
-                    "✓ Lu et accepté" if submission.accept_terms else "—",
-                ),
-            ],
-            styles,
-            w,
-        ),
-        Spacer(1, 3 * mm),
-        _signature_block(signature_file, styles, w, "V — SIGNATURE DU VOYAGEUR"),
-        Spacer(1, 2 * mm),
-        Paragraph(
-            "Le soussigné(e) certifie l'exactitude des renseignements ci-dessus et accepte les obligations "
+        _notice(
+            "Le/la soussigné(e) certifie l'exactitude des renseignements ci-dessus et accepte les obligations "
             "légales en vigueur au Royaume du Maroc relatives à l'hébergement des voyageurs.",
-            styles["legal_notice_center"],
+            "يشهد الموقع أدناه بصحة المعلومات المذكورة أعلاه ويقبل الالتزامات القانونية الجاري بها العمل في المملكة المغربية المتعلقة بإيواء المسافرين.",
+            styles,
         ),
     ]
+    _build(output_path, story, ref=submission.public_id[:8].upper(), host_name=_host_name(submission),
+           title="Fiche individuelle de police", headers=[("FICHE DE POLICE", "")], total_pages=1)
 
-    _build_doc(output_path, story, ref_short, "FICHE DE POLICE", headers, page_total=1)
+
+# ---------------------------------------------------------------- règlement intérieur
 
 
-def _rules_page(
-    submission: Submission,
-    apartment_name: str,
-    apartment_address: str,
-    date_str: str,
-    ref_short: str,
-    rules_text: str,
-    attestation: str,
-    signature_label: str,
-    signature_file: Path,
-    styles: dict,
-    w: float,
-) -> list:
-    story = [Spacer(1, RULES_TOP_GAP)]
-    doc_title = _rules_doc_title(rules_text)
-    if doc_title:
-        story.append(Paragraph(_escape(doc_title), styles["rules_doc_title"]))
-        story.append(Spacer(1, RULES_AFTER_TITLE_GAP))
-    story.append(
-        _guest_info_table(submission, apartment_name, apartment_address, date_str, ref_short, styles, w)
-    )
-    story.append(Spacer(1, BLOCK_GAP))
-    story.extend(_rules_articles_flowables(rules_text, styles, include_doc_title=False))
-    story.extend(
-        [
-            Spacer(1, BLOCK_GAP),
-            _attestation_box(attestation, styles, w),
-            Spacer(1, BLOCK_GAP),
-            _signature_block(signature_file, styles, w, signature_label),
-        ]
-    )
+def _split_rules(text: str) -> tuple[str | None, list[tuple[str, list[str]]]]:
+    """(document title, [(article title, body lines)]) from the rules text files."""
+    title, articles = None, []
+    for raw in (text or "").strip().splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if title is None and not line[0].isdigit():
+            title = line
+        elif re.match(r"^\d+[.)]", line):
+            articles.append((line, []))
+        elif articles:
+            articles[-1][1].append(line)
+    return title, articles
+
+
+def _guest_block(submission: Submission, apartment_name: str, apartment_address: str, styles: dict,
+                 lang: str = "fr") -> Table:
+    place = apartment_name if not apartment_address or apartment_address == apartment_name else f"{apartment_name}, {apartment_address}"
+    t = {"fr": ("VOYAGEUR ET SÉJOUR", "Voyageur", "Établissement", "Séjour"),
+         "en": ("GUEST AND STAY", "Guest", "Property", "Stay")}[lang]
+    return _section("", t[0], "النزيل والإقامة", [
+        (t[1], f"{submission.first_name} {submission.last_name}", "النزيل"),
+        (t[2], place, "المؤسسة"),
+        (t[3], f"{submission.arrival_date} → {submission.departure_date}", "مدة الإقامة"),
+    ], styles)
+
+
+def _rules_page_latin(submission, apartment_name, apartment_address, rules_text, heading, attest_fr, sig_label,
+                     signature_file, styles, lang="fr"):
+    doc_title, articles = _split_rules(rules_text)
+    story = [_title_block(heading[0], heading[1], doc_title or "", styles),
+             _guest_block(submission, apartment_name, apartment_address, styles, lang), Spacer(1, 2 * mm)]
+    for art_title, body in articles:
+        story.append(Paragraph(_escape(art_title), styles["article_title"]))
+        if body:
+            story.append(Paragraph(_escape(" ".join(body)), styles["article_body"]))
+    story += [Spacer(1, 3 * mm), _attest(attest_fr, styles),
+              Spacer(1, 3 * mm),
+              _signatures(signature_file, styles, sig_label, "توقيع النزيل",
+                          "Host stamp" if lang == "en" else "Cachet de l'établissement")]
     return story
 
 
-def generate_rules_pdf(
-    submission: Submission,
-    apartment_name: str,
-    apartment_address: str,
-    signature_file: Path,
-    output_path: Path,
-) -> None:
+def _attest(text: str, styles: dict) -> Table:
+    t = Table([[Paragraph(text, styles["notice"])]], colWidths=[CONTENT_W])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), SAND), ("BOX", (0, 0), (-1, -1), 0.6, LINE),
+        ("LINEBEFORE", (0, 0), (0, 0), 2.5, ZELLIGE),
+        ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    return t
+
+
+def _rules_page_arabic(submission, apartment_name, apartment_address, rules_text, signature_file, styles):
+    doc_title, articles = _split_rules(rules_text)
+    story = [_title_block("RÈGLEMENT INTÉRIEUR — VERSION ARABE", "النظام الداخلي", "", styles),
+             _guest_block(submission, apartment_name, apartment_address, styles), Spacer(1, 2 * mm)]
+    if doc_title:
+        story += _ar_paragraphs(doc_title, styles["article_title_ar"], CONTENT_W)
+    for art_title, body in articles:
+        story += _ar_paragraphs(art_title, styles["article_title_ar"], CONTENT_W)
+        if body:
+            story += _ar_paragraphs(" ".join(body), styles["article_body_ar"], CONTENT_W)
+    name = f"{submission.first_name} {submission.last_name}"
+    attest = (f"أنا الموقع(ة) أدناه {name}، أصرح بأنني اطلعت على هذا النظام الداخلي بالكامل وألتزم باحترامه "
+              "طوال مدة الإقامة، تحت طائلة فسخ العقد واتخاذ الإجراءات القانونية وفق القانون المغربي الجاري به العمل.")
+    box = Table([[_ar_paragraphs(attest, styles["notice_ar"], CONTENT_W - 24)]], colWidths=[CONTENT_W])
+    box.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), SAND), ("BOX", (0, 0), (-1, -1), 0.6, LINE),
+        ("LINEAFTER", (0, 0), (0, 0), 2.5, ZELLIGE),
+        ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    story += [Spacer(1, 3 * mm), box, Spacer(1, 3 * mm),
+              _signatures(signature_file, styles, "Signature du voyageur", "توقيع النزيل")]
+    return story
+
+
+def generate_rules_pdf(submission: Submission, apartment_name: str, apartment_address: str,
+                       signature_file: Path, output_path: Path) -> None:
+    _register_fonts()
     styles = _styles()
-    w = PAGE_W - MARGIN_L - MARGIN_R
-    submitted_at = submission.submitted_at
-    if submitted_at and submitted_at.tzinfo:
-        submitted_at = submitted_at.replace(tzinfo=None)
-    date_str = submitted_at.strftime("%d/%m/%Y") if submitted_at else "—"
-    ref_short = submission.public_id[:8].upper()
-
-    headers = [
-        ("RÈGLEMENT INTÉRIEUR", "Résidence de courte durée — version française"),
-        ("INTERNAL RULES", "Short-term rental — English version"),
-    ]
-
-    story = _rules_page(
-        submission,
-        apartment_name,
-        apartment_address,
-        date_str,
-        ref_short,
-        settings.load_rules_fr(),
-        "Je soussigné(e), <b>"
-        + _escape(submission.first_name)
-        + " "
-        + _escape(submission.last_name)
-        + "</b>, déclare avoir pris connaissance de l'intégralité du présent règlement et m'engage à le "
-        "respecter pendant toute la durée du séjour, sous peine de résiliation du contrat et de poursuites "
-        "conformément à la loi marocaine en vigueur.",
-        "SIGNATURE DU VOYAGEUR",
-        signature_file,
-        styles,
-        w,
-    )
+    name = f"<b>{_escape(submission.first_name)} {_escape(submission.last_name)}</b>"
+    story = _rules_page_latin(
+        submission, apartment_name, apartment_address, settings.load_rules_fr(),
+        ("RÈGLEMENT INTÉRIEUR", "النظام الداخلي"),
+        f"Je soussigné(e), {name}, déclare avoir pris connaissance de l'intégralité du présent règlement et "
+        "m'engage à le respecter pendant toute la durée du séjour, sous peine de résiliation du contrat et de "
+        "poursuites conformément à la loi marocaine en vigueur.",
+        "Signature du voyageur", signature_file, styles)
     story.append(PageBreak())
-    story.extend(
-        _rules_page(
-            submission,
-            apartment_name,
-            apartment_address,
-            date_str,
-            ref_short,
-            settings.load_rules_en(),
-            "I, the undersigned, <b>"
-            + _escape(submission.first_name)
-            + " "
-            + _escape(submission.last_name)
-            + "</b>, declare that I have read the entire rules above and agree to comply with them "
-            "throughout my stay, failing which the rental agreement may be terminated and legal action "
-            "taken under applicable Moroccan law.",
-            "GUEST SIGNATURE",
-            signature_file,
-            styles,
-            w,
-        )
-    )
-
-    _build_doc(output_path, story, ref_short, "RÈGLEMENT INTÉRIEUR", headers, page_total=2)
+    story += _rules_page_latin(
+        submission, apartment_name, apartment_address, settings.load_rules_en(),
+        ("HOUSE RULES — ENGLISH VERSION", "النظام الداخلي"),
+        f"I, the undersigned, {name}, declare that I have read these rules in full and agree to comply with them "
+        "throughout my stay, failing which the rental agreement may be terminated and legal action taken under "
+        "applicable Moroccan law.",
+        "Guest signature", signature_file, styles, lang="en")
+    pages = 2
+    rules_ar = settings.load_rules_ar()
+    if rules_ar.strip():
+        story.append(PageBreak())
+        story += _rules_page_arabic(submission, apartment_name, apartment_address, rules_ar, signature_file, styles)
+        pages = 3
+    _build(output_path, story, ref=submission.public_id[:8].upper(), host_name=_host_name(submission),
+           title="Règlement intérieur signé", headers=[("RÈGLEMENT", "")], total_pages=pages)

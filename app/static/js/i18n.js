@@ -520,3 +520,53 @@ Object.assign(window.GuestI18n.t.ar, {
   id_glare: "يوجد انعكاس على الوثيقة. أميلوها قليلًا أو أطفئوا الفلاش.",
   id_check_failed: "تعذّر التحقق من الصورة. تحققوا من الاتصال وحاولوا مجددًا.",
 });
+
+/* ID image: size in the "too small" message, cropped scans accepted */
+Object.assign(window.GuestI18n.t.fr, {
+  id_too_small_size: "Cette image ne fait que {w}×{h} pixels : trop petite pour lire les informations. Prenez une photo avec votre téléphone, ou envoyez une image d'au moins 600 pixels de large.",
+  id_tip_corners: "Les 4 coins visibles, ou un scan recadré sur le document",
+});
+Object.assign(window.GuestI18n.t.en, {
+  id_too_small_size: "This image is only {w}×{h} pixels, too small to read the details. Take a photo with your phone camera, or upload an image at least 600 pixels wide.",
+  id_tip_corners: "All 4 corners visible, or a scan cropped to the document",
+});
+Object.assign(window.GuestI18n.t.ar, {
+  id_too_small_size: "هذه الصورة بحجم {w}×{h} بكسل فقط، وهي صغيرة جدًا لقراءة المعلومات. التقطوا صورة بكاميرا الهاتف أو ارفعوا صورة بعرض 600 بكسل على الأقل.",
+  id_tip_corners: "الزوايا الأربع ظاهرة، أو نسخة ممسوحة مقصوصة على الوثيقة",
+});
+
+/* Lighter ID rules: must look like an ID; only clear problems refused */
+Object.assign(window.GuestI18n.t.fr, {
+  id_tips_title: "Ce que nous acceptons :",
+  id_tip_corners: "Photo ou scan de votre passeport ou carte d'identité",
+  id_tip_flat: "Le côté avec votre photo",
+  id_tip_light: "Lisible, sans reflet",
+  id_tip_steady: "Photo nette",
+  id_not_id: "Nous ne reconnaissons pas de pièce d'identité sur cette image. Envoyez une photo ou un scan net de votre passeport ou carte d'identité, côté photo.",
+  id_too_small_size: "Cette image ne fait que {w}×{h} pixels, trop petite pour être vérifiée. Envoyez une photo ou un scan plus grand de votre pièce.",
+  id_ok: "Pièce d'identité reconnue et lisible.",
+});
+Object.assign(window.GuestI18n.t.en, {
+  id_tips_title: "What we accept:",
+  id_tip_corners: "A photo or scan of your passport or ID card",
+  id_tip_flat: "The side with your photo",
+  id_tip_light: "Readable, no strong reflections",
+  id_tip_steady: "Not blurry",
+  id_not_id: "We can't recognise an identity document in this image. Upload a clear photo or scan of your passport or ID card, the side with your photo.",
+  id_too_small_size: "This image is only {w}×{h} pixels, too small to check. Upload a larger photo or scan of your ID.",
+  id_ok: "ID document recognised and readable.",
+});
+Object.assign(window.GuestI18n.t.ar, {
+  id_tips_title: "ما نقبله:",
+  id_tip_corners: "صورة أو نسخة ممسوحة لجواز السفر أو بطاقة الهوية",
+  id_tip_flat: "الوجه الذي يحمل صورتكم",
+  id_tip_light: "مقروءة وبدون انعكاس قوي",
+  id_tip_steady: "غير ضبابية",
+  id_not_id: "لا نتعرّف على وثيقة هوية في هذه الصورة. ارفعوا صورة أو نسخة واضحة لجواز السفر أو بطاقة الهوية، الوجه الذي يحمل صورتكم.",
+  id_too_small_size: "هذه الصورة بحجم {w}×{h} بكسل فقط، وهي صغيرة جدًا للتحقق. ارفعوا صورة أو نسخة أكبر للوثيقة.",
+  id_ok: "تم التعرف على وثيقة الهوية وهي مقروءة.",
+});
+
+Object.assign(window.GuestI18n.t.fr, { registration_for: "Enregistrement pour" });
+Object.assign(window.GuestI18n.t.en, { registration_for: "Registration for" });
+Object.assign(window.GuestI18n.t.ar, { registration_for: "التسجيل لدى" });

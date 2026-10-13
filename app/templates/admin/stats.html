@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
 {% set active = 'stats' %}
-{% block title %}Platform stats{% endblock %}
+{% block title %}Admin dashboard{% endblock %}
 
 {% macro money(v) -%}{{ "{:,}".format(v).replace(",", " ") }}{%- endmacro %}
 {% macro pct(v) -%}{% if v is none %}—{% else %}{{ v }}%{% endif %}{%- endmacro %}
@@ -10,11 +10,11 @@
 {% set t = stats.total %}
 <div class="page-head">
   <div>
-    <h1 class="admin-page-title">Platform stats</h1>
-    <p class="admin-page-lead">Every section, admin and guest on {{ app_name }}. Only you, the platform owner, can see this page.</p>
+    <h1 class="admin-page-title">Admin dashboard</h1>
+    <p class="admin-page-lead">Every host, host user and guest on {{ app_name }}. Only the admin sees this page.</p>
   </div>
   {% if has_demo %}
-  <form method="post" action="/admin/stats/demo/remove" onsubmit="return confirm('Remove all demo sections, demo admins, demo apartments and demo guests? Your real data is not touched.');">
+  <form method="post" action="/admin/stats/demo/remove" onsubmit="return confirm('Remove all demo hosts, demo host users, demo properties and demo guests? Your real data is not touched.');">
     <button type="submit" class="btn btn-danger btn-sm">Remove demo data</button>
   </form>
   {% endif %}
@@ -25,15 +25,15 @@
 <div class="admin-ai-banner admin-ai-banner--review">
   <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("sparkles") }}</span>
   <div><strong>Demo data is on.</strong>
-    <p class="subtitle" style="margin:0.25rem 0 0">Sections named “Demo · …” are fake, for trying the platform. Remove them with the button above when you are done.</p>
+    <p class="subtitle" style="margin:0.25rem 0 0">Hosts named “Demo · …” are fake, for trying the platform. Remove them with the button above when you are done.</p>
   </div>
 </div>
 {% endif %}
 
 <div class="kpi-grid">
-  <div class="kpi"><p class="kpi__label">Sections</p><p class="kpi__value">{{ stats.sections_active }}<small>/ {{ stats.sections_total }}</small></p><p class="kpi__note">active</p></div>
-  <div class="kpi"><p class="kpi__label">Admins</p><p class="kpi__value">{{ stats.admins_total }}</p><p class="kpi__note">{% if stats.admins_blocked %}{{ stats.admins_blocked }} blocked{% else %}none blocked{% endif %}</p></div>
-  <div class="kpi"><p class="kpi__label">Apartments</p><p class="kpi__value">{{ stats.apartments_total }}</p><p class="kpi__note">in all sections</p></div>
+  <div class="kpi"><p class="kpi__label">Hosts</p><p class="kpi__value">{{ stats.sections_active }}<small>/ {{ stats.sections_total }}</small></p><p class="kpi__note">active</p></div>
+  <div class="kpi"><p class="kpi__label">Host users</p><p class="kpi__value">{{ stats.admins_total }}</p><p class="kpi__note">{% if stats.admins_blocked %}{{ stats.admins_blocked }} blocked{% else %}none blocked{% endif %}</p></div>
+  <div class="kpi"><p class="kpi__label">Properties</p><p class="kpi__value">{{ stats.apartments_total }}</p><p class="kpi__note">across all hosts</p></div>
   <div class="kpi"><p class="kpi__label">Guest registrations</p><p class="kpi__value">{{ t.guests }}</p><p class="kpi__note">{{ t.people }} people in total</p></div>
   <div class="kpi kpi--accent"><p class="kpi__label">Need action</p><p class="kpi__value">{{ t.pending }}</p><p class="kpi__note">{{ t.awaiting_apartment }} AI-approved, waiting for an apartment</p></div>
   <div class="kpi"><p class="kpi__label">Confirmed stays</p><p class="kpi__value">{{ t.confirmed }}</p><p class="kpi__note">{{ t.nights }} nights booked</p></div>
@@ -45,7 +45,7 @@
   <section class="admin-panel chart-card chart-card--wide">
     <header class="chart-card__head">
       <h2>Registrations per day</h2>
-      <p class="subtitle">Last {{ stats.days }} days, all sections · {{ stats.daily_total }} in total</p>
+      <p class="subtitle">Last {{ stats.days }} days, all hosts · {{ stats.daily_total }} in total</p>
     </header>
     {% set ymax = [stats.daily_max, 1]|max %}
     <div class="bars" role="img" aria-label="Guest registrations per day for the last {{ stats.days }} days">
@@ -74,7 +74,7 @@
   </section>
 
   <section class="admin-panel chart-card">
-    <header class="chart-card__head"><h2>Guests by status</h2><p class="subtitle">All sections</p></header>
+    <header class="chart-card__head"><h2>Guests by status</h2><p class="subtitle">All hosts</p></header>
     <div class="hbars">
       {% for st in stats.statuses %}
       <div class="hbars__row" data-tip="{{ st.label }} · {{ st.count }}">
@@ -108,14 +108,14 @@
 
 <section class="admin-panel">
   <div class="admin-panel__head admin-panel__head--row">
-    <h2 style="margin:0">Sections compared</h2>
-    <a class="btn btn-secondary btn-sm" href="/admin/sections">{{ icon("users") }}Manage sections &amp; admins</a>
+    <h2 style="margin:0">Hosts compared</h2>
+    <a class="btn btn-secondary btn-sm" href="/admin/sections">{{ icon("users") }}Manage hosts</a>
   </div>
   <div class="admin-table-wrap">
     <table class="data-table stats-table">
       <thead>
         <tr>
-          <th>Section</th><th>Admins</th><th>Apartments</th><th>Guests</th><th>Need action</th>
+          <th>Host</th><th>Users</th><th>Properties</th><th>Guests</th><th>Need action</th>
           <th>Confirmed</th><th>Confirm rate</th><th>AI approval</th><th>Nights</th><th>Stay value</th><th>Last registration</th><th></th>
         </tr>
       </thead>
@@ -125,16 +125,15 @@
           <td>
             <strong>{{ r.section.name }}</strong>
             {% if not r.section.is_active %}<span class="chip chip--muted">Switched off</span>{% endif %}
-            {% if r.section.id == admin.section_id %}<span class="chip">Yours</span>{% endif %}
           </td>
-          <td data-label="Admins">
+          <td data-label="Users">
             <span class="stats-admins">
             {% for a in r.admins %}
               <span title="{% if a.last_login_at %}Last sign-in {{ a.last_login_at.strftime('%d %b %H:%M') }}{% else %}Never signed in{% endif %}">{{ a.username }}{% if not a.is_active %} <span class="chip chip--red">blocked</span>{% endif %}</span>
             {% else %}—{% endfor %}
             </span>
           </td>
-          <td data-label="Apartments">{{ r.apartments }}</td>
+          <td data-label="Properties">{{ r.apartments }}</td>
           <td data-label="Guests">{{ r.guests }}</td>
           <td data-label="Need action">{% if r.pending %}<span class="chip chip--amber">{{ r.pending }}</span>{% else %}0{% endif %}</td>
           <td data-label="Confirmed">{{ r.confirmed }}</td>

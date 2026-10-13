@@ -207,6 +207,7 @@ class Submission(Base):
 
     form_link: Mapped["FormLink | None"] = relationship(back_populates="submissions")
     apartment: Mapped["Apartment"] = relationship(back_populates="submissions")
+    section: Mapped["HostSection | None"] = relationship(viewonly=True)
     document: Mapped["Document | None"] = relationship(
         back_populates="submission", uselist=False
     )

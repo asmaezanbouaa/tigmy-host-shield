@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Calibrate / regression-test the ID photo checks in app/services/id_quality.py.
+"""Calibrate / regression-test the ID image checks in app/services/id_quality.py.
+
+Rule of thumb being tested: anything that is not an ID is refused ("not_id"); real IDs pass
+unless they are clearly unusable (tiny, clearly blurry, very dark, overexposed, glare).
 
 Builds synthetic phone photos of an ID card (fine print, portrait, guilloche, MRZ) lying at an
 angle on different surfaces, with camera noise and JPEG compression, then applies each failure
@@ -63,8 +66,8 @@ def make_card(rng: random.Random, portrait_doc: bool = False) -> np.ndarray:
     return arr
 
 
-def background(rng: random.Random, kind: str) -> np.ndarray:
-    h, w = PHOTO_H, PHOTO_W
+def background(rng: random.Random, kind: str, size=None) -> np.ndarray:
+    w, h = size or (PHOTO_W, PHOTO_H)
     if kind == "wood":
         x = np.linspace(0, 40 * np.pi, w)
         stripes = (np.sin(x[None, :] + rng.random() * 6 + np.random.default_rng(rng.randint(0, 9999)).normal(0, 0.4, (h, 1))) + 1) / 2
@@ -80,7 +83,18 @@ def background(rng: random.Random, kind: str) -> np.ndarray:
     return np.clip(b + noise, 0, 255).astype(np.uint8)
 
 
-def compose(rng: random.Random, *, fill=(0.35, 0.65), bg="wood", portrait_doc=False, cut=False) -> np.ndarray:
+def compose(rng: random.Random, *, fill=(0.35, 0.65), bg="wood", portrait_doc=False, cut=False, size=None) -> np.ndarray:
+    global PHOTO_W, PHOTO_H
+    saved = (PHOTO_W, PHOTO_H)
+    if size:
+        PHOTO_W, PHOTO_H = size
+    try:
+        return _compose(rng, fill=fill, bg=bg, portrait_doc=portrait_doc, cut=cut)
+    finally:
+        PHOTO_W, PHOTO_H = saved
+
+
+def _compose(rng: random.Random, *, fill, bg, portrait_doc, cut) -> np.ndarray:
     card = make_card(rng, portrait_doc)
     ch, cw = card.shape[:2]
     photo = background(rng, bg)
@@ -143,16 +157,17 @@ CONDITIONS = [
     ("clear · passport page (portrait)", "ok", {"bg": "wood", "portrait_doc": True}, {}),
     ("clear · noisy (low light sensor)", "ok", {"bg": "dark"}, {"noise": 10}),
     ("clear · slightly soft (σ 1.0)", "ok", {"bg": "wood"}, {"blur": 1.0}),
-    ("blurry σ 2.0", "blurry", {"bg": "wood"}, {"blur": 2.0}),
-    ("blurry σ 3.0", "blurry", {"bg": "dark"}, {"blur": 3.0}),
-    ("blurry σ 5.0", "blurry|no_document", {"bg": "light"}, {"blur": 5.0}),
-    ("blurry σ 2.5 + noise", "blurry", {"bg": "wood"}, {"blur": 2.5, "noise": 10}),
-    ("hand shake (motion 15px)", "blurry", {"bg": "wood"}, {"motion": 15}),
-    ("too dark", "too_dark", {"bg": "dark"}, {"gain": 0.25}),
-    ("overexposed", "too_bright", {"bg": "light"}, {"gain": 1.9}),
-    ("flash glare", "glare", {"bg": "wood"}, {"glare": True}),
-    ("corner cut off", "cut_off|no_document", {"bg": "wood", "fill": (0.4, 0.6), "cut": True}, {}),
-    ("too far away", "too_far", {"bg": "wood", "fill": (0.06, 0.14)}, {}),
+    ("blurry σ 2.0", "blurry|not_id", {"bg": "wood"}, {"blur": 2.0}),
+    ("blurry σ 3.0", "blurry|not_id", {"bg": "dark"}, {"blur": 3.0}),
+    ("blurry σ 5.0", "blurry|not_id", {"bg": "light"}, {"blur": 5.0}),
+    ("blurry σ 2.5 + noise", "blurry|not_id", {"bg": "wood"}, {"blur": 2.5, "noise": 10}),
+    ("hand shake (motion 15px)", "ok|blurry|not_id", {"bg": "wood"}, {"motion": 15}),
+    ("too dark", "too_dark|not_id", {"bg": "dark"}, {"gain": 0.25}),
+    ("overexposed", "too_bright|not_id", {"bg": "light"}, {"gain": 1.9}),
+    ("flash glare", "glare|not_id", {"bg": "wood"}, {"glare": True}),
+    ("corner cut off (accepted when the ID is still recognisable)", "ok|not_id", {"bg": "wood", "fill": (0.4, 0.6), "cut": True}, {}),
+    ("too far away", "ok|not_id", {"bg": "wood", "fill": (0.06, 0.14)}, {}),
+    ("too far away · 3:2 photo", "ok|not_id", {"bg": "wood", "fill": (0.06, 0.14), "size": (2100, 1400)}, {}),
 ]
 
 
@@ -160,10 +175,22 @@ def no_document(rng: random.Random) -> bytes:
     return camera(background(rng, rng.choice(["wood", "dark", "fabric"])), rng)
 
 
-def full_frame_crop(rng: random.Random) -> bytes:
-    card = cv2.resize(make_card(rng), (1712, 1080))
-    ok, buf = cv2.imencode(".jpg", card, [cv2.IMWRITE_JPEG_QUALITY, 90])
-    return buf.tobytes()
+def cropped(width: int, blur: float = 0.0, portrait_doc: bool = False):
+    """An image cropped exactly to the document (scan / edited photo), resized to `width`."""
+    def make(rng: random.Random) -> bytes:
+        card = make_card(rng, portrait_doc)
+        if blur:
+            card = cv2.GaussianBlur(card, (0, 0), blur)
+        h, w = card.shape[:2]
+        f = width / max(h, w)
+        card = cv2.resize(card, (int(w * f), int(h * f)), interpolation=cv2.INTER_AREA)
+        ok, buf = cv2.imencode(".jpg", card, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        return buf.tobytes()
+    return make
+
+
+def no_document_3x2(rng: random.Random) -> bytes:
+    return camera(background(rng, rng.choice(["wood", "dark", "fabric"]), size=(2100, 1400)), rng)
 
 
 def main() -> None:
@@ -188,14 +215,50 @@ def main() -> None:
         sharp_by_cond[name] = sharps
         if show_metrics and surrounds:
             print(f"{'':38} surround ratio max {max(surrounds):.2f}")
-    for name, expected, fn in [("no document (just a table)", "no_document", no_document),
-                               ("scan cropped to the card edges", "cut_off|no_document|too_far", full_frame_crop)]:
+    def gradient(rng):
+        g = np.dstack([np.tile(np.linspace(0, 255, 900), (600, 1))] * 3).astype(np.uint8)
+        return cv2.imencode(".jpg", g)[1].tobytes()
+
+    def noise_img(rng):
+        return cv2.imencode(".jpg", np.random.default_rng(rng.randint(0, 999)).integers(0, 255, (600, 900, 3), dtype=np.uint8))[1].tobytes()
+
+    def text_page(rng):
+        im = Image.new("RGB", (1240, 1754), "white")
+        d = ImageDraw.Draw(im)
+        for i in range(40):
+            d.text((80, 80 + i * 40), "Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod", fill="black", font=_font(28))
+        return cv2.imencode(".jpg", cv2.cvtColor(np.array(im), cv2.COLOR_RGB2BGR))[1].tobytes()
+
+    def landscape(rng):
+        sc = np.zeros((900, 1600, 3), np.uint8)
+        sc[:450], sc[450:] = (235, 180, 120), (60, 120, 70)
+        return cv2.imencode(".jpg", sc)[1].tobytes()
+
+    for name, expected, fn in [("random · just a table", "not_id", no_document),
+                               ("random · table, 3:2 photo", "not_id", no_document_3x2),
+                               ("random · gradient", "not_id", gradient),
+                               ("random · noise", "not_id", noise_img),
+                               ("random · page of ordinary text", "not_id", text_page),
+                               ("random · landscape", "not_id", landscape),
+                               ("cropped card · 1712 px", "ok", cropped(1712)),
+                               ("cropped card · 900 px", "ok", cropped(900)),
+                               ("cropped card · 640 px", "ok", cropped(640)),
+                               ("cropped card · 500 px", "ok", cropped(500)),
+                               ("cropped passport page · 1000 px", "ok", cropped(1000, portrait_doc=True)),
+                               ("cropped card blurry σ 3 · 1000 px", "blurry|not_id", cropped(1000, blur=3.0)),
+                               ("cropped card blurry σ 6 · 1000 px", "blurry|not_id", cropped(1000, blur=6.0))]:
         codes = [check_id_image(fn(rng), "photo.jpg").code for _ in range(SAMPLES)]
         hits = sum(c in expected.split("|") for c in codes)
         all_good &= hits == SAMPLES
         print(f"{name:38} {expected:11} {hits:>3}/{SAMPLES}   " + ", ".join(f"{c}×{codes.count(c)}" for c in sorted(set(codes))))
-    small = cv2.imencode(".jpg", np.zeros((300, 400, 3), np.uint8))[1].tobytes()
-    print(f"{'tiny image 400×300':38} {'too_small':11} {'1/1' if check_id_image(small).code == 'too_small' else '0/1':>5}")
+    # Optional real ID images (not in git): scripts/samples/real_ids/*.jpg must all pass
+    real_dir = ROOT / "scripts" / "samples" / "real_ids"
+    for f in sorted(real_dir.glob("*.*")) if real_dir.exists() else []:
+        code = check_id_image(f.read_bytes(), f.name).code
+        all_good &= code == "ok"
+        print(f"{'real ID · ' + f.name:38} {'ok':11} {'1/1' if code == 'ok' else '0/1':>5}   {code}")
+    tiny = cv2.imencode(".jpg", np.full((100, 150, 3), 200, np.uint8))[1].tobytes()
+    print(f"{'tiny image 150×100':38} {'too_small':11} {'1/1' if check_id_image(tiny).code == 'too_small' else '0/1':>5}")
     print(f"{'not an image':38} {'unreadable':11} {'1/1' if check_id_image(b'hello', 'x.jpg').code == 'unreadable' else '0/1':>5}")
     if show_metrics:
         print("\nSharpness (variance of Laplacian on flattened document):")

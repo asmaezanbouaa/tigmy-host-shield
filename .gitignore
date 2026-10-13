@@ -34,3 +34,6 @@ backups/
 
 # Local Claude preview config (test-only credentials)
 .claude/
+
+# Real ID images used only for local testing (never commit ID documents)
+scripts/samples/

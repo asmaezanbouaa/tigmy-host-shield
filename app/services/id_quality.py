@@ -1,39 +1,53 @@
-"""Strict quality checks for guest ID photos: readable, large enough, whole document visible
-(4 edges detected), sharp, and well lit. Same rules for every upload; thresholds are
-calibrated with scripts/calibrate_id_quality.py.
+"""Checks that a guest's upload is a real, usable identity document — without being fussy.
+
+The main rule: the image must LOOK LIKE AN ID — a portrait photo placed to one side as on ID
+cards and passports (not a centred selfie), or ID-style printed text (machine-readable zone,
+dates, "identity / passport / carte…") spread across the document. That keeps random pictures out.
+Then only clear problems are refused: tiny, clearly blurry, very dark, overexposed or glare.
+
+Photos of a document on a table are flattened to the document first (its 4 edges are found);
+scans or images cropped to the document are checked as they are.
+Thresholds are calibrated with scripts/calibrate_id_quality.py.
 """
 
+import re
 from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
 
 # --- Thresholds (see scripts/calibrate_id_quality.py) ---
-MIN_SHORT_SIDE = 480            # px, original image
-MIN_LONG_SIDE = 800
-WORK_LONG_SIDE = 1200           # analysis size
-MIN_DOC_AREA = 0.20             # document must cover >= 20% of the photo
-MAX_DOC_AREA = 0.97             # ... and leave a margin so its edges are visible
-BORDER_MARGIN = 0.01            # corners must be >= 1% inside the frame (not cut off)
+MIN_LONG_SIDE = 200             # px: below this nothing can be checked (web thumbnails ~250 px are fine)
+WORK_LONG_SIDE = 1200           # analysis size for photos
+MIN_DOC_AREA = 0.20             # a found outline must cover >= 20% of the photo to be used
+MAX_DOC_AREA = 0.97
+BORDER_MARGIN = 0.01
 ASPECT_MIN, ASPECT_MAX = 1.25, 1.90   # ID-1 card 1.59, passport page 1.42 (with some perspective)
-RECTANGULARITY_MIN = 0.85       # contour area / its bounding quad area
-WARP_WIDTH = 1000               # document is flattened to this width before measuring
-SHARPNESS_MIN = 65.0            # variance of Laplacian on the flattened, lightly denoised document
-DARK_MEAN_MAX = 60              # mean brightness of the document below this = too dark
-BRIGHT_MEAN_MIN = 235           # mean brightness above this = overexposed
-GLARE_FRACTION_MAX = 0.06       # share of blown-out pixels on the document
+RECTANGULARITY_MIN = 0.85
+WARP_WIDTH = 1000               # documents are measured at this width (smaller images: at their own size)
+ID_VIEW_LONG_SIDE = 1000        # documents are looked at this size for the portrait / text check
+SHARPNESS_MIN = 40.0            # variance of Laplacian; refuses clearly blurry images only
+DARK_MEAN_MAX = 50
+BRIGHT_MEAN_MIN = 240
+GLARE_FRACTION_MAX = 0.10
+FACE_MIN, FACE_MAX = 0.16, 0.80          # portrait height / document short side
+FACE_CENTRE_BAND = (0.40, 0.60)          # a face centred here is a selfie, not an ID portrait
+TEXT_WORDS_MIN = 5
+TEXT_SPAN_MIN = 0.45
+ID_TEXT = re.compile(
+    r"<<|\b\d{2}[./-]\d{2}[./-]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b|IDENTI|PASSPORT|PASSEPORT|CARTE|CARD|NATIONAL|"
+    r"REPUBLI|ROYAUME|KINGDOM|PERMIS|DRIVING|LICEN|SURNAME|GIVEN|NOM|PR[EÉ]NOM|BIRTH|NAISSANCE|SEX|EXPIR|VALID",
+    re.IGNORECASE,
+)
 
 MESSAGES = {
     "unreadable": "We could not read this file. Please upload a JPG or PNG photo, or a PDF.",
-    "too_small": "The photo is too small. Use your phone camera at full resolution.",
-    "no_document": "We can't see the 4 edges of your document. Place it flat on a plain, darker surface with all 4 corners visible, and make sure the photo is sharp.",
-    "cut_off": "Part of the document is cut off. Move back a little so all 4 corners are inside the photo.",
-    # Also returned when the photo is cropped so tightly that only a box printed on the card is found.
-    "too_far": "We can't see the whole document clearly. Take the photo so the document fills most of the picture, with all 4 corners and a little of the table visible around it.",
-    "blurry": "The photo is blurry. Hold your phone steady, tap to focus on the document, and take it again.",
-    "too_dark": "The photo is too dark. Take it in a brighter place.",
-    "too_bright": "The photo is overexposed. Avoid direct sunlight or flash.",
-    "glare": "There is a reflection (glare) on the document. Tilt it slightly or turn off the flash.",
+    "too_small": "The image is too small to check. Upload a larger photo or scan of your ID.",
+    "not_id": "We can't recognise an identity document in this image. Upload a clear, sharp photo or scan of your passport or ID card — the side with your photo.",
+    "blurry": "The image is blurry. Hold your phone steady, tap to focus on the document, and take it again.",
+    "too_dark": "The image is too dark. Take it in a brighter place.",
+    "too_bright": "The image is overexposed. Avoid direct sunlight or flash.",
+    "glare": "There is a strong reflection on the document. Tilt it slightly or turn off the flash.",
 }
 
 
@@ -191,56 +205,110 @@ def sharpness(gray: np.ndarray) -> float:
     return float(cv2.Laplacian(smoothed, cv2.CV_64F).var())
 
 
-def check_id_image(data: bytes, filename: str = "") -> IdQualityResult:
-    img = _decode(data, filename)
-    if img is None or img.size == 0:
-        return _fail("unreadable")
+def _views(doc: np.ndarray) -> list[np.ndarray]:
+    """Grey copies at a size where faces and print are easy to find; sideways images in both rotations."""
+    h, w = doc.shape[:2]
+    f = ID_VIEW_LONG_SIDE / max(h, w)
+    interp = cv2.INTER_CUBIC if f > 1 else cv2.INTER_AREA
+    gray = cv2.cvtColor(cv2.resize(doc, (int(w * f), int(h * f)), interpolation=interp), cv2.COLOR_BGR2GRAY)
+    if w >= h:
+        return [gray]
+    return [cv2.rotate(gray, cv2.ROTATE_90_CLOCKWISE), cv2.rotate(gray, cv2.ROTATE_90_COUNTERCLOCKWISE)]
 
-    h, w = img.shape[:2]
-    if min(h, w) < MIN_SHORT_SIDE or max(h, w) < MIN_LONG_SIDE:
-        return _fail("too_small", width=w, height=h)
 
-    scale = WORK_LONG_SIDE / max(h, w)
-    if scale < 1:
-        img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
-    h, w = img.shape[:2]
+def _has_id_portrait(gray: np.ndarray) -> bool:
+    """A face the size of an ID portrait, placed to one side of the document (not a centred selfie)."""
+    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    h, w = gray.shape
+    short = min(h, w)
+    faces = cascade.detectMultiScale(
+        cv2.equalizeHist(gray), scaleFactor=1.08, minNeighbors=5,
+        minSize=(int(FACE_MIN * short),) * 2, maxSize=(int(FACE_MAX * short),) * 2,
+    )
+    lo, hi = FACE_CENTRE_BAND
+    return any(not lo <= (x + fw / 2) / w <= hi for x, y, fw, fh in faces)
 
-    corners, area_share = _find_document(img)
-    if corners is None:
-        # Say why when we can: a very dark or washed-out photo also hides the edges.
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        mean = float(gray.mean())
-        if mean < DARK_MEAN_MAX / 2:
-            return _fail("too_dark", brightness=round(mean, 1))
-        if mean > BRIGHT_MEAN_MIN or float((gray >= 250).mean()) > 0.5:
-            return _fail("too_bright", brightness=round(mean, 1))
-        return _fail("no_document")
 
-    margin_x, margin_y = BORDER_MARGIN * w, BORDER_MARGIN * h
-    inside = all(margin_x <= x <= w - 1 - margin_x and margin_y <= y <= h - 1 - margin_y for x, y in corners)
-    if not inside or area_share > MAX_DOC_AREA:
-        return _fail("cut_off", doc_area=round(area_share, 3))
-    if area_share < MIN_DOC_AREA:
-        return _fail("too_far", doc_area=round(area_share, 3))
+def _has_id_text(gray: np.ndarray) -> bool:
+    """ID-style words (MRZ, dates, identity/passport…) spread across the document."""
+    try:
+        import pytesseract
 
-    doc = _flatten(img, corners)
+        from app.services.ai_local import _configure_tesseract
+
+        _configure_tesseract()
+        data = pytesseract.image_to_data(gray, config="--psm 11", output_type=pytesseract.Output.DICT)
+    except Exception:
+        return False
+    h, w = gray.shape
+    boxes, words = [], []
+    for text, conf, x, y, bw, bh in zip(
+        data["text"], data["conf"], data["left"], data["top"], data["width"], data["height"]
+    ):
+        text = (text or "").strip()
+        if len("".join(ch for ch in text if ch.isalnum())) >= 3 and float(conf) >= 45:
+            boxes.append((x, y, x + bw, y + bh))
+            words.append(text)
+    if len(boxes) < TEXT_WORDS_MIN or not ID_TEXT.search(" ".join(words)):
+        return False
+    x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
+    x1, y1 = max(b[2] for b in boxes), max(b[3] for b in boxes)
+    return (x1 - x0) >= TEXT_SPAN_MIN * w and (y1 - y0) >= TEXT_SPAN_MIN * h
+
+
+def looks_like_id(doc: np.ndarray) -> bool:
+    return any(_has_id_portrait(v) or _has_id_text(v) for v in _views(doc))
+
+
+def _quality(doc: np.ndarray, metrics: dict) -> IdQualityResult | None:
+    """Clear exposure / sharpness problems on the document, or None when fine."""
     gray = cv2.cvtColor(doc, cv2.COLOR_BGR2GRAY)
     mean = float(gray.mean())
     sharp = sharpness(gray)
     glare = float((doc.min(axis=2) >= 245).mean())
-    metrics = {
-        "doc_area": round(area_share, 3),
-        "sharpness": round(sharp, 1),
-        "brightness": round(mean, 1),
-        "glare": round(glare, 3),
-    }
-
+    metrics.update(sharpness=round(sharp, 1), brightness=round(mean, 1), glare=round(glare, 3))
     if mean < DARK_MEAN_MAX:
         return _fail("too_dark", **metrics)
     if mean > BRIGHT_MEAN_MIN:
         return _fail("too_bright", **metrics)
-    if glare > GLARE_FRACTION_MAX:
+    if metrics.get("mode") == "photo" and glare > GLARE_FRACTION_MAX:  # white scan margins are not glare
         return _fail("glare", **metrics)
     if sharp < SHARPNESS_MIN:
         return _fail("blurry", **metrics)
+    return None
+
+
+def check_id_image(data: bytes, filename: str = "") -> IdQualityResult:
+    original = _decode(data, filename)
+    if original is None or original.size == 0:
+        return _fail("unreadable")
+    h, w = original.shape[:2]
+    if max(h, w) < MIN_LONG_SIDE:
+        return _fail("too_small", width=w, height=h)
+
+    metrics = {"width": w, "height": h}
+    # Candidates: the document flattened from a photo (if an outline is found), then the whole image
+    # (scans, cropped images, or an outline that was really a box printed on the card).
+    candidates = []
+    scale = min(1.0, WORK_LONG_SIDE / max(h, w))
+    img = cv2.resize(original, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA) if scale < 1 else original
+    corners, area_share = _find_document(img)
+    if corners is not None and MIN_DOC_AREA <= area_share <= MAX_DOC_AREA:
+        candidates.append((_flatten(img, corners), {"mode": "photo", "doc_area": round(area_share, 3)}))
+    f = min(1.0, WARP_WIDTH / max(h, w))
+    whole = cv2.resize(original, (int(w * f), int(h * f)), interpolation=cv2.INTER_AREA) if f < 1 else original
+    candidates.append((whole, {"mode": "image"}))
+
+    # First: is it an ID at all? Random pictures are refused with that reason, nothing else.
+    doc = None
+    for cand, extra in candidates:
+        if looks_like_id(cand):
+            doc = cand
+            metrics.update(extra)
+            break
+    if doc is None:
+        return _fail("not_id", **metrics)
+    problem = _quality(doc, metrics)
+    if problem:
+        return problem
     return IdQualityResult(ok=True, metrics=metrics)

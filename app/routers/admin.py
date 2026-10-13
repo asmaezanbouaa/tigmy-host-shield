@@ -45,7 +45,6 @@ from app.services.demo_data import has_demo_data, remove_demo_data
 from app.services.platform_stats import build_platform_stats
 from app.services.apartment_links import ensure_unique_slug, slugify_name
 from app.services.sections import (
-    DEFAULT_SECTION_SLUG,
     MAX_ADMINS_PER_SECTION,
     MIN_PASSWORD_LENGTH,
     add_section_admin,
@@ -126,7 +125,7 @@ async def login_submit(request: Request, db: Session = Depends(get_db)):
     if not admin_can_sign_in(admin):
         return templates.TemplateResponse(
             "admin/login.html",
-            {"request": request, "error": "This section is switched off. Contact the platform owner."},
+            {"request": request, "error": "This host account is switched off. Contact the admin."},
             status_code=403,
         )
     for k in keys:
@@ -174,9 +173,9 @@ def _counts_context(db: Session, admin: AdminUser) -> dict:
 
 
 def _section_guest_url(admin: AdminUser) -> str:
-    """The default section keeps the short /register link that may already be printed."""
+    """Each host's own guest link: /register/<host>. (The old /register still opens the default host.)"""
     section = admin.active_section
-    if section is None or section.slug == DEFAULT_SECTION_SLUG:
+    if section is None:
         return guest_register_url()
     return guest_register_url(section.slug)
 
@@ -456,13 +455,14 @@ def _env_usernames() -> set[str]:
 def _get_section(db: Session, section_public_id: str) -> HostSection:
     section = db.query(HostSection).filter(HostSection.public_id == section_public_id).first()
     if not section:
-        raise HTTPException(status_code=404, detail="Section not found")
+        raise HTTPException(status_code=404, detail="Host not found")
     return section
 
 
-def _sections_redirect(msg: str = "", error: str = "", anchor: str = "") -> RedirectResponse:
+def _sections_redirect(msg: str = "", error: str = "", anchor: str = "", page: str = "sections") -> RedirectResponse:
     params = {k: v for k, v in (("msg", msg), ("error", error)) if v}
-    url = "/admin/sections" + (f"?{urlencode(params)}" if params else "") + (f"#{anchor}" if anchor else "")
+    base = "/admin/users" if page == "users" else "/admin/sections"
+    url = base + (f"?{urlencode(params)}" if params else "") + (f"#{anchor}" if anchor else "")
     return RedirectResponse(url=url, status_code=303)
 
 
@@ -478,7 +478,7 @@ async def sections_page(
             "section": sec,
             "admins": section_admins(db, sec.id),
             "stats": section_stats(db, sec.id),
-            "guest_url": guest_register_url() if sec.slug == DEFAULT_SECTION_SLUG else guest_register_url(sec.slug),
+            "guest_url": guest_register_url(sec.slug),
         }
         for sec in sections
     ]
@@ -507,7 +507,7 @@ async def section_create(
     form = await request.form()
     name = clean_text(str(form.get("name", "")), 128)
     if not name:
-        return _sections_redirect(error="Give the section a name.", anchor="new")
+        return _sections_redirect(error="Give the host a name.", anchor="new")
     accounts = []
     for i in (1, 2):
         username = str(form.get(f"username{i}", "")).strip()
@@ -516,9 +516,9 @@ async def section_create(
             continue
         err = validate_new_admin(db, username, password)
         if not err and any(u.lower() == username.lower() for u, _ in accounts):
-            err = "The two admins need different usernames."
+            err = "The two host users need different usernames."
         if err:
-            return _sections_redirect(error=f"Admin {i}: {err}", anchor="new")
+            return _sections_redirect(error=f"User {i}: {err}", anchor="new")
         accounts.append((username, password))
 
     section = HostSection(name=name, slug=unique_section_slug(db, name), is_active=True)
@@ -528,7 +528,7 @@ async def section_create(
         add_section_admin(db, section, username, password)
     db.commit()
     get_or_create_shared_link(db, section.id)
-    return _sections_redirect(msg=f"Section “{name}” created with {len(accounts)} admin(s).", anchor=section.public_id)
+    return _sections_redirect(msg=f"Host “{name}” created with {len(accounts)} user(s).", anchor=section.public_id)
 
 
 @router.post("/sections/{section_public_id}/rename")
@@ -541,10 +541,10 @@ async def section_rename(
     section = _get_section(db, section_public_id)
     name = clean_text(str((await request.form()).get("name", "")), 128)
     if not name:
-        return _sections_redirect(error="Section name can't be empty.", anchor=section.public_id)
+        return _sections_redirect(error="Host name can't be empty.", anchor=section.public_id)
     section.name = name
     db.commit()
-    return _sections_redirect(msg="Section renamed. Its guest link stays the same.", anchor=section.public_id)
+    return _sections_redirect(msg="Host renamed. Its guest link stays the same.", anchor=section.public_id)
 
 
 @router.post("/sections/{section_public_id}/toggle")
@@ -558,7 +558,7 @@ async def section_toggle(
         return _sections_redirect(error="You can't switch off your own section.", anchor=section.public_id)
     section.is_active = not section.is_active
     db.commit()
-    state = "switched on" if section.is_active else "switched off: its admins can't sign in and its guest link is closed"
+    state = "switched on" if section.is_active else "switched off: its users can't sign in and its guest link is closed"
     return _sections_redirect(msg=f"“{section.name}” {state}.", anchor=section.public_id)
 
 
@@ -583,7 +583,7 @@ async def section_delete(
     db.query(FormLink).filter(FormLink.section_id == section.id).delete()
     db.delete(section)
     db.commit()
-    return _sections_redirect(msg=f"Section “{name}” deleted.")
+    return _sections_redirect(msg=f"Host “{name}” deleted.")
 
 
 @router.post("/sections/{section_public_id}/admins")
@@ -596,7 +596,7 @@ async def section_add_admin(
     section = _get_section(db, section_public_id)
     if len(section_admins(db, section.id)) >= MAX_ADMINS_PER_SECTION:
         return _sections_redirect(
-            error=f"A section can have {MAX_ADMINS_PER_SECTION} admins. Remove one first.", anchor=section.public_id
+            error=f"A host can have {MAX_ADMINS_PER_SECTION} users. Remove one first.", anchor=section.public_id
         )
     form = await request.form()
     username = str(form.get("username", "")).strip()
@@ -606,7 +606,7 @@ async def section_add_admin(
         return _sections_redirect(error=err, anchor=section.public_id)
     add_section_admin(db, section, username, password)
     db.commit()
-    return _sections_redirect(msg=f"Admin “{username}” added to {section.name}.", anchor=section.public_id)
+    return _sections_redirect(msg=f"User “{username}” added to {section.name}.", anchor=section.public_id)
 
 
 def _get_section_admin(db: Session, section: HostSection, admin_id: int) -> AdminUser:
@@ -623,21 +623,22 @@ async def section_admin_password(
     request: Request,
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_superadmin),
+    back: str = Query(default=""),
 ):
     section = _get_section(db, section_public_id)
     target = _get_section_admin(db, section, admin_id)
     if target.username.lower() in _env_usernames():
-        return _sections_redirect(
+        return _sections_redirect(page=back, 
             error=f"“{target.username}” is set in the .env file. Change the password there.", anchor=section.public_id
         )
     password = str((await request.form()).get("password", ""))
     if len(password) < MIN_PASSWORD_LENGTH:
-        return _sections_redirect(
+        return _sections_redirect(page=back, 
             error=f"Password must be at least {MIN_PASSWORD_LENGTH} characters.", anchor=section.public_id
         )
     target.password_hash = hash_password(password)
     db.commit()
-    return _sections_redirect(msg=f"New password saved for “{target.username}”.", anchor=section.public_id)
+    return _sections_redirect(page=back, msg=f"New password saved for “{target.username}”.", anchor=section.public_id)
 
 
 @router.post("/sections/{section_public_id}/admins/{admin_id}/delete")
@@ -646,19 +647,20 @@ async def section_admin_delete(
     admin_id: int,
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_superadmin),
+    back: str = Query(default=""),
 ):
     section = _get_section(db, section_public_id)
     target = _get_section_admin(db, section, admin_id)
     if target.id == admin.id or target.is_superadmin:
-        return _sections_redirect(error="You can't remove the platform owner account.", anchor=section.public_id)
+        return _sections_redirect(page=back, error="You can't remove the admin account.", anchor=section.public_id)
     if target.username.lower() in _env_usernames():
-        return _sections_redirect(
+        return _sections_redirect(page=back, 
             error=f"“{target.username}” is set in the .env file. Remove it there, then restart.", anchor=section.public_id
         )
     username = target.username
     db.delete(target)
     db.commit()
-    return _sections_redirect(msg=f"Admin “{username}” removed. They are signed out.", anchor=section.public_id)
+    return _sections_redirect(page=back, msg=f"User “{username}” removed. They are signed out.", anchor=section.public_id)
 
 
 @router.get("/profile", response_class=HTMLResponse)
@@ -1350,11 +1352,15 @@ async def download_rules_pdf(
 @router.post("/sections/{section_public_id}/open")
 async def section_open(
     section_public_id: str,
+    request: Request,
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_superadmin),
 ):
     section = _get_section(db, section_public_id)
-    redirect = RedirectResponse(url="/admin/", status_code=303)
+    target = str((await request.form()).get("next", "")).strip()
+    if not target.startswith("/admin/") or target.startswith("//"):
+        target = "/admin/"
+    redirect = RedirectResponse(url=target, status_code=303)
     if section.id == admin.section_id:
         redirect.delete_cookie(OWNER_VIEW_COOKIE)
     else:
@@ -1371,9 +1377,89 @@ async def section_open(
 
 @router.post("/view/exit")
 async def section_view_exit(admin: AdminUser = Depends(get_superadmin)):
-    redirect = RedirectResponse(url="/admin/sections", status_code=303)
+    redirect = RedirectResponse(url="/admin/stats", status_code=303)
     redirect.delete_cookie(OWNER_VIEW_COOKIE)
     return redirect
+
+
+@router.get("/guests", response_class=HTMLResponse)
+async def all_guests_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_superadmin),
+    q: str | None = Query(default=None),
+    host: str | None = Query(default=None),
+    status_filter: str | None = Query(default=None),
+):
+    """Every guest registration across all hosts (admin only)."""
+    sections = db.query(HostSection).order_by(HostSection.name).all()
+    query = (
+        db.query(Submission)
+        .options(joinedload(Submission.apartment), joinedload(Submission.document))
+        .order_by(Submission.submitted_at.desc())
+    )
+    section_by_pid = {sec.public_id: sec for sec in sections}
+    if host and host in section_by_pid:
+        query = query.filter(Submission.section_id == section_by_pid[host].id)
+    allowed = {st.value for st in SubmissionStatus}
+    if status_filter in allowed:
+        query = query.filter(Submission.status == status_filter)
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                Submission.last_name.ilike(term),
+                Submission.first_name.ilike(term),
+                Submission.id_document_number.ilike(term),
+                Submission.nationality.ilike(term),
+            )
+        )
+    total = query.count()
+    guests = query.limit(300).all()
+    section_by_id = {sec.id: sec for sec in sections}
+    return templates.TemplateResponse(
+        "admin/guests.html",
+        {
+            "request": request,
+            "admin": admin,
+            **_counts_context(db, admin),
+            "guests": guests,
+            "total": total,
+            "sections": sections,
+            "section_by_id": section_by_id,
+            "q": q or "",
+            "host": host or "",
+            "status_filter": status_filter or "",
+            "statuses": [st.value for st in SubmissionStatus if st != SubmissionStatus.CANCELLED],
+        },
+    )
+
+
+@router.get("/users", response_class=HTMLResponse)
+async def all_users_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_superadmin),
+):
+    """Every host user profile (admin only)."""
+    users = (
+        db.query(AdminUser)
+        .options(joinedload(AdminUser.section))
+        .order_by(AdminUser.is_superadmin.desc(), AdminUser.username)
+        .all()
+    )
+    return templates.TemplateResponse(
+        "admin/users.html",
+        {
+            "request": request,
+            "admin": admin,
+            **_counts_context(db, admin),
+            "users": users,
+            "env_usernames": _env_usernames(),
+            "msg": request.query_params.get("msg"),
+            "error": request.query_params.get("error"),
+        },
+    )
 
 
 @router.post("/sections/{section_public_id}/admins/{admin_id}/block")
@@ -1382,13 +1468,14 @@ async def section_admin_block(
     admin_id: int,
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_superadmin),
+    back: str = Query(default=""),
 ):
     section = _get_section(db, section_public_id)
     target = _get_section_admin(db, section, admin_id)
     if target.id == admin.id or target.is_superadmin:
-        return _sections_redirect(error="You can't block the platform owner account.", anchor=section.public_id)
+        return _sections_redirect(page=back, error="You can't block the admin account.", anchor=section.public_id)
     if target.username.lower() in _env_usernames():
-        return _sections_redirect(
+        return _sections_redirect(page=back, 
             error=f"“{target.username}” is set in the .env file and is unblocked on every restart. Remove it there instead.",
             anchor=section.public_id,
         )
@@ -1399,7 +1486,7 @@ async def section_admin_block(
         if target.is_active
         else f"“{target.username}” is blocked and signed out everywhere."
     )
-    return _sections_redirect(msg=msg, anchor=section.public_id)
+    return _sections_redirect(page=back, msg=msg, anchor=section.public_id)
 
 
 @router.get("/stats", response_class=HTMLResponse)
@@ -1428,7 +1515,7 @@ async def remove_demo(
 ):
     sections, guests = remove_demo_data(db)
     redirect = RedirectResponse(
-        url=f"/admin/stats?msg={quote(f'Demo data removed: {sections} section(s), {guests} guest record(s).')}",
+        url=f"/admin/stats?msg={quote(f'Demo data removed: {sections} host(s), {guests} guest record(s).')}",
         status_code=303,
     )
     redirect.delete_cookie(OWNER_VIEW_COOKIE)
@@ -1449,7 +1536,7 @@ def api_login(body: AdminLogin, request: Request, response: Response, db: Sessio
             login_failures.hit(k)
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not admin_can_sign_in(admin):
-        raise HTTPException(status_code=403, detail="Section is switched off")
+        raise HTTPException(status_code=403, detail="Host account is switched off")
     admin.last_login_at = datetime.now(timezone.utc)
     db.commit()
     for k in keys:

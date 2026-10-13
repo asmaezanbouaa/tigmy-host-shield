@@ -184,7 +184,7 @@
           return false;
         }
         if (idCheck.status !== "ok") {
-          showError(msg(idCheck.code), upload);
+          showError(idMsg(idCheck), upload);
           return false;
         }
       }
@@ -341,8 +341,8 @@
         const data = await res.json().catch(() => ({}));
         if (idCheck.file !== file) return; // a newer photo was chosen meanwhile
         if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "");
-        idCheck = { file, status: data.ok ? "ok" : "bad", code: data.code || "id_no_document" };
-        showIdCheck(idCheck.status, data.ok ? msg("id_ok") : msg(idCheck.code));
+        idCheck = { file, status: data.ok ? "ok" : "bad", code: data.code || "id_no_document", size: { w: data.width, h: data.height } };
+        showIdCheck(idCheck.status, data.ok ? msg("id_ok") : idMsg(idCheck));
         if (data.ok) clearError();
       } catch (e) {
         if (idCheck.file !== file) return;
@@ -350,6 +350,11 @@
         showIdCheck("error", e.message || msg("id_check_failed"));
       }
       updateNextState();
+    }
+
+    function idMsg(check) {
+      if (check.code === "id_too_small" && check.size && check.size.w) return msg("id_too_small_size", check.size);
+      return msg(check.code);
     }
 
     function updateNextState() {
@@ -527,11 +532,11 @@
           if (detail && typeof detail === "object" && !Array.isArray(detail) && detail.code) {
             setBusy(false);
             if (detail.code.startsWith("id_")) {
-              idCheck = { file: fileInput.files[0], status: "bad", code: detail.code };
+              idCheck = { file: fileInput.files[0], status: "bad", code: detail.code, size: { w: detail.width, h: detail.height } };
               goTo(3);
-              showIdCheck("bad", msg(detail.code));
+              showIdCheck("bad", idMsg(idCheck));
             }
-            showError(msg(detail.code) || detail.message);
+            showError(detail.code.startsWith("id_") ? idMsg(idCheck) : msg(detail.code) || detail.message);
             return;
           }
           let errMsg = msg("err_generic");

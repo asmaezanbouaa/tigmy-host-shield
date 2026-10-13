@@ -109,9 +109,11 @@ def _form_context(request: Request, token: str, db: Session, link: FormLink):
     else:
         selected_lang = lang_param if lang_param in VALID_LANGS else None
 
+    host = db.get(HostSection, link.section_id) if link.section_id else None
     return {
         "request": request,
         "token": token,
+        "host_name": host.name if host else "",
         "usable": ok,
         "error_message": message if not ok else "",
         "selected_lang": selected_lang,
@@ -147,13 +149,16 @@ async def guest_form_page(request: Request, token: str, db: Session = Depends(ge
 
 
 @router.get("/f/{token}/success", response_class=HTMLResponse)
-async def guest_success_page(request: Request, token: str):
+async def guest_success_page(request: Request, token: str, db: Session = Depends(get_db)):
     outcome = request.query_params.get("outcome", "").strip().lower()
+    link = db.query(FormLink).filter(FormLink.token == token).first()
+    host = db.get(HostSection, link.section_id) if link and link.section_id else None
     return templates.TemplateResponse(
         "guest/success.html",
         {
             "request": request,
             "token": token,
+            "host_name": host.name if host else "",
             "id_retention_hours": ID_RETENTION_HOURS,
             "ai_outcome": outcome,
             "ai_enabled": settings.ai_verification_enabled and settings.ai_auto_verify_on_submit,
@@ -162,7 +167,8 @@ async def guest_success_page(request: Request, token: str):
 
 
 def _id_quality_error(result) -> HTTPException:
-    return HTTPException(status_code=400, detail={"code": f"id_{result.code}", "message": result.message})
+    size = {k: result.metrics[k] for k in ("width", "height") if k in result.metrics}
+    return HTTPException(status_code=400, detail={"code": f"id_{result.code}", "message": result.message, **size})
 
 
 @router.post("/api/form/{token}/check-id")
@@ -185,7 +191,8 @@ async def check_id_photo(
         return {"ok": False, "code": "id_too_large" if data else "id_unreadable"}
     id_photo_checks.hit(ip_key)
     result = await asyncio.to_thread(check_id_image, data, id_scan.filename or "")
-    return {"ok": result.ok, "code": "ok" if result.ok else f"id_{result.code}", "message": result.message}
+    size = {k: result.metrics[k] for k in ("width", "height") if k in result.metrics}
+    return {"ok": result.ok, "code": "ok" if result.ok else f"id_{result.code}", "message": result.message, **size}
 
 
 @router.post("/api/form/{token}/submit")

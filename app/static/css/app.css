@@ -687,3 +687,18 @@ details.disclose > summary.btn svg, .admin-row svg { width: 16px; height: 16px; 
 .stats-table td:first-child { white-space: normal; min-width: 12rem; }
 .stats-admins { display: inline-flex; flex-direction: column; gap: 2px; font-size: 0.84rem; }
 @media (max-width: 720px) { .stats-table td { white-space: normal; } .stats-admins { align-items: flex-end; } }
+.a-section-chip--admin { background: var(--info-50); border-color: #d3d9f6; }
+.a-section-chip--admin .a-section-chip__name { color: #24358f; }
+.chip--blue { background: var(--info-50); color: var(--info); }
+.actions-cell details.disclose[open] { display: block !important; margin-top: 6px; }
+.user-cell { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+.users-table td.actions-cell { white-space: normal; }
+.users-table td.actions-cell > * { margin: 2px 0; }
+.users-table td { vertical-align: middle; }
+.users-table td[data-label="Host"] { min-width: 10rem; }
+@media (min-width: 721px) and (max-width: 1200px) {
+  .users-table th:nth-child(4), .users-table td:nth-child(4) { display: none; }
+  .users-table td.actions-cell { min-width: 12rem; }
+}
+.a-brand img { width: 42px; height: 42px; }
+.a-brand--compact img { width: 34px; height: 34px; }

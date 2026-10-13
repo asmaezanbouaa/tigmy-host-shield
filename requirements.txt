@@ -17,3 +17,5 @@ qrcode[pil]==8.0
 pytesseract==0.3.13
 opencv-python-headless==4.10.0.84
 numpy==2.3.5
+arabic-reshaper==3.0.0
+python-bidi==0.6.6

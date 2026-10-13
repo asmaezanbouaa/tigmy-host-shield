@@ -10,7 +10,7 @@
 <body class="g-body">
   <header class="g-topbar">
     <span class="g-brand">
-      <img src="/static/img/tigmy-logo.svg" alt="">
+      <img src="/static/img/logo-192.png" alt="">
       <span>
         <span class="g-brand__name">{{ app_name }}</span>
         <span class="g-brand__tag" data-i18n="brand_tag">Accueil &amp; enregistrement</span>
@@ -34,6 +34,9 @@
       <p class="g-success__lead" data-i18n="success_lead">Votre enregistrement a bien été reçu.</p>
       {% endif %}
 
+      {% if host_name %}
+      <p class="g-host" style="margin:-8px auto 20px"><span data-i18n="registration_for">Enregistrement pour</span> <strong>{{ host_name }}</strong></p>
+      {% endif %}
       <div class="g-card" style="text-align:start">
         <p class="g-section-label" data-i18n="success_next_title">Et ensuite ?</p>
         <ul class="g-timeline">

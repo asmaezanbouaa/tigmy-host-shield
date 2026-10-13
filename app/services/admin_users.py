@@ -26,7 +26,7 @@ def admin_accounts_from_settings(settings: Settings | None = None) -> list[tuple
 def ensure_admin_users(db: Session, *, sync_passwords: bool = True) -> list[str]:
     """
     Ensure every configured admin exists and passwords match env vars.
-    Env admins live in the default section; the first one is the platform owner.
+    The first env account (ADMIN_USERNAME) is the admin; ADMIN_USERNAME_2 is a host user of the default host.
 
     Called on app startup so Railway redeploys always honor ADMIN_* variables.
     """
@@ -45,7 +45,7 @@ def ensure_admin_users(db: Session, *, sync_passwords: bool = True) -> list[str]
                     password_hash=hash_password(password),
                     is_active=True,
                     is_superadmin=is_owner,
-                    section_id=default_section.id,
+                    section_id=None if is_owner else default_section.id,
                 )
             )
             updated.append(f"created:{username}")
@@ -53,8 +53,10 @@ def ensure_admin_users(db: Session, *, sync_passwords: bool = True) -> list[str]
 
         admin.is_active = True
         if is_owner:
+            # The admin oversees every host and has no host of its own.
             admin.is_superadmin = True
-        if admin.section_id is None:
+            admin.section_id = None
+        elif admin.section_id is None:
             admin.section_id = default_section.id
         if sync_passwords:
             admin.password_hash = hash_password(password)
