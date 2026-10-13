@@ -1,192 +1,89 @@
-# Deploy for free on Oracle Cloud (data is kept)
+# Put Tigmy Host Shield online — free, secure, with your own link
 
-Oracle Cloud "Always Free" gives you a small Linux server that never expires and keeps its disk,
-so the database, signatures, ID scans and PDFs survive restarts (unlike free Render).
-You get a free address like **`https://tigmy-host-shield.duckdns.org`** with HTTPS.
+Result: **`https://YOURNAME.duckdns.org`** running 24/7 on a free Oracle Cloud server, with HTTPS,
+a firewall, automatic security updates, protection against password guessing, and daily backups.
+Your computer does not need to stay on.
 
-Time: about 1–2 hours. Oracle asks for a card to verify your identity; Always Free resources are not charged.
+Cost: **0**. Oracle asks for a card to check your identity; Always Free resources are never charged.
+(Optional later: a real domain such as `tigmi.ma` / `tigmi.com` costs about 10 € a year.)
 
 ---
 
-## 1. Create the server
+## 1. Create the free server (Oracle Cloud) — about 15 minutes
 
-1. Sign up at <https://signup.cloud.oracle.com>. Pick a **home region** close to Morocco
-   (e.g. *Spain Central (Madrid)* or *France South (Marseille)*). It cannot be changed later.
-2. Menu → **Compute → Instances → Create instance**.
-3. **Image:** Canonical **Ubuntu 24.04**.
-4. **Shape:** *Ampere* `VM.Standard.A1.Flex` with 1 OCPU / 6 GB (Always Free).
-   If it says "out of capacity", use *AMD* `VM.Standard.E2.1.Micro` instead (also free, 1 GB is enough).
-5. **SSH keys:** choose *Generate a key pair* and **download the private key** (e.g. `oracle.key`).
-6. Click **Create**. When it's running, copy the **Public IP address**.
+1. Sign up at <https://signup.cloud.oracle.com>. Choose a home region near Morocco
+   (*Spain Central (Madrid)* or *France South (Marseille)*). It cannot be changed later.
+2. Menu → **Compute → Instances → Create instance**:
+   - **Image:** Canonical **Ubuntu 24.04**
+   - **Shape:** *Ampere* `VM.Standard.A1.Flex`, 1 OCPU, 6 GB memory (Always Free).
+     If it says "out of capacity", choose *AMD* `VM.Standard.E2.1.Micro` (also free).
+   - **SSH keys:** *Generate a key pair for me* → **Save private key** (e.g. `oracle.key`).
+3. Click **Create**. When it shows *Running*, copy the **Public IP address**.
+4. Open the web ports: on the instance page click the **Subnet** → **Default Security List** →
+   **Add Ingress Rules**, twice:
 
-## 2. Open ports 80 and 443
+   | Source CIDR | IP protocol | Destination port range |
+   |---|---|---|
+   | `0.0.0.0/0` | TCP | `80` |
+   | `0.0.0.0/0` | TCP | `443` |
 
-In Oracle: on the instance page, click the **subnet** → **Default Security List** → **Add Ingress Rules**:
+## 2. Get your free link (DuckDNS) — 2 minutes
 
-| Source CIDR | IP protocol | Destination port |
-|---|---|---|
-| `0.0.0.0/0` | TCP | `80` |
-| `0.0.0.0/0` | TCP | `443` |
+1. Go to <https://www.duckdns.org> and sign in (Google or GitHub).
+2. Type the name you want (e.g. `tigmi`) → **add domain**.
+3. Paste the server's **public IP** in *current ip* → **update ip**.
 
-## 3. Get a free address (DuckDNS)
+Your link is now `tigmi.duckdns.org`.
 
-1. Go to <https://www.duckdns.org> and sign in.
-2. Create the subdomain `tigmy-host-shield` (or any free name).
-3. Put the server's **public IP** in the *current ip* box → **update ip**.
+## 3. Install everything with one command
 
-Your address is now `tigmy-host-shield.duckdns.org`.
-
-## 4. Connect to the server
-
-On your computer:
+From your computer, copy your current data to the server and connect
+(replace `YOUR_IP` and the key path):
 
 ```bash
-chmod 600 ~/Downloads/oracle.key
-ssh -i ~/Downloads/oracle.key ubuntu@YOUR_PUBLIC_IP
+cd ~/Desktop/tigmy-host-shield && ./scripts/backup.sh
+scp -i ~/Downloads/oracle.key "$(ls -t backups/tigmy-backup-*.tar.gz | head -1)" ubuntu@YOUR_IP:~/tigmy-data.tar.gz
+ssh -i ~/Downloads/oracle.key ubuntu@YOUR_IP
 ```
 
-Everything below runs **on the server**.
+(If `ssh` complains about permissions on the key: `chmod 600 ~/Downloads/oracle.key`.)
 
-## 5. Install system packages
-
-```bash
-sudo apt update && sudo apt install -y python3 python3-venv git caddy \
-  tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra
-
-# Oracle's Ubuntu image blocks web ports in its own firewall — open them
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
-sudo netfilter-persistent save
-```
-
-On the 1 GB AMD server, add swap so installs don't run out of memory:
+Then, **on the server**:
 
 ```bash
-sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-```
-
-## 6. Get the code
-
-```bash
-cd ~
 git clone https://github.com/asmaezanbouaa/tigmy-host-shield.git
 cd tigmy-host-shield
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+DOMAIN=tigmi.duckdns.org IMPORT=~/tigmy-data.tar.gz ./scripts/server-setup.sh
 ```
 
-(If the GitHub repo is private, Git asks for your username and a
-[personal access token](https://github.com/settings/tokens) as the password.)
+It asks for an **admin username and password** (12+ characters, different from the username),
+then sets up: packages, firewall, security updates, fail2ban, the app as a service, HTTPS with a
+free Let's Encrypt certificate, security headers and a daily backup at 03:15.
 
-## 7. Production settings
+Open `https://tigmi.duckdns.org/admin/login` — done. Each host's guest link is
+`https://tigmi.duckdns.org/register/<host>` (see **Admin → Hosts**).
+
+> Without `IMPORT=…` you start with an empty site and create your hosts from the admin panel.
+
+## After going live
+
+- **Change weak passwords**: host users' passwords in **Admin → Host users → New password**.
+- **Update the app** after changes are pushed to GitHub:
+  ```bash
+  cd ~/tigmy-host-shield && git pull && ./scripts/server-setup.sh
+  ```
+  (your data and settings are kept).
+- **Logs:** `sudo journalctl -u tigmy -f` · **Restart:** `sudo systemctl restart tigmy`
+- **Backups** are in `~/tigmy-host-shield/backups/` (14 days). Copy one to your computer now and then:
+  ```bash
+  scp -i ~/Downloads/oracle.key "ubuntu@YOUR_IP:tigmy-host-shield/backups/tigmy-backup-*.tar.gz" ~/
+  ```
+- **If the server's IP ever changes**, update it on duckdns.org.
+
+## Using a real domain later (optional)
+
+Buy the domain, add a DNS **A record** pointing to the server's IP, then on the server:
 
 ```bash
-cp .env.example .env
-python3 -c "import secrets; print(secrets.token_urlsafe(48))"   # copy the output
-nano .env
-```
-
-Change these lines (the app **refuses to start** in production if they are unsafe):
-
-```env
-APP_ENV=production
-DEBUG=false
-SECRET_KEY=<paste the random string>
-BASE_URL=https://tigmy-host-shield.duckdns.org
-FORCE_HTTPS=true
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=<strong password, 10+ characters>
-AI_PROVIDER=local
-```
-
-Save with `Ctrl+O`, `Enter`, exit with `Ctrl+X`. Then prepare the database:
-
-```bash
-.venv/bin/python scripts/run_all_migrations.py
-.venv/bin/python scripts/init_db.py
-```
-
-## 8. Run it as a service (starts on boot, restarts on crash)
-
-```bash
-sudo tee /etc/systemd/system/tigmy.service > /dev/null << 'EOF'
-[Unit]
-Description=Tigmy Host Shield
-After=network.target
-
-[Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/tigmy-host-shield
-ExecStart=/home/ubuntu/tigmy-host-shield/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now tigmy
-sudo systemctl status tigmy --no-pager
-```
-
-Keep `--workers 1`: SQLite and the login/submission limits are designed for one process.
-
-## 9. HTTPS with Caddy
-
-```bash
-sudo tee /etc/caddy/Caddyfile > /dev/null << 'EOF'
-tigmy-host-shield.duckdns.org {
-    reverse_proxy 127.0.0.1:8000
-    encode gzip
-    request_body {
-        max_size 15MB
-    }
-}
-EOF
-sudo systemctl reload caddy
-```
-
-Caddy gets a free Let's Encrypt certificate automatically (give it a minute).
-
-## 10. Daily backups
-
-```bash
-chmod +x scripts/backup.sh
-./scripts/backup.sh          # test once
-(crontab -l 2>/dev/null; echo "15 3 * * * /home/ubuntu/tigmy-host-shield/scripts/backup.sh >> /home/ubuntu/tigmy-host-shield/backups/backup.log 2>&1") | crontab -
-```
-
-This keeps the last 14 daily backups in `backups/`. To also keep a copy on your own computer,
-run this from your computer from time to time:
-
-```bash
-scp -i ~/Downloads/oracle.key "ubuntu@YOUR_PUBLIC_IP:tigmy-host-shield/backups/tigmy-backup-*.tar.gz" ~/tigmy-backups/
-```
-
-## 11. Check it works
-
-- Guest form: `https://tigmy-host-shield.duckdns.org/register`
-- Admin: `https://tigmy-host-shield.duckdns.org/admin/login`
-- Admin → Share: copy the link / print the QR code for your apartments
-
-Do one full test registration with your own ID before sharing the link.
-
----
-
-## Updating the app later
-
-```bash
-cd ~/tigmy-host-shield
-git pull
-.venv/bin/pip install -r requirements.txt
-sudo systemctl restart tigmy
-```
-
-## If something goes wrong
-
-```bash
-sudo journalctl -u tigmy -n 50 --no-pager    # app errors (including unsafe-settings messages)
-sudo journalctl -u caddy -n 50 --no-pager    # HTTPS / certificate errors
+cd ~/tigmy-host-shield && DOMAIN=www.yourdomain.com ./scripts/server-setup.sh
 ```
