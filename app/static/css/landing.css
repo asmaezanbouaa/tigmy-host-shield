@@ -1,5 +1,5 @@
 /* Tigmy — public presentation page. Dark zellige-green + gold, Moroccan luxe. */
-:root{
+:root{color-scheme:only light;
   --night:#0b211d;--night-2:#11342d;--night-3:#18463c;
   --gold:#e9b949;--gold-2:#f6d88c;--clay:#d0693c;--clay-d:#b8532d;
   --ivory:#fbf7f1;--sand:#f5ecdf;--line:#ece1d3;--ink:#2b1f18;--ink-2:#5c4a3f;--muted:#8a776a;
