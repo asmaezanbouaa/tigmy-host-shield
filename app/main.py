@@ -204,9 +204,16 @@ async def unhandled_exception(request: Request, exc: Exception):
     )
 
 
-@app.get("/")
-def root():
-    return RedirectResponse(url="/admin/login", status_code=302)
+@app.get("/", response_class=HTMLResponse)
+@app.get("/presentation", response_class=HTMLResponse)
+def presentation(request: Request):
+    """Public page to share with prospective hosts: what the platform does and what it costs."""
+    from app.services.packs import PACKS, TOPUP, TRIAL
+    from app.templating import templates
+
+    return templates.TemplateResponse(
+        request, "landing.html", {"packs": list(PACKS.values()), "topup": TOPUP, "trial": TRIAL}
+    )
 
 
 @app.get("/health")

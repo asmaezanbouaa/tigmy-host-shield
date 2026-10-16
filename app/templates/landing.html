@@ -1,0 +1,119 @@
+{% from "_icons.html" import icon, fonts %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ app_name }} — La fiche de police de vos voyageurs, sans papier</title>
+  <meta name="description" content="Vos voyageurs remplissent leur fiche depuis leur téléphone, la pièce d'identité est vérifiée, et vous obtenez une fiche de police officielle en PDF. Pensé pour les hôtes marocains.">
+  {{ fonts() }}
+  <link rel="stylesheet" href="/static/css/landing.css?v={{ asset_v }}">
+</head>
+<body>
+  {% set hello = "Bonjour, je souhaite en savoir plus sur " ~ app_name ~ "." %}
+  <header class="bar">
+    <div class="wrap">
+      <a href="#top" class="brand"><img src="/static/img/logo-192.png" alt="">{{ app_name }}</a>
+      <a href="/admin/login" class="btn btn--ghost btn--sm">Espace hôte</a>
+    </div>
+  </header>
+
+  <section class="hero" id="top">
+    <div class="wrap">
+      <div>
+        <span class="kicker">Pour les hôtes Airbnb, riads et hôtels au Maroc</span>
+        <h1>La fiche de police de vos voyageurs, <em>sans papier</em> et sans courir après eux.</h1>
+        <p>Envoyez un lien ou un QR code à votre voyageur. Il remplit sa fiche depuis son téléphone, photographie sa pièce d'identité et signe. Vous recevez une fiche officielle en PDF, prête à imprimer.</p>
+        <div class="cta">
+          {% if wa(hello) %}<a class="btn btn--wa" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat") }}Nous écrire sur WhatsApp</a>{% endif %}
+          <a class="btn btn--primary" href="#tarifs">Voir les tarifs</a>
+        </div>
+        <p class="note">Essai gratuit : {{ trial.fiches }} fiches pendant {{ trial.days }} jours, sans engagement.</p>
+      </div>
+      <div class="phone" aria-hidden="true">
+        <small>Votre lien personnel</small>
+        <div class="fld">Nom et prénom</div>
+        <div class="fld">Nationalité</div>
+        <div class="fld">Logement : Appartement Agdal</div>
+        <div class="ok">{{ icon("shield") }}Pièce d'identité lisible</div>
+        <div class="go">Envoyer ma fiche</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Comment ça marche</h2>
+      <p class="lead">Trois étapes, aucune application à installer, ni pour vous ni pour votre voyageur.</p>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><h3>Vous partagez votre lien</h3><p>Chaque hôte a son lien et son QR code personnels. Envoyez-les sur WhatsApp ou affichez le QR dans le logement.</p></div>
+        <div class="step"><span class="num">2</span><h3>Le voyageur remplit sa fiche</h3><p>En français, en anglais ou en arabe. Il choisit le logement, photographie sa pièce d'identité, accepte le règlement et signe à l'écran.</p></div>
+        <div class="step"><span class="num">3</span><h3>Vous recevez la fiche officielle</h3><p>Vous confirmez en un clic et téléchargez la fiche de police et le règlement signé en PDF, en français et en arabe.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Ce que vous gagnez</h2>
+      <div class="grid">
+        <div class="card"><span class="ic">{{ icon("shield") }}</span><div><h3>Pièces d'identité contrôlées</h3><p>La photo doit être nette et ressembler à une vraie pièce. Plus de photos floues ou au hasard.</p></div></div>
+        <div class="card"><span class="ic">{{ icon("file") }}</span><div><h3>PDF d'aspect officiel</h3><p>Fiche de police et règlement intérieur bilingues, avec votre logo, signature du voyageur sur la même page que les règles.</p></div></div>
+        <div class="card"><span class="ic">{{ icon("qr") }}</span><div><h3>Votre lien et votre QR code</h3><p>Un lien par hôte : vous savez toujours à quel hôte appartient chaque voyageur. Vous pouvez le renouveler à tout moment.</p></div></div>
+        <div class="card"><span class="ic">{{ icon("building") }}</span><div><h3>Tous vos logements, un seul espace</h3><p>Le voyageur choisit son logement avant d'envoyer sa fiche. Calendrier des arrivées et archives incluses.</p></div></div>
+        <div class="card"><span class="ic">{{ icon("sparkles") }}</span><div><h3>Validation assistée</h3><p>Les dossiers complets et cohérents sont validés automatiquement : vous ne traitez que ce qui demande votre attention.</p></div></div>
+        <div class="card"><span class="ic">{{ icon("lock") }}</span><div><h3>Vos données restent privées</h3><p>Connexion sécurisée (HTTPS). Vous ne voyez que vos logements et vos voyageurs, personne d'autre.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tarifs">
+    <div class="wrap">
+      <h2>Des tarifs simples, payés par virement</h2>
+      <p class="lead">Une fiche = un voyageur enregistré. Vous payez seulement ce que vous utilisez, valable 2 mois.</p>
+      <div class="prices">
+        {% for p in packs %}
+        <div class="price {% if p.fiches == 250 %}pop{% endif %}">
+          <h3>{{ p.name }}</h3>
+          <div class="aud">{{ p.audience }}</div>
+          <div class="amt">{{ p.price }} <small>DH</small></div>
+          <div class="fi">{{ p.fiches }} fiches</div>
+          <div class="per">soit {{ per_fiche(p.price, p.fiches) }} DH par fiche</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="trial">
+        {{ icon("clock") }}
+        <div><strong>Essayez gratuitement</strong>{{ trial.fiches }} fiches offertes pendant {{ trial.days }} jours à l'ouverture de votre compte. Besoin de plus ? Rechargez {{ topup.fiches }} fiches pour {{ topup.price }} DH.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Questions fréquentes</h2>
+      <div class="faq">
+        <details><summary>Mon voyageur doit-il créer un compte ?</summary><p>Non. Il ouvre votre lien, remplit le formulaire et c'est terminé. Aucune application, aucun mot de passe.</p></details>
+        <details><summary>Comment je paye ?</summary><p>Par virement bancaire. Vous choisissez un pack, les coordonnées s'affichent, vous envoyez votre reçu depuis la plateforme et le pack est activé dès confirmation.</p></details>
+        <details><summary>Que se passe-t-il quand mes fiches sont épuisées ?</summary><p>Vos voyageurs ne peuvent plus s'enregistrer jusqu'au prochain pack ou à la recharge. Vos fiches existantes restent accessibles. Un avertissement apparaît avant d'arriver à zéro.</p></details>
+        <details><summary>Les fiches imprimées sont-elles valables ?</summary><p>Le PDF reprend la forme de la fiche de police d'hébergement et peut être imprimé et conservé. Vous restez responsable de vos démarches auprès des autorités.</p></details>
+        <details><summary>Et si un voyageur envoie une mauvaise photo ?</summary><p>La plateforme la refuse tout de suite et lui demande de reprendre une photo nette de sa pièce, avant même l'envoi de la fiche.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="final">
+        <h2>Prêt à simplifier vos arrivées&nbsp;?</h2>
+        <p>Écrivez-nous : nous ouvrons votre espace hôte avec {{ trial.fiches }} fiches gratuites pour tester.</p>
+        <div class="cta">
+          {% if wa(hello) %}<a class="btn btn--wa" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat") }}WhatsApp</a>{% endif %}
+          <a class="btn btn--ghost" href="/admin/login">J'ai déjà un compte</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer><div class="wrap">{{ app_name }} · Fait au Maroc</div></footer>
+</body>
+</html>
