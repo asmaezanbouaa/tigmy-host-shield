@@ -11,6 +11,7 @@ h2{font-size:clamp(1.6rem,4.5vw,2.3rem);text-align:center}
 .lead{max-width:640px;margin:10px auto 0;text-align:center;color:var(--ink-2)}
 section{padding:56px 0}
 svg{width:22px;height:22px;flex:none}
+.kicker svg{width:15px;height:15px}
 
 /* top bar */
 .bar{position:sticky;top:0;z-index:20;background:rgba(251,247,241,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
@@ -28,7 +29,7 @@ svg{width:22px;height:22px;flex:none}
 .hero{background:linear-gradient(180deg,var(--sand-100),var(--sand-50));padding:52px 0 40px;position:relative;overflow:hidden}
 .hero::before{content:"";position:absolute;inset:0;background:url(/static/img/zellige.svg) center/340px;opacity:.06;pointer-events:none}
 .hero .wrap{position:relative;display:grid;gap:30px;grid-template-columns:1fr;align-items:center}
-.kicker{display:inline-block;background:var(--zellige-50);color:var(--zellige-600);font-weight:700;font-size:.8rem;padding:6px 12px;border-radius:999px;margin-bottom:14px}
+.kicker{display:inline-flex;align-items:center;gap:6px;background:var(--zellige-50);color:var(--zellige-600);font-weight:700;font-size:.8rem;padding:6px 12px;border-radius:999px;margin-bottom:14px}
 .hero h1{font-size:clamp(2rem,7vw,3.3rem)}
 .hero h1 em{font-style:normal;color:var(--clay-500)}
 .hero p{font-size:1.08rem;color:var(--ink-2);max-width:520px}

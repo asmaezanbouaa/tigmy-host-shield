@@ -20,9 +20,9 @@
   <section class="hero" id="top">
     <div class="wrap">
       <div>
-        <span class="kicker">Pour les hôtes Airbnb, riads et hôtels au Maroc</span>
+        <span class="kicker">{{ icon("sparkles") }} Propulsé par l'IA · Pour les hôtes Airbnb, riads et hôtels au Maroc</span>
         <h1>La fiche de police de vos voyageurs, <em>sans papier</em> et sans courir après eux.</h1>
-        <p>Envoyez un lien ou un QR code à votre voyageur. Il remplit sa fiche depuis son téléphone, photographie sa pièce d'identité et signe. Vous recevez une fiche officielle en PDF, prête à imprimer.</p>
+        <p>Envoyez un lien ou un QR code à votre voyageur. Il remplit sa fiche depuis son téléphone, photographie sa pièce d'identité et signe. Notre IA lit et vérifie la pièce, puis vous recevez une fiche officielle en PDF, prête à imprimer.</p>
         <div class="cta">
           {% if wa(hello) %}<a class="btn btn--wa" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat") }}Nous écrire sur WhatsApp</a>{% endif %}
           <a class="btn btn--primary" href="#tarifs">Voir les tarifs</a>
@@ -47,7 +47,7 @@
       <div class="steps">
         <div class="step"><span class="num">1</span><h3>Vous partagez votre lien</h3><p>Chaque hôte a son lien et son QR code personnels. Envoyez-les sur WhatsApp ou affichez le QR dans le logement.</p></div>
         <div class="step"><span class="num">2</span><h3>Le voyageur remplit sa fiche</h3><p>En français, en anglais ou en arabe. Il choisit le logement, photographie sa pièce d'identité, accepte le règlement et signe à l'écran.</p></div>
-        <div class="step"><span class="num">3</span><h3>Vous recevez la fiche officielle</h3><p>Vous confirmez en un clic et téléchargez la fiche de police et le règlement signé en PDF, en français et en arabe.</p></div>
+        <div class="step"><span class="num">3</span><h3>L'IA vérifie, vous recevez la fiche officielle</h3><p>Vous confirmez en un clic et téléchargez la fiche de police et le règlement signé en PDF, en français et en arabe.</p></div>
       </div>
     </div>
   </section>
@@ -56,11 +56,11 @@
     <div class="wrap">
       <h2>Ce que vous gagnez</h2>
       <div class="grid">
-        <div class="card"><span class="ic">{{ icon("shield") }}</span><div><h3>Pièces d'identité contrôlées</h3><p>La photo doit être nette et ressembler à une vraie pièce. Plus de photos floues ou au hasard.</p></div></div>
+        <div class="card"><span class="ic">{{ icon("shield") }}</span><div><h3>Pièces d'identité vérifiées par IA</h3><p>L'IA contrôle que la photo est nette et ressemble à une vraie pièce, et lit les informations pour les comparer à la fiche. Plus de photos floues ou au hasard.</p></div></div>
         <div class="card"><span class="ic">{{ icon("file") }}</span><div><h3>PDF d'aspect officiel</h3><p>Fiche de police et règlement intérieur bilingues, avec votre logo, signature du voyageur sur la même page que les règles.</p></div></div>
         <div class="card"><span class="ic">{{ icon("qr") }}</span><div><h3>Votre lien et votre QR code</h3><p>Un lien par hôte : vous savez toujours à quel hôte appartient chaque voyageur. Vous pouvez le renouveler à tout moment.</p></div></div>
         <div class="card"><span class="ic">{{ icon("building") }}</span><div><h3>Tous vos logements, un seul espace</h3><p>Le voyageur choisit son logement avant d'envoyer sa fiche. Calendrier des arrivées et archives incluses.</p></div></div>
-        <div class="card"><span class="ic">{{ icon("sparkles") }}</span><div><h3>Validation assistée</h3><p>Les dossiers complets et cohérents sont validés automatiquement : vous ne traitez que ce qui demande votre attention.</p></div></div>
+        <div class="card"><span class="ic">{{ icon("sparkles") }}</span><div><h3>Validation automatique par IA</h3><p>Les dossiers complets et cohérents sont validés automatiquement : vous ne traitez que ce qui demande votre attention.</p></div></div>
         <div class="card"><span class="ic">{{ icon("lock") }}</span><div><h3>Vos données restent privées</h3><p>Connexion sécurisée (HTTPS). Vous ne voyez que vos logements et vos voyageurs, personne d'autre.</p></div></div>
       </div>
     </div>
