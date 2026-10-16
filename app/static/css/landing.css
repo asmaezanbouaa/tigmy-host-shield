@@ -96,3 +96,29 @@ footer{padding:28px 0 40px;text-align:center;color:var(--muted);font-size:.85rem
   section{padding:76px 0}
 }
 @media(min-width:760px){.prices .price:nth-child(n+4){grid-column:span 1}}
+
+/* AI section */
+.ai{background:linear-gradient(160deg,#1c3f35,#16312a);color:#fff;position:relative;overflow:hidden}
+.ai::before{content:"";position:absolute;inset:0;background:url(/static/img/zellige.svg) center/320px;opacity:.07;pointer-events:none}
+.ai .wrap{position:relative}
+.ai h2{color:#fff}
+.ai h2 em{font-style:normal;color:#f2c46b}
+.ai .lead{color:#cfe3dc}
+.ai .kicker{display:flex;width:max-content;max-width:100%;margin:0 auto 14px}
+.kicker--dark{background:#ffffff1f;color:#f2c46b}
+.ai-grid{display:grid;gap:26px;margin-top:34px;grid-template-columns:1fr;align-items:center}
+.ai-list{display:grid;gap:16px}
+.ai-item{display:flex;gap:14px;align-items:flex-start}
+.ai-n{width:34px;height:34px;border-radius:50%;background:#f2c46b;color:#3a2a05;font-weight:800;display:grid;place-items:center;flex:none}
+.ai-item h3{font-size:1.05rem;color:#fff;margin-bottom:2px}
+.ai-item p{margin:0;color:#cfe3dc;font-size:.93rem}
+.ai-card{background:var(--ivory);color:var(--ink);border-radius:20px;padding:18px;box-shadow:0 24px 50px rgba(0,0,0,.35);max-width:420px;width:100%;margin:0 auto}
+.ai-card__head{display:flex;align-items:center;gap:8px;color:var(--zellige);padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.ai-card__head strong{color:var(--ink);flex:1}
+.ai-card__head span{font-size:.75rem;color:var(--muted)}
+.ai-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+.ai-row .yes{color:var(--zellige);background:var(--zellige-50);padding:2px 10px;border-radius:999px;font-size:.8rem}
+.ai-verdict{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--zellige);color:#fff;font-weight:800;border-radius:12px;padding:12px;margin-top:14px}
+.ai-foot{text-align:center;margin:30px 0 0;font-family:Fraunces,serif;font-size:1.2rem;color:#f2c46b}
+@media(min-width:760px){.ai-grid{grid-template-columns:1.1fr .9fr}}
+@media(min-width:760px){.prices{display:flex;flex-wrap:wrap;justify-content:center}.prices .price{flex:0 1 calc(33.333% - 10px);min-width:220px}}

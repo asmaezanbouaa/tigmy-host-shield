@@ -25,7 +25,8 @@
         <p>Envoyez un lien ou un QR code à votre voyageur. Il remplit sa fiche depuis son téléphone, photographie sa pièce d'identité et signe. Notre IA lit et vérifie la pièce, puis vous recevez une fiche officielle en PDF, prête à imprimer.</p>
         <div class="cta">
           {% if wa(hello) %}<a class="btn btn--wa" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat") }}Nous écrire sur WhatsApp</a>{% endif %}
-          <a class="btn btn--primary" href="#tarifs">Voir les tarifs</a>
+          <a class="btn btn--primary" href="#ia">{{ icon("sparkles") }}Découvrir l'IA</a>
+          <a class="btn btn--ghost" href="#tarifs">Voir les tarifs</a>
         </div>
         <p class="note">Essai gratuit : {{ trial.fiches }} fiches pendant {{ trial.days }} jours, sans engagement.</p>
       </div>
@@ -37,6 +38,31 @@
         <div class="ok">{{ icon("shield") }}Pièce d'identité lisible</div>
         <div class="go">Envoyer ma fiche</div>
       </div>
+    </div>
+  </section>
+
+  <section class="ai" id="ia">
+    <div class="wrap">
+      <span class="kicker kicker--dark">{{ icon("sparkles") }} Notre différence</span>
+      <h2>Une IA qui lit la pièce d'identité <em>à votre place</em></h2>
+      <p class="lead">Fini la vérification à l'œil et les fiches remplies de travers. Dès que le voyageur envoie sa fiche, l'intelligence artificielle fait le contrôle en quelques secondes.</p>
+      <div class="ai-grid">
+        <div class="ai-list">
+          <div class="ai-item"><span class="ai-n">1</span><div><h3>Elle contrôle la photo</h3><p>Image nette, contours visibles, vraie pièce d'identité. Sinon le voyageur reprend sa photo tout de suite, avant l'envoi.</p></div></div>
+          <div class="ai-item"><span class="ai-n">2</span><div><h3>Elle lit le document</h3><p>Lecture automatique du nom, du numéro de pièce et de la date de naissance sur la photo, même en arabe ou en caractères latins.</p></div></div>
+          <div class="ai-item"><span class="ai-n">3</span><div><h3>Elle compare avec la fiche</h3><p>Ce que le voyageur a écrit doit correspondre à ce qui figure sur sa pièce. Chaque champ est marqué conforme ou à vérifier.</p></div></div>
+          <div class="ai-item"><span class="ai-n">4</span><div><h3>Elle valide ou vous alerte</h3><p>Dossier cohérent : validé automatiquement. Doute : il vous est signalé avec les champs à regarder. Vous gardez toujours la décision finale.</p></div></div>
+        </div>
+        <div class="ai-card" aria-hidden="true">
+          <div class="ai-card__head">{{ icon("sparkles") }}<strong>Rapport de l'IA</strong><span>3 secondes</span></div>
+          <div class="ai-row"><span>Nom et prénom</span><b class="yes">Conforme</b></div>
+          <div class="ai-row"><span>Numéro de pièce</span><b class="yes">Conforme</b></div>
+          <div class="ai-row"><span>Date de naissance</span><b class="yes">Conforme</b></div>
+          <div class="ai-row"><span>Qualité de la photo</span><b class="yes">Nette</b></div>
+          <div class="ai-verdict">{{ icon("shield") }}Validée par l'IA</div>
+        </div>
+      </div>
+      <p class="ai-foot">Moins de saisie, moins d'erreurs, et votre temps réservé à vos voyageurs.</p>
     </div>
   </section>
 
