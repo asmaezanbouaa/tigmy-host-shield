@@ -1,9 +1,9 @@
 {% from "_icons.html" import icon, fonts %}<!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sign in — {{ app_name }}</title>
+  <title>Connexion — {{ app_name }}</title>
   {{ fonts() }}
   <link rel="stylesheet" href="/static/css/guest.css?v={{ asset_v }}">
 </head>
@@ -11,14 +11,14 @@
   <div class="g-login">
     <aside class="g-login__art">
       <div>
-        <h2 class="g-display">Every guest, registered before they arrive.</h2>
-        <p>Official guest forms, police records and signed house rules for your apartments — handled in one calm place.</p>
+        <h2 class="g-display">Chaque client enregistré avant son arrivée.</h2>
+        <p>Fiches de police, règlement signé et pièces d'identité de vos clients, gérés au même endroit, simplement.</p>
       </div>
-      <img class="g-login__logo" src="/static/img/logo.png" alt="{{ app_name }} logo" width="260" height="260">
+      <img class="g-login__logo" src="/static/img/logo.png" alt="Logo {{ app_name }}" width="260" height="260">
       <ul class="g-features">
-        <li>{{ icon("shield") }}<span>ID scans checked automatically</span></li>
-        <li>{{ icon("file") }}<span>Fiche de police PDF generated for you</span></li>
-        <li>{{ icon("lock") }}<span>ID files deleted after verification</span></li>
+        <li>{{ icon("shield") }}<span>Pièces d'identité vérifiées automatiquement</span></li>
+        <li>{{ icon("file") }}<span>Fiche de police en PDF générée pour vous</span></li>
+        <li>{{ icon("lock") }}<span>Pièces d'identité supprimées après vérification</span></li>
       </ul>
     </aside>
 
@@ -26,10 +26,10 @@
       <div class="g-login__card">
         <span class="g-brand">
           <img src="/static/img/logo-192.png" alt="">
-          <span><span class="g-brand__name">{{ app_name }}</span><span class="g-brand__tag">Host dashboard</span></span>
+          <span><span class="g-brand__name">{{ app_name }}</span><span class="g-brand__tag">Espace hôte</span></span>
         </span>
-        <h1 class="g-display">Welcome back</h1>
-        <p style="color:var(--ink-2);margin:0 0 24px">Sign in to review registrations and confirm guests.</p>
+        <h1 class="g-display">Bon retour</h1>
+        <p style="color:var(--ink-2);margin:0 0 24px">Connectez-vous pour consulter vos fiches et confirmer vos clients.</p>
 
         {% if error %}
         <div class="g-alert g-alert--error" style="margin-bottom:16px" role="alert">{{ icon("alert") }}<span>{{ error }}</span></div>
@@ -37,16 +37,16 @@
 
         <form method="post" action="/admin/login" class="g-grid">
           <div class="g-field">
-            <label class="g-label" for="l-user">Username</label>
+            <label class="g-label" for="l-user">Identifiant</label>
             <input class="g-input" id="l-user" type="text" name="username" required autocomplete="username" autocapitalize="none" autofocus>
           </div>
           <div class="g-field">
-            <label class="g-label" for="l-pass">Password</label>
+            <label class="g-label" for="l-pass">Mot de passe</label>
             <input class="g-input" id="l-pass" type="password" name="password" required autocomplete="current-password">
           </div>
-          <button type="submit" class="g-btn g-btn--primary g-btn--block" style="margin-top:6px">Sign in{{ icon("arrow-right") }}</button>
+          <button type="submit" class="g-btn g-btn--primary g-btn--block" style="margin-top:6px">Se connecter{{ icon("arrow-right") }}</button>
         </form>
-        <p style="margin:22px 0 0"><span class="g-meta">{{ icon("lock") }}<span>Secure connection</span></span></p>
+        <p style="margin:22px 0 0"><span class="g-meta">{{ icon("lock") }}<span>Connexion sécurisée</span></span></p>
       </div>
     </main>
   </div>

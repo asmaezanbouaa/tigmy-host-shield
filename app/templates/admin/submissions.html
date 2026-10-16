@@ -1,64 +1,64 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
 {% set active = 'submissions' %}
-{% block title %}Submissions{% endblock %}
+{% block title %}Fiches clients{% endblock %}
 
 {% block content %}
 {% if request.query_params.get('sub') == 'archived' %}
 <div class="alert alert-success">
-  Submission archived.
+  Fiche archivée.
   {% if request.query_params.get('msg') %}<br><span class="subtitle">{{ request.query_params.get('msg') }}</span>{% endif %}
 </div>
 {% endif %}
 
-<h1 class="admin-page-title">Guest submissions</h1>
-<p class="admin-page-lead"><strong>Review</strong> each guest, check the ID scan, <strong>choose the apartment</strong>, then <strong>Confirm</strong>.</p>
+<h1 class="admin-page-title">Fiches clients</h1>
+<p class="admin-page-lead">Examinez chaque fiche, contrôlez la pièce d'identité, <strong>choisissez le logement</strong>, puis <strong>confirmez</strong>.</p>
 
 <div class="admin-panel">
   <div class="admin-toolbar-row">
     <div class="admin-workflow-hint">
-      <span class="pill-submitted"><strong>submitted</strong> = needs action</span>
-      <span class="pill-confirmed"><strong>confirmed</strong> = approved</span>
-      <span class="pill-ai"><strong>AI approved</strong> = ID matched, choose apartment</span>
+      <span class="pill-submitted"><strong>À traiter</strong> = action requise</span>
+      <span class="pill-confirmed"><strong>Confirmé</strong> = validé</span>
+      <span class="pill-ai"><strong>Validée par l'IA</strong> = pièce conforme, logement à choisir</span>
     </div>
     <div class="admin-quick-actions">
-      <a class="btn btn-secondary btn-sm" href="/admin/calendar">{{ icon("calendar") }}Calendar</a>
-      <a class="btn btn-secondary btn-sm" href="{{ export_url }}">{{ icon("download") }}Export CSV</a>
+      <a class="btn btn-secondary btn-sm" href="/admin/calendar">{{ icon("calendar") }}Calendrier</a>
+      <a class="btn btn-secondary btn-sm" href="{{ export_url }}">{{ icon("download") }}Exporter (CSV)</a>
     </div>
   </div>
 
   <form id="submissions-filter-form" class="filters" method="get" action="/admin/submissions">
-    <input type="search" name="q" placeholder="Search a guest by name…" value="{{ q }}" autocomplete="off">
-    <select name="status_filter" aria-label="Status">
-      <option value="">All statuses</option>
+    <input type="search" name="q" placeholder="Rechercher un client par nom…" value="{{ q }}" autocomplete="off">
+    <select name="status_filter" aria-label="Statut">
+      <option value="">Tous les statuts</option>
       {% for s in statuses %}
-      <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s }}</option>
+      <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s|status_fr }}</option>
       {% endfor %}
     </select>
-    <select name="ai_filter" aria-label="AI filter">
-      <option value="">All AI states</option>
-      <option value="needs_review" {% if ai_filter == 'needs_review' %}selected{% endif %}>AI needs review</option>
-      <option value="auto_confirmed" {% if ai_filter == 'auto_confirmed' %}selected{% endif %}>AI auto-approved</option>
+    <select name="ai_filter" aria-label="Filtre IA">
+      <option value="">Tous les avis de l'IA</option>
+      <option value="needs_review" {% if ai_filter == 'needs_review' %}selected{% endif %}>IA : à vérifier</option>
+      <option value="auto_confirmed" {% if ai_filter == 'auto_confirmed' %}selected{% endif %}>IA : validées</option>
     </select>
     <details class="filters-more" {% if arrival_from or arrival_to or submitted_from or submitted_to %}open{% endif %}>
-      <summary>{{ icon("calendar") }}Filter by dates</summary>
+      <summary>{{ icon("calendar") }}Filtrer par dates</summary>
       <div class="filters-more__grid">
-        <label>Arrival from<input type="date" name="arrival_from" value="{{ arrival_from }}"></label>
-        <label>Arrival to<input type="date" name="arrival_to" value="{{ arrival_to }}"></label>
-        <label>Submitted from<input type="date" name="submitted_from" value="{{ submitted_from }}"></label>
-        <label>Submitted to<input type="date" name="submitted_to" value="{{ submitted_to }}"></label>
+        <label>Arrivée à partir du<input type="date" name="arrival_from" value="{{ arrival_from }}"></label>
+        <label>Arrivée jusqu'au<input type="date" name="arrival_to" value="{{ arrival_to }}"></label>
+        <label>Reçue à partir du<input type="date" name="submitted_from" value="{{ submitted_from }}"></label>
+        <label>Reçue jusqu'au<input type="date" name="submitted_to" value="{{ submitted_to }}"></label>
       </div>
     </details>
-    <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+    <button type="submit" class="btn btn-secondary btn-sm">Appliquer</button>
     {% if filters_active %}
-    <a href="/admin/submissions" class="btn btn-secondary btn-sm">Clear</a>
+    <a href="/admin/submissions" class="btn btn-secondary btn-sm">Effacer</a>
     {% endif %}
   </form>
   <p class="subtitle" style="margin:0.5rem 0 1rem">
     {% if filters_active %}
-    <strong>{{ result_count }}</strong> result(s){% if status_filter %} · {{ status_filter }}{% endif %}
+    <strong>{{ result_count }}</strong> {{ plural(result_count, "résultat", "résultats") }}{% if status_filter %} · {{ status_filter|status_fr }}{% endif %}
     {% else %}
-    Filters update automatically when you change a field.
+    Les filtres s'appliquent automatiquement quand vous changez un champ.
     {% endif %}
   </p>
 
@@ -66,12 +66,12 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>Guest</th>
-          <th>ID number</th>
-          <th>Stay</th>
-          <th>Apartment</th>
-          <th>Submitted</th>
-          <th>Status</th>
+          <th>Client</th>
+          <th>N° de pièce</th>
+          <th>Séjour</th>
+          <th>Logement</th>
+          <th>Reçue le</th>
+          <th>Statut</th>
           <th>Action</th>
         </tr>
       </thead>
@@ -79,21 +79,21 @@
         {% for sub in submissions %}
         <tr>
           <td><strong>{{ sub.last_name }}</strong> {{ sub.first_name }}</td>
-          <td data-label="ID number" style="font-size:0.85rem">{{ sub.id_document_number }}</td>
-          <td data-label="Stay"><span>{{ sub.arrival_date }} → {{ sub.departure_date }}<br><span class="subtitle">{{ sub.number_of_guests }} guests</span></span></td>
-          <td data-label="Apartment">{% if sub.apartment and sub.apartment.section_id %}{{ sub.apartment.name }}{% else %}<span class="chip chip--amber">Not chosen</span>{% endif %}</td>
-          <td data-label="Submitted">{{ sub.submitted_at.strftime('%d %b %Y %H:%M') }}</td>
-          <td data-label="Status"><span>
-            <span class="status-pill status-{{ sub.status }}">{{ sub.status }}</span>
+          <td data-label="N° de pièce" style="font-size:0.85rem">{{ sub.id_document_number }}</td>
+          <td data-label="Séjour"><span>{{ sub.arrival_date|fday }} → {{ sub.departure_date|fday }}<br><span class="subtitle">{{ sub.number_of_guests }} {{ plural(sub.number_of_guests, "voyageur", "voyageurs") }}</span></span></td>
+          <td data-label="Logement">{% if sub.apartment and sub.apartment.section_id %}{{ sub.apartment.name }}{% else %}<span class="chip chip--amber">Non choisi</span>{% endif %}</td>
+          <td data-label="Reçue le">{{ sub.submitted_at|fdatetime }}</td>
+          <td data-label="Statut"><span>
+            <span class="status-pill status-{{ sub.status }}">{{ sub.status|status_fr }}</span>
             {% if sub.ai_auto_confirmed %}
-            <br><span class="ai-badge ai-badge--auto">AI approved{% if sub.status == 'submitted' %} · choose apartment{% endif %}</span>
+            <br><span class="ai-badge ai-badge--auto">Validée par l'IA{% if sub.status == 'submitted' %} · choisir le logement{% endif %}</span>
             {% elif sub.ai_verification_at and sub.status == 'submitted' %}
-            <br><span class="ai-badge ai-badge--review">AI review</span>
+            <br><span class="ai-badge ai-badge--review">IA : à vérifier</span>
             {% endif %}
           </span></td>
           <td class="actions-cell">
-            <a class="btn btn-secondary btn-sm" href="/admin/submissions/{{ sub.public_id }}" style="width:auto;text-decoration:none">
-              {% if sub.status == 'submitted' %}Review{% else %}View{% endif %}
+            <a class="btn btn-secondary btn-sm" href="/admin/submissions/{{ sub.public_id }}">
+              {% if sub.status == 'submitted' %}Examiner{% else %}Voir{% endif %}
             </a>
             {% if sub.document %}
             <a class="btn-link" href="/admin/submissions/{{ sub.public_id }}/pdf">PDF</a>
@@ -101,7 +101,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7">No submissions yet. <a href="/admin/share">Share the guest link</a> to get started.</td></tr>
+        <tr><td colspan="7">Aucune fiche pour le moment. <a href="/admin/share">Partagez votre lien clients</a> pour commencer.</td></tr>
         {% endfor %}
       </tbody>
     </table>

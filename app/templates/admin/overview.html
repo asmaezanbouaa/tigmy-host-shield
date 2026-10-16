@@ -1,31 +1,34 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
+{% from "_pack.html" import pack_card %}
 {% set active = 'overview' %}
-{% block title %}Overview{% endblock %}
+{% block title %}Aperçu{% endblock %}
 
 {% block content %}
 {% if request.query_params.get('sub') == 'archived' %}
 <div class="alert alert-success">
-  Guest notified and submission archived.
+  Fiche archivée.
   {% if request.query_params.get('msg') %}<br><span class="subtitle">{{ request.query_params.get('msg') }}</span>{% endif %}
 </div>
 {% endif %}
 {% if request.query_params.get('profile') == 'updated' %}
-<div class="alert alert-success">Profile updated successfully.</div>
+<div class="alert alert-success">Profil mis à jour.</div>
 {% endif %}
 {% if request.query_params.get('profile') == 'password' %}
-<div class="alert alert-success">Password changed successfully.</div>
+<div class="alert alert-success">Mot de passe modifié.</div>
 {% endif %}
 
-<h1 class="admin-page-title">Marhaba, {{ admin.username }}</h1>
-<p class="admin-page-lead">Here is what is happening with your guests in <strong>{{ section.name }}</strong> today.</p>
+<h1 class="admin-page-title">Bonjour, {{ admin.username }}</h1>
+<p class="admin-page-lead">Voici l'activité de vos clients chez <strong>{{ section.name }}</strong>.</p>
+
+{{ pack_card(pack_info) }}
 
 {% if not apartment_count %}
 <div class="admin-ai-banner admin-ai-banner--review">
   <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("building") }}</span>
   <div>
-    <strong>Add your apartments first</strong>
-    <p class="subtitle" style="margin:0.25rem 0 0">You choose an apartment for each guest before confirming. <a href="/admin/apartments#add">Add apartments</a></p>
+    <strong>Ajoutez d'abord vos logements</strong>
+    <p class="subtitle" style="margin:0.25rem 0 0">Vous choisissez un logement pour chaque client avant de confirmer sa fiche. <a href="/admin/apartments#add">Ajouter des logements</a></p>
   </div>
 </div>
 {% endif %}
@@ -33,9 +36,9 @@
 <div class="admin-ai-banner">
   <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("shield") }}</span>
   <div>
-    <strong>{{ app_name }} is powered by AI</strong>
+    <strong>{{ app_name }} vérifie les pièces d'identité avec l'IA</strong>
     <p class="subtitle" style="margin:0.25rem 0 0">
-      New registrations are checked automatically against the ID scan. For clear matches you only choose the apartment and confirm.
+      Chaque nouvelle fiche est comparée automatiquement à la pièce d'identité. Quand tout correspond, il vous reste seulement à choisir le logement et à confirmer.
     </p>
   </div>
 </div>
@@ -43,42 +46,42 @@
 <div class="admin-stats">
   <a href="/admin/submissions?ai_filter=needs_review" class="admin-stat admin-stat--pending admin-stat--link">
     <p class="admin-stat__value">{{ ai_needs_review_count if ai_needs_review_count else pending_count }}</p>
-    <p class="admin-stat__label">{% if ai_needs_review_count %}AI needs review{% else %}Awaiting review{% endif %}</p>
+    <p class="admin-stat__label">{% if ai_needs_review_count %}À vérifier (IA hésitante){% else %}En attente de traitement{% endif %}</p>
   </a>
   <a href="/admin/ai-approved" class="admin-stat admin-stat--ai admin-stat--link">
     <p class="admin-stat__value">{{ ai_awaiting_apartment_count }}</p>
-    <p class="admin-stat__label">AI approved · need apartment</p>
+    <p class="admin-stat__label">Validées par l'IA · logement à choisir</p>
   </a>
   <a href="/admin/submissions?status_filter=confirmed" class="admin-stat admin-stat--confirmed admin-stat--link">
     <p class="admin-stat__value">{{ confirmed_count }}</p>
-    <p class="admin-stat__label">Confirmed total</p>
+    <p class="admin-stat__label">Fiches confirmées</p>
   </a>
   <a href="/admin/archive" class="admin-stat admin-stat--archive admin-stat--link">
     <p class="admin-stat__value">{{ archive_count }}</p>
-    <p class="admin-stat__label">Archived</p>
+    <p class="admin-stat__label">Archivées</p>
   </a>
 </div>
 
 <div class="admin-overview-grid">
   <a href="/admin/share" class="admin-overview-card">
-    <span class="admin-overview-card__icon">{{ icon("share") }}</span>
-    <h3>Share with guests</h3>
-    <p>Copy the registration link or download a QR code for guests.</p>
+    <span class="admin-overview-card__icon">{{ icon("qr") }}</span>
+    <h3>Lien et QR code clients</h3>
+    <p>Copiez votre lien d'enregistrement ou téléchargez votre QR code à imprimer.</p>
   </a>
   <a href="/admin/submissions?ai_filter=needs_review" class="admin-overview-card">
     <span class="admin-overview-card__icon">{{ icon("inbox") }}</span>
-    <h3>Manual review queue</h3>
-    <p>{% if ai_needs_review_count %}{{ ai_needs_review_count }} submission(s) where AI confidence was below {{ ai_threshold_pct }}%.{% else %}All caught up — no AI flags waiting.{% endif %}</p>
+    <h3>Fiches à vérifier</h3>
+    <p>{% if ai_needs_review_count %}{{ ai_needs_review_count }} {{ plural(ai_needs_review_count, "fiche", "fiches") }} où la confiance de l'IA était inférieure à {{ ai_threshold_pct }} %.{% else %}Rien à vérifier pour le moment.{% endif %}</p>
   </a>
   <a href="/admin/ai-approved" class="admin-overview-card">
     <span class="admin-overview-card__icon">{{ icon("sparkles") }}</span>
-    <h3>AI-approved guests</h3>
-    <p>{% if ai_awaiting_apartment_count %}{{ ai_awaiting_apartment_count }} guest(s) approved by AI, waiting for you to choose the apartment.{% else %}Nothing waiting. AI-approved guests appear here.{% endif %}</p>
+    <h3>Validées par l'IA</h3>
+    <p>{% if ai_awaiting_apartment_count %}{{ ai_awaiting_apartment_count }} {{ plural(ai_awaiting_apartment_count, "client validé", "clients validés") }} par l'IA, en attente du choix du logement.{% else %}Rien en attente. Les clients validés par l'IA apparaissent ici.{% endif %}</p>
   </a>
   <a href="/admin/calendar" class="admin-overview-card">
     <span class="admin-overview-card__icon">{{ icon("calendar") }}</span>
-    <h3>Calendar</h3>
-    <p>See arrivals and departures by month.</p>
+    <h3>Calendrier</h3>
+    <p>Consultez les arrivées et les départs, mois par mois.</p>
   </a>
 </div>
 {% endblock %}

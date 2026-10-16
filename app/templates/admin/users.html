@@ -1,15 +1,15 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
 {% set active = 'users' %}
-{% block title %}Host users{% endblock %}
+{% block title %}Utilisateurs{% endblock %}
 
 {% block content %}
 <div class="page-head">
   <div>
-    <h1 class="admin-page-title">Host users</h1>
-    <p class="admin-page-lead">Every profile that can sign in. Hosts only see their own properties and guests; the admin sees everything.</p>
+    <h1 class="admin-page-title">Utilisateurs</h1>
+    <p class="admin-page-lead">Tous les profils qui peuvent se connecter. Un hôte ne voit que ses propres logements et clients ; l'administrateur voit tout.</p>
   </div>
-  <a href="/admin/sections#new" class="btn btn-primary">{{ icon("users") }}New host</a>
+  <a href="/admin/sections#new" class="btn btn-primary">{{ icon("users") }}Nouvel hôte</a>
 </div>
 
 {% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
@@ -19,37 +19,37 @@
   <div class="admin-table-wrap">
     <table class="data-table users-table">
       <thead>
-        <tr><th>User</th><th>Role</th><th>Host</th><th>Last sign-in</th><th>Status</th><th></th></tr>
+        <tr><th>Utilisateur</th><th>Rôle</th><th>Hôte</th><th>Dernière connexion</th><th>Statut</th><th></th></tr>
       </thead>
       <tbody>
         {% for u in users %}
         {% set managed_in_env = u.username|lower in env_usernames %}
         <tr>
           <td><span class="user-cell"><span class="a-avatar a-avatar--sm">{{ u.username[0]|upper }}</span><strong>{{ u.username }}</strong></span></td>
-          <td data-label="Role">{% if u.is_superadmin %}<span class="chip chip--blue">Admin</span>{% else %}Host{% endif %}</td>
-          <td data-label="Host">{% if u.section %}{{ u.section.name }}{% if not u.section.is_active %} <span class="chip chip--muted">off</span>{% endif %}{% else %}All hosts{% endif %}</td>
-          <td data-label="Last sign-in">{{ u.last_login_at.strftime('%d %b %Y, %H:%M') if u.last_login_at else "Never" }}</td>
-          <td data-label="Status">{% if u.is_active %}<span class="chip chip--green">Active</span>{% else %}<span class="chip chip--red">{{ icon("ban") }}Blocked</span>{% endif %}</td>
+          <td data-label="Rôle">{% if u.is_superadmin %}<span class="chip chip--blue">Administrateur</span>{% else %}Hôte{% endif %}</td>
+          <td data-label="Hôte">{% if u.section %}{{ u.section.name }}{% if not u.section.is_active %} <span class="chip chip--muted">désactivé</span>{% endif %}{% else %}Tous les hôtes{% endif %}</td>
+          <td data-label="Dernière connexion">{{ u.last_login_at|fdatetime if u.last_login_at else "Jamais" }}</td>
+          <td data-label="Statut">{% if u.is_active %}<span class="chip chip--green">Actif</span>{% else %}<span class="chip chip--red">{{ icon("ban") }}Bloqué</span>{% endif %}</td>
           <td class="actions-cell">
             {% if u.section and not u.is_superadmin %}
             <form method="post" action="/admin/sections/{{ u.section.public_id }}/open" style="display:inline">
               <input type="hidden" name="next" value="/admin/">
-              <button type="submit" class="btn btn-secondary btn-sm">{{ icon("eye") }}Open host</button>
+              <button type="submit" class="btn btn-secondary btn-sm">{{ icon("eye") }}Ouvrir l'hôte</button>
             </form>
             {% if not managed_in_env %}
             <form method="post" action="/admin/sections/{{ u.section.public_id }}/admins/{{ u.id }}/block?back=users" style="display:inline"
-                  onsubmit="return confirm('{% if u.is_active %}Block {{ u.username|e }}? They are signed out immediately.{% else %}Unblock {{ u.username|e }}?{% endif %}');">
-              <button type="submit" class="btn btn-secondary btn-sm">{% if u.is_active %}Block{% else %}Unblock{% endif %}</button>
+                  onsubmit="return confirm('{% if u.is_active %}Bloquer {{ u.username|e }} ? Il est déconnecté immédiatement.{% else %}Débloquer {{ u.username|e }} ?{% endif %}');">
+              <button type="submit" class="btn btn-secondary btn-sm">{% if u.is_active %}Bloquer{% else %}Débloquer{% endif %}</button>
             </form>
             <details class="disclose" style="display:inline-block">
-              <summary class="btn btn-secondary btn-sm">New password</summary>
+              <summary class="btn btn-secondary btn-sm">Nouveau mot de passe</summary>
               <form method="post" action="/admin/sections/{{ u.section.public_id }}/admins/{{ u.id }}/password?back=users" class="mini-form">
-                <input type="password" name="password" required minlength="10" placeholder="10+ characters" autocomplete="new-password">
-                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                <input type="password" name="password" required minlength="10" placeholder="10 caractères minimum" autocomplete="new-password">
+                <button type="submit" class="btn btn-primary btn-sm">Enregistrer</button>
               </form>
             </details>
             {% else %}
-            <span class="subtitle">set in .env</span>
+            <span class="subtitle">défini dans .env</span>
             {% endif %}
             {% endif %}
           </td>

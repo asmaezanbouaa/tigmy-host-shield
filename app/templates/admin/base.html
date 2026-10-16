@@ -1,9 +1,9 @@
 {% from "_icons.html" import icon, fonts %}<!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{% block title %}Admin{% endblock %} — {{ app_name }}</title>
+  <title>{% block title %}Espace hôte{% endblock %} — {{ app_name }}</title>
   {{ fonts() }}
   <link rel="stylesheet" href="/static/css/app.css?v={{ asset_v }}">
   {% block head %}{% endblock %}
@@ -11,39 +11,50 @@
 <body class="admin-body">
   {% set admin_mode = admin.is_superadmin and not admin.is_viewing_other_section %}
   {% set admin_nav = [
-    ("stats", "/admin/stats", "chart", "Dashboard", None, ""),
-    ("guests", "/admin/guests", "inbox", "All guests", None, ""),
-    ("sections", "/admin/sections", "home", "Hosts", None, ""),
-    ("users", "/admin/users", "users", "Host users", None, ""),
+    ("stats", "/admin/stats", "chart", "Tableau de bord", None, ""),
+    ("orders", "/admin/orders", "card", "Commandes", pending_orders_count, "warn"),
+    ("guests", "/admin/guests", "inbox", "Tous les clients", None, ""),
+    ("sections", "/admin/sections", "home", "Hôtes", None, ""),
+    ("users", "/admin/users", "users", "Utilisateurs", None, ""),
   ] %}
+  {% if pack_info %}
+    {% set pack_badge = pack_info.remaining if pack_info.status == 'active' else '!' %}
+    {% set pack_tone = 'bad' if pack_info.status != 'active' else ('warn' if (pack_info.low or pack_info.expiring_soon) else 'ai') %}
+  {% else %}
+    {% set pack_badge = None %}{% set pack_tone = '' %}
+  {% endif %}
   {% set nav = [
-    ("overview", "/admin/", "home", "Overview", None, ""),
-    ("submissions", "/admin/submissions", "inbox", "Submissions", pending_count, ""),
-    ("ai_approved", "/admin/ai-approved", "sparkles", "AI approved", ai_auto_confirmed_count, "ai"),
-    ("calendar", "/admin/calendar", "calendar", "Calendar", None, ""),
-    ("apartments", "/admin/apartments", "building", "Apartments", None, ""),
-    ("share", "/admin/share", "share", "Share with guests", None, ""),
-    ("archive", "/admin/archive", "archive", "Archive", archive_count, "muted"),
+    ("overview", "/admin/", "home", "Aperçu", None, ""),
+    ("submissions", "/admin/submissions", "inbox", "Fiches", pending_count, ""),
+    ("ai_approved", "/admin/ai-approved", "sparkles", "Validées par l'IA", ai_auto_confirmed_count, "ai"),
+    ("calendar", "/admin/calendar", "calendar", "Calendrier", None, ""),
+    ("apartments", "/admin/apartments", "building", "Logements", None, ""),
+    ("share", "/admin/share", "qr", "Lien et QR code", None, ""),
+    ("packs", "/admin/packs", "package", "Mon pack", pack_badge, pack_tone),
+    ("archive", "/admin/archive", "archive", "Archives", archive_count, "muted"),
   ] %}
+  {% set short = {"stats": "Tableau", "orders": "Commandes", "guests": "Clients", "sections": "Hôtes", "users": "Utilisateurs",
+                  "overview": "Aperçu", "submissions": "Fiches", "ai_approved": "IA", "calendar": "Agenda"} %}
+  {% set support_msg = "Bonjour, je suis " ~ admin.username ~ (" (" ~ section.name ~ ")" if section else "") ~ ". J'ai besoin d'aide avec " ~ app_name ~ "." %}
 
   <div class="a-shell">
     <aside class="a-sidebar" id="a-sidebar">
       <a href="{{ '/admin/stats' if admin_mode else '/admin/' }}" class="a-brand">
         <img src="/static/img/logo-192.png" alt="" width="38" height="38">
-        <span><span class="a-brand__name">{{ app_name }}</span><span class="a-brand__tag">{{ "Admin panel" if admin_mode else "Host dashboard" }}</span></span>
+        <span><span class="a-brand__name">{{ app_name }}</span><span class="a-brand__tag">{{ "Panneau administrateur" if admin_mode else "Espace hôte" }}</span></span>
       </a>
       {% if admin_mode %}
-      <div class="a-section-chip a-section-chip--admin" title="You see every host, user and guest">
-        <span class="a-section-chip__label">Role</span>
-        <span class="a-section-chip__name">Admin · all hosts</span>
+      <div class="a-section-chip a-section-chip--admin" title="Vous voyez tous les hôtes, utilisateurs et clients">
+        <span class="a-section-chip__label">Rôle</span>
+        <span class="a-section-chip__name">Administrateur · tous les hôtes</span>
       </div>
       {% elif section %}
-      <div class="a-section-chip" title="You only see this host's apartments and guests">
-        <span class="a-section-chip__label">Host</span>
+      <div class="a-section-chip" title="Vous ne voyez que les logements et clients de cet hôte">
+        <span class="a-section-chip__label">Hôte</span>
         <span class="a-section-chip__name">{{ section.name }}</span>
       </div>
       {% endif %}
-      <nav class="a-nav" aria-label="Admin sections">
+      <nav class="a-nav" aria-label="Sections">
         {% for key, href, ic, label, badge, tone in (admin_nav if admin_mode else nav) %}
         <a href="{{ href }}" class="a-nav__item {% if active == key %}is-active{% endif %}" {% if active == key %}aria-current="page"{% endif %}>
           {{ icon(ic) }}<span>{{ label }}</span>
@@ -51,20 +62,23 @@
         </a>
         {% endfor %}
         {% if admin.is_superadmin and not admin_mode %}
-        <p class="a-nav__heading">Admin</p>
+        <p class="a-nav__heading">Administrateur</p>
         <form method="post" action="/admin/view/exit">
-          <button type="submit" class="a-nav__item a-nav__item--btn">{{ icon("arrow-left") }}<span>Back to admin panel</span></button>
+          <button type="submit" class="a-nav__item a-nav__item--btn">{{ icon("arrow-left") }}<span>Retour au panneau admin</span></button>
         </form>
         {% endif %}
       </nav>
       <div class="a-sidebar__foot">
+        {% if not admin.is_superadmin and wa(support_msg) %}
+        <a href="{{ wa(support_msg) }}" target="_blank" rel="noopener" class="a-support">{{ icon("chat") }}<span>Support WhatsApp</span></a>
+        {% endif %}
         <a href="/admin/profile" class="a-user {% if active == 'profile' %}is-active{% endif %}">
           <span class="a-avatar">{{ admin.username[0]|upper }}</span>
-          <span class="a-user__name">{{ admin.username }}<span class="a-user__role">{{ "Admin" if admin.is_superadmin else "Host" }}</span></span>
+          <span class="a-user__name">{{ admin.username }}<span class="a-user__role">{{ "Administrateur" if admin.is_superadmin else "Hôte" }}</span></span>
           {{ icon("settings") }}
         </a>
         <form method="post" action="/admin/logout">
-          <button type="submit" class="a-nav__item a-nav__item--btn">{{ icon("logout") }}<span>Log out</span></button>
+          <button type="submit" class="a-nav__item a-nav__item--btn">{{ icon("logout") }}<span>Déconnexion</span></button>
         </form>
       </div>
     </aside>
@@ -76,31 +90,57 @@
           <img src="/static/img/logo-192.png" alt="" width="32" height="32">
           <span class="a-brand__name">{{ app_name }}</span>
         </a>
-        <a href="/admin/profile" class="a-avatar a-avatar--sm" title="Your profile">{{ admin.username[0]|upper }}</a>
+        <a href="/admin/profile" class="a-avatar a-avatar--sm" title="Votre profil">{{ admin.username[0]|upper }}</a>
       </header>
 
       <main class="a-main">
         {% if admin.is_viewing_other_section %}
         <div class="owner-view-bar" role="status">
           {{ icon("eye") }}
-          <span>Admin view of host <strong>{{ admin.active_section.name }}</strong>. You see exactly what this host sees; anything you do here happens in this host.</span>
-          <form method="post" action="/admin/view/exit"><button type="submit" class="btn btn-secondary btn-sm">Back to admin panel</button></form>
+          <span>Vue administrateur de l'hôte <strong>{{ admin.active_section.name }}</strong>. Vous voyez exactement ce que voit cet hôte ; tout ce que vous faites ici s'applique à cet hôte.</span>
+          <form method="post" action="/admin/view/exit"><button type="submit" class="btn btn-secondary btn-sm">Retour au panneau admin</button></form>
         </div>
         {% endif %}
+
+        {% if section and pack_info and active != 'packs' %}
+          {% if pack_info.status != 'active' %}
+          <div class="pack-banner pack-banner--bad" role="alert">
+            {{ icon("alert") }}
+            <div class="pack-banner__text">
+              <strong>{% if pack_info.status == 'exhausted' %}Votre pack est épuisé.{% elif pack_info.status == 'expired' %}Votre pack a expiré.{% else %}Vous n'avez pas de pack actif.{% endif %}</strong>
+              Vos clients ne peuvent plus s'enregistrer avec votre lien. Vos fiches existantes restent accessibles.
+            </div>
+            <div class="pack-banner__actions">
+              <a href="/admin/packs" class="btn btn-primary btn-sm">Commander un pack</a>
+              {% if wa(support_msg) %}<a href="{{ wa(support_msg) }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">{{ icon("chat") }}WhatsApp</a>{% endif %}
+            </div>
+          </div>
+          {% elif pack_info.low or pack_info.expiring_soon %}
+          <div class="pack-banner pack-banner--warn" role="status">
+            {{ icon("clock") }}
+            <div class="pack-banner__text">
+              <strong>{% if pack_info.low %}Plus que {{ pack_info.remaining }} {{ plural(pack_info.remaining, "fiche", "fiches") }} dans votre pack.{% else %}Votre pack expire dans {{ pack_info.days_left }} {{ plural(pack_info.days_left, "jour", "jours") }}.{% endif %}</strong>
+              Pensez à recharger ou à commander un nouveau pack pour ne pas bloquer vos clients.
+            </div>
+            <div class="pack-banner__actions"><a href="/admin/packs" class="btn btn-primary btn-sm">Voir les packs</a></div>
+          </div>
+          {% endif %}
+        {% endif %}
+
         {% block content %}{% endblock %}
       </main>
     </div>
   </div>
 
-  <nav class="a-tabbar" aria-label="Quick navigation">
-    {% for key, href, ic, label, badge, tone in (admin_nav if admin_mode else nav[:4]) %}
+  <nav class="a-tabbar" aria-label="Navigation rapide">
+    {% for key, href, ic, label, badge, tone in (admin_nav[:4] if admin_mode else nav[:4]) %}
     <a href="{{ href }}" class="a-tabbar__item {% if active == key %}is-active{% endif %}">
-      <span class="a-tabbar__icon">{{ icon(ic) }}{% if badge and key == 'submissions' %}<span class="a-dot"></span>{% endif %}</span>
-      <span>{{ {'ai_approved': 'AI', 'guests': 'Guests', 'users': 'Users', 'stats': 'Dashboard'}.get(key, label.split(' ')[0]) }}</span>
+      <span class="a-tabbar__icon">{{ icon(ic) }}{% if badge and key in ('submissions', 'orders') %}<span class="a-dot"></span>{% endif %}</span>
+      <span>{{ short.get(key, label) }}</span>
     </a>
     {% endfor %}
-    <button type="button" class="a-tabbar__item {% if active in ('apartments', 'share', 'archive', 'profile') %}is-active{% endif %}" id="a-menu-btn" aria-controls="a-sidebar" aria-expanded="false">
-      <span class="a-tabbar__icon">{{ icon("more") }}</span><span>More</span>
+    <button type="button" class="a-tabbar__item {% if active in ('apartments', 'share', 'packs', 'archive', 'profile', 'users') %}is-active{% endif %}" id="a-menu-btn" aria-controls="a-sidebar" aria-expanded="false">
+      <span class="a-tabbar__icon">{{ icon("more") }}</span><span>Plus</span>
     </button>
   </nav>
 

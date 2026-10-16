@@ -6,13 +6,13 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import AdminUser, Apartment, HostSection, Submission, SubmissionStatus
-from app.services.property_placeholder import is_placeholder
+from app.services.packs import host_state, pending_orders_count
 
 STATUS_ORDER = [
-    (SubmissionStatus.SUBMITTED.value, "Awaiting review"),
-    (SubmissionStatus.CONFIRMED.value, "Confirmed"),
-    (SubmissionStatus.ISSUE.value, "Issue"),
-    (SubmissionStatus.ARCHIVED.value, "Archived"),
+    (SubmissionStatus.SUBMITTED.value, "À traiter"),
+    (SubmissionStatus.CONFIRMED.value, "Confirmées"),
+    (SubmissionStatus.ISSUE.value, "Problèmes"),
+    (SubmissionStatus.ARCHIVED.value, "Archivées"),
 ]
 
 
@@ -23,13 +23,6 @@ def _nights(sub: Submission) -> int:
     except ValueError:
         return 0
     return max((d - a).days, 0)
-
-
-def _revenue(sub: Submission) -> int:
-    """Estimated stay value: nights x apartment nightly rate (confirmed stays only)."""
-    if sub.status != SubmissionStatus.CONFIRMED.value or is_placeholder(sub.apartment):
-        return 0
-    return _nights(sub) * (sub.apartment.nightly_rate or 0)
 
 
 def _pct(part: int, whole: int) -> int | None:
@@ -56,7 +49,6 @@ def _summarize(subs: list[Submission]) -> dict:
         "ai_approval_rate": _pct(len(ai_approved), len(ai_checked)),
         "confirmation_rate": _pct(by_status[SubmissionStatus.CONFIRMED.value], decided),
         "nights": sum(_nights(s) for s in confirmed),
-        "revenue": sum(_revenue(s) for s in subs),
         "last_registration": max((s.submitted_at for s in subs), default=None),
         "by_status": by_status,
     }
@@ -83,6 +75,8 @@ def build_platform_stats(db: Session, days: int = 30) -> dict:
                 "section": sec,
                 "admins": admins_by_section.get(sec.id, []),
                 "apartments": apts_by_section.get(sec.id, 0),
+                "pack": host_state(db, sec.id),
+                "pending_orders": pending_orders_count(db, sec.id),
                 **_summarize(subs_by_section.get(sec.id, [])),
             }
         )
@@ -118,6 +112,8 @@ def build_platform_stats(db: Session, days: int = 30) -> dict:
         "admins_blocked": sum(1 for a in admins if a.section_id is not None and not a.is_active),
         "apartments_total": sum(apts_by_section.values()),
         "rows": rows,
+        "pending_orders_total": pending_orders_count(db),
+        "packs_exhausted": sum(1 for r in rows if r["pack"].status in ("exhausted", "expired")),
         "daily": daily,
         "daily_max": max((d["count"] for d in daily), default=0),
         "daily_total": sum(d["count"] for d in daily),

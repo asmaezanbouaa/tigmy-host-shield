@@ -1,46 +1,45 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
 {% set active = 'apartments' %}
-{% block title %}Apartments{% endblock %}
+{% block title %}Logements{% endblock %}
 
 {% block content %}
 <div class="page-head">
   <div>
-    <h1 class="admin-page-title">Apartments</h1>
-    <p class="admin-page-lead">The properties of <strong>{{ section.name }}</strong>. Before confirming a guest you choose one of them; its name and address go on the fiche de police.</p>
+    <h1 class="admin-page-title">Logements</h1>
+    <p class="admin-page-lead">Les logements de <strong>{{ section.name }}</strong>. Avant de confirmer un client, vous choisissez l'un d'eux : son nom et son adresse figurent sur la fiche de police.</p>
   </div>
 </div>
 
 {% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
 {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
 
-<div class="admin-panel" id="add">
-  <h2>Add an apartment</h2>
-  <form method="post" action="/admin/apartments" class="inline-form">
-    <div class="field">
-      <label class="required" for="apt-name">Name</label>
-      <input id="apt-name" type="text" name="name" required maxlength="128" placeholder="e.g. Riad Atlas — Apt 2">
-    </div>
-    <div class="field">
-      <label class="required" for="apt-address">Full address</label>
-      <input id="apt-address" type="text" name="address" required maxlength="500" placeholder="Street, number, neighbourhood, city">
-    </div>
-    <div class="field">
-      <label for="apt-rate">Nightly rate (MAD)</label>
-      <input id="apt-rate" type="number" name="nightly_rate" min="1" step="1" inputmode="numeric" placeholder="e.g. 850">
-    </div>
-    <button type="submit" class="btn btn-primary">{{ icon("building") }}Add apartment</button>
-  </form>
-</div>
-
 {% set visible = apartments | selectattr("is_active") | list %}
 {% set hidden = apartments | rejectattr("is_active") | list %}
+
+<div class="admin-panel" id="add">
+  <h2>Ajouter un logement</h2>
+  {% if property_limit is not none %}
+  <p class="subtitle" style="margin-top:-6px">{{ visible|length }} / {{ property_limit }} logements avec votre pack « {{ property_limit_pack }} ».{% if visible|length >= property_limit %} <a href="/admin/packs">Passer à un pack supérieur</a>{% endif %}</p>
+  {% endif %}
+  <form method="post" action="/admin/apartments" class="inline-form">
+    <div class="field">
+      <label class="required" for="apt-name">Nom</label>
+      <input id="apt-name" type="text" name="name" required maxlength="128" placeholder="ex. Riad Atlas — Suite 2">
+    </div>
+    <div class="field">
+      <label class="required" for="apt-address">Adresse complète</label>
+      <input id="apt-address" type="text" name="address" required maxlength="500" placeholder="Rue, numéro, quartier, ville">
+    </div>
+    <button type="submit" class="btn btn-primary">{{ icon("building") }}Ajouter</button>
+  </form>
+</div>
 
 {% if not apartments %}
 <div class="admin-panel empty-state">
   <div class="empty-state__icon">{{ icon("building") }}</div>
-  <h2>No apartments yet</h2>
-  <p>Add your first apartment above. You need at least one to confirm guests.</p>
+  <h2>Aucun logement pour le moment</h2>
+  <p>Ajoutez votre premier logement ci-dessus. Il en faut au moins un pour confirmer vos clients.</p>
 </div>
 {% else %}
 <div class="apt-list">
@@ -52,39 +51,34 @@
       <p class="apt-card__addr">{{ apt.address }}</p>
       <div class="apt-card__meta">
         {% set n = guest_counts.get(apt.id, 0) %}
-        <span class="chip">{{ icon("users") }}{{ n }} guest{{ "s" if n != 1 }}</span>
-        {% if apt.nightly_rate %}<span class="chip chip--amber">{{ "{:,}".format(apt.nightly_rate).replace(",", " ") }} MAD / night</span>{% endif %}
-        {% if not apt.is_active %}<span class="chip chip--muted">Hidden</span>{% endif %}
+        <span class="chip">{{ icon("users") }}{{ n }} {{ plural(n, "client", "clients") }}</span>
+        {% if not apt.is_active %}<span class="chip chip--muted">Masqué</span>{% endif %}
       </div>
     </div>
     <div class="apt-card__actions">
       {% if apt.is_active %}
-      <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('.apt-card').querySelector('.apt-card__edit').hidden = false; this.hidden = true">{{ icon("pen") }}Edit</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('.apt-card').querySelector('.apt-card__edit').hidden = false; this.hidden = true">{{ icon("pen") }}Modifier</button>
       <form method="post" action="/admin/apartments/{{ apt.public_id }}/delete"
-            onsubmit="return confirm('{% if guest_counts.get(apt.id, 0) %}This apartment has guests, so it will be hidden (not deleted). Continue?{% else %}Delete {{ apt.name|e }}?{% endif %}');">
-        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            onsubmit="return confirm('{% if guest_counts.get(apt.id, 0) %}Ce logement a des clients : il sera masqué (pas supprimé). Continuer ?{% else %}Supprimer {{ apt.name|e }} ?{% endif %}');">
+        <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
       </form>
       {% else %}
       <form method="post" action="/admin/apartments/{{ apt.public_id }}/restore">
-        <button type="submit" class="btn btn-secondary btn-sm">Show again</button>
+        <button type="submit" class="btn btn-secondary btn-sm">Afficher à nouveau</button>
       </form>
       {% endif %}
     </div>
     {% if apt.is_active %}
     <form method="post" action="/admin/apartments/{{ apt.public_id }}/edit" class="apt-card__edit inline-form" hidden>
       <div class="field">
-        <label class="required">Name</label>
+        <label class="required">Nom</label>
         <input type="text" name="name" required maxlength="128" value="{{ apt.name }}">
       </div>
       <div class="field">
-        <label class="required">Full address</label>
+        <label class="required">Adresse complète</label>
         <input type="text" name="address" required maxlength="500" value="{{ apt.address }}">
       </div>
-      <div class="field">
-        <label>Nightly rate (MAD)</label>
-        <input type="number" name="nightly_rate" min="1" step="1" inputmode="numeric" value="{{ apt.nightly_rate or '' }}">
-      </div>
-      <button type="submit" class="btn btn-primary">Save</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
     </form>
     {% endif %}
   </article>

@@ -106,7 +106,6 @@ class Apartment(Base):
     address: Mapped[str] = mapped_column(Text)
     slug: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    nightly_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)  # MAD per night
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -241,3 +240,50 @@ class RegistryMeta(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
+
+
+class HostPack(Base):
+    """A pack of guest registrations ("fiches") held by a host, valid for a period."""
+
+    __tablename__ = "host_packs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(36), unique=True, index=True, default=new_public_id)
+    section_id: Mapped[int] = mapped_column(ForeignKey("host_sections.id"), index=True)
+    pack_key: Mapped[str] = mapped_column(String(32))
+    fiches_total: Mapped[int] = mapped_column(Integer)
+    fiches_used: Mapped[int] = mapped_column(Integer, default=0)
+    carried_over: Mapped[int] = mapped_column(Integer, default=0)  # fiches kept from the previous pack
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # active = the host's current pack; replaced = superseded by a newer one
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)
+    source: Mapped[str] = mapped_column(String(16), default="order")  # order | admin | trial
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("pack_orders.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PackOrder(Base):
+    """A host's order of a pack (or of extra fiches), paid by bank transfer and confirmed by the admin."""
+
+    __tablename__ = "pack_orders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    public_id: Mapped[str] = mapped_column(String(36), unique=True, index=True, default=new_public_id)
+    reference: Mapped[str] = mapped_column(String(16), unique=True, index=True)
+    section_id: Mapped[int] = mapped_column(ForeignKey("host_sections.id"), index=True)
+    ordered_by_id: Mapped[int | None] = mapped_column(ForeignKey("admin_users.id"), nullable=True)
+    kind: Mapped[str] = mapped_column(String(8), default="pack")  # pack | topup
+    pack_key: Mapped[str] = mapped_column(String(32))
+    fiches: Mapped[int] = mapped_column(Integer)
+    price_dh: Mapped[int] = mapped_column(Integer)
+    # awaiting_payment | receipt_sent | confirmed | refused | cancelled
+    status: Mapped[str] = mapped_column(String(20), default="awaiting_payment", index=True)
+    receipt_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    receipt_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    refusal_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    section: Mapped["HostSection"] = relationship()
+    ordered_by: Mapped["AdminUser | None"] = relationship()

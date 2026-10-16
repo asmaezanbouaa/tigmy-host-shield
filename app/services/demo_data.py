@@ -11,7 +11,8 @@ from PIL import Image, ImageDraw
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import PROJECT_ROOT, get_settings
-from app.models import AdminUser, Apartment, FormLink, HostSection, Submission, SubmissionStatus
+from app.models import AdminUser, Apartment, FormLink, HostPack, HostSection, PackOrder, Submission, SubmissionStatus
+from app.services.packs import activate_pack
 from app.services.apartment_links import ensure_unique_slug, slugify_name
 from app.services.auth import hash_password
 from app.services.property_placeholder import get_or_create_placeholder_apartment
@@ -62,6 +63,8 @@ DEMO_SECTIONS = [
         12, (40, 25, 15, 10, 10), 0.6,
     ),
 ]
+
+DEMO_PACKS = {"atlas": "moyenne", "mogador": "petite", "souss": "grande", "tanger": "petite"}
 
 # nationality (as guests type it on the French form), country, first names, last names
 PEOPLE = [
@@ -174,13 +177,14 @@ def seed_demo_data(db: Session) -> dict:
             )
             accounts.append((name, username))
         apartments = []
-        for apt_name, address, rate in apts:
-            apt = Apartment(section_id=section.id, name=apt_name, address=address, nightly_rate=rate, is_active=True)
+        for apt_name, address, _rate in apts:
+            apt = Apartment(section_id=section.id, name=apt_name, address=address, is_active=True)
             apt.slug = ensure_unique_slug(db, slugify_name(f"{section.slug}-{apt_name}"))
             db.add(apt)
             apartments.append(apt)
         db.flush()
         link = get_or_create_shared_link(db, section.id)
+        pack = activate_pack(db, section.id, DEMO_PACKS[key], source="admin")
 
         for _ in range(n_guests):
             nat, country, firsts, lasts = rng.choices(PEOPLE, weights=NATIONALITY_WEIGHTS)[0]
@@ -255,6 +259,7 @@ def seed_demo_data(db: Session) -> dict:
             db.refresh(sub, ["apartment"])
             create_submission_pdfs(db, sub, sub.signature_path)
             guest_total += 1
+        pack.fiches_used = n_guests
         db.commit()
 
     ACCOUNTS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -282,6 +287,8 @@ def remove_demo_data(db: Session) -> tuple[int, int]:
         for sub in subs:
             permanently_delete_submission(db, sub)
             guests += 1
+        db.query(HostPack).filter(HostPack.section_id == section.id).delete()
+        db.query(PackOrder).filter(PackOrder.section_id == section.id).delete()
         db.query(AdminUser).filter(AdminUser.section_id == section.id).delete()
         db.query(Apartment).filter(Apartment.section_id == section.id).delete()
         db.query(FormLink).filter(FormLink.section_id == section.id).delete()

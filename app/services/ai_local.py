@@ -38,9 +38,8 @@ def _configure_tesseract() -> str:
             return candidate
 
     raise ValueError(
-        "Tesseract OCR is not installed. "
-        "Ubuntu/Debian: sudo apt install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra "
-        "(then restart ./run.sh). On Railway, redeploy after nixpacks.toml is in the repo."
+        "Tesseract OCR n'est pas installé. "
+        "Ubuntu/Debian : sudo apt install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra, puis redémarrez l'application."
     )
 
 
@@ -61,8 +60,8 @@ def _ocr_text(image_bytes: bytes) -> str:
         import pytesseract
     except ImportError as exc:
         raise ValueError(
-            "Local OCR needs pytesseract. Run: pip install pytesseract "
-            "and sudo apt install tesseract-ocr tesseract-ocr-fra"
+            "L'OCR local nécessite pytesseract : pip install pytesseract "
+            "et sudo apt install tesseract-ocr tesseract-ocr-fra"
         ) from exc
 
     _configure_tesseract()
@@ -107,9 +106,9 @@ def _find_in_ocr(form_value: str, ocr: str) -> tuple[str, str, str]:
 
     ratio = difflib.SequenceMatcher(None, fn, ocr_norm).ratio()
     if ratio >= 0.82:
-        return "match", form, "(similar in OCR)"
+        return "match", form, "(similaire dans la lecture OCR)"
     if ratio >= 0.55:
-        return "partial", form, "(partial OCR match)"
+        return "partial", form, "(correspondance partielle)"
 
     # ID number: look for digit runs
     if re.search(r"\d", form):
@@ -117,7 +116,7 @@ def _find_in_ocr(form_value: str, ocr: str) -> tuple[str, str, str]:
         if digits and digits in re.sub(r"\D", "", ocr_raw):
             return "match", form, digits
 
-    return "mismatch", form, "(not found in OCR)"
+    return "mismatch", form, "(introuvable dans la lecture OCR)"
 
 
 def verify_local_ocr(sub: Submission, image_bytes: bytes) -> dict:
@@ -157,8 +156,8 @@ def verify_local_ocr(sub: Submission, image_bytes: bytes) -> dict:
         "overall": overall,
         "confidence": confidence,
         "summary": (
-            f"Local OCR compared {match_count}/{len(statuses)} fields to the ID scan "
-            "(no cloud AI — verify blurry or Arabic text yourself)."
+            f"L'OCR local a comparé {match_count}/{len(statuses)} champs avec la pièce d'identité "
+            "(sans IA externe : vérifiez vous-même les textes flous ou en arabe)."
         ),
         "fields": fields,
         "ocr_preview": ocr[:500] + ("…" if len(ocr) > 500 else ""),

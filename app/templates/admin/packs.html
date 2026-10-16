@@ -1,0 +1,98 @@
+{% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_pack.html" import pack_card %}
+{% set active = 'packs' %}
+{% block title %}Mon pack{% endblock %}
+
+{% block content %}
+{% set support_msg = "Bonjour, je suis " ~ admin.username ~ " (" ~ section.name ~ "). J'ai une question sur les packs " ~ app_name ~ "." %}
+<div class="page-head">
+  <div>
+    <h1 class="admin-page-title">Mon pack</h1>
+    <p class="admin-page-lead">Une <strong>fiche</strong> = un client qui s'enregistre avec votre lien. Chaque pack est valable <strong>2 mois</strong> ou jusqu'à la dernière fiche, selon ce qui arrive en premier.</p>
+  </div>
+  {% if wa(support_msg) %}<a href="{{ wa(support_msg) }}" target="_blank" rel="noopener" class="btn btn-secondary">{{ icon("chat") }}Support WhatsApp</a>{% endif %}
+</div>
+
+{% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+{{ pack_card(pack_info, actions=False) }}
+
+{% if pack_info.status != 'none' and pack_info.pack and pack_info.pack.fiches_total and pack_info.status in ('exhausted', 'expired') %}
+<div class="pack-banner pack-banner--bad">
+  {{ icon("alert") }}
+  <div class="pack-banner__text"><strong>L'enregistrement est fermé pour vos clients.</strong> Ils voient un message poli leur demandant de vous contacter. Commandez un pack ci-dessous : il est activé dès que nous avons reçu votre virement.</div>
+</div>
+{% endif %}
+
+<h2 class="packs-title">Choisir un pack</h2>
+<p class="subtitle" style="margin-top:-6px">Si vous commandez avant la fin de votre pack, vos fiches restantes sont conservées.</p>
+<div class="packs-grid">
+  {% for key, pack in PACKS.items() %}
+  {% set too_many = pack.max_properties is not none and property_count > pack.max_properties %}
+  {% set is_current = pack_info.pack and pack_info.pack.pack_key == key and pack_info.status == 'active' %}
+  <article class="pack-offer {% if is_current %}pack-offer--current{% endif %}">
+    {% if is_current %}<span class="pack-offer__ribbon">Votre pack</span>{% endif %}
+    <span class="pack-offer__icon">{{ icon(pack.icon) }}</span>
+    <h3>{{ pack.name }}</h3>
+    <p class="pack-offer__audience">{{ pack.audience }}</p>
+    <p class="pack-offer__price">{{ pack.price|dh }} <small>DH</small></p>
+    <ul class="pack-offer__list">
+      <li>{{ icon("check") }}<span><strong>{{ pack.fiches|dh }}</strong> fiches</span></li>
+      <li>{{ icon("check") }}<span>Valable <strong>2 mois</strong></span></li>
+      <li>{{ icon("check") }}<span>{% if pack.max_properties %}Jusqu'à <strong>{{ pack.max_properties }}</strong> logements{% else %}Logements <strong>illimités</strong>{% endif %}</span></li>
+      <li>{{ icon("check") }}<span>{{ per_fiche(pack.price, pack.fiches) }} DH par fiche</span></li>
+    </ul>
+    <form method="post" action="/admin/packs/order">
+      <input type="hidden" name="pack_key" value="{{ key }}">
+      <button type="submit" class="btn {{ 'btn-primary' if not is_current else 'btn-secondary' }} btn-block" {% if too_many %}disabled{% endif %}>{{ icon("card") }}{{ "Renouveler" if is_current else "Commander" }}</button>
+    </form>
+    {% if too_many %}<p class="pack-offer__warn">Vous avez {{ property_count }} logements : ce pack en autorise {{ pack.max_properties }}.</p>{% endif %}
+  </article>
+  {% endfor %}
+</div>
+
+{% if pack_info.status in ('active', 'exhausted') %}
+<div class="admin-panel topup-card">
+  <div>
+    <h2 style="margin:0 0 4px">Recharge rapide</h2>
+    <p class="subtitle" style="margin:0">Plus de fiches sans changer de pack : <strong>+{{ TOPUP.fiches }} fiches pour {{ TOPUP.price }} DH</strong>, ajoutées à votre pack actuel (même date d'expiration).</p>
+  </div>
+  <form method="post" action="/admin/packs/order">
+    <input type="hidden" name="kind" value="topup">
+    <button type="submit" class="btn btn-secondary">{{ icon("package") }}Recharger</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="admin-panel">
+  <div class="admin-panel__head admin-panel__head--row">
+    <h2 style="margin:0">Mes dernières commandes</h2>
+    <a class="btn btn-secondary btn-sm" href="/admin/orders?status=all">Toutes mes commandes</a>
+  </div>
+  {% if orders %}
+  <div class="order-list">
+    {% for o in orders %}
+    <a class="order-row order-row--{{ o.status }}" href="/admin/orders/{{ o.reference }}">
+      <span class="order-row__main"><strong>{% if o.kind == 'topup' %}Recharge de {{ o.fiches }} fiches{% else %}Pack {{ PACKS[o.pack_key].name }}{% endif %}</strong><small>{{ o.reference }} · {{ o.created_at|fdate }}</small></span>
+      <span class="order-row__price">{{ o.price_dh|dh }} DH</span>
+      <span class="chip {{ 'chip--green' if o.status == 'confirmed' else ('chip--red' if o.status in ('refused', 'cancelled') else 'chip--amber') }}">{{ ORDER_STATUS_LABELS[o.status] }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="subtitle" style="margin:0">Vous n'avez pas encore passé de commande.</p>
+  {% endif %}
+</div>
+
+<div class="admin-panel how-box">
+  <h2>Comment ça marche ?</h2>
+  <ol>
+    <li><strong>Commandez</strong> le pack qui vous convient.</li>
+    <li><strong>Faites un virement bancaire</strong> avec la référence de commande (nous vous donnons le RIB).</li>
+    <li><strong>Envoyez la photo du reçu</strong> sur la page de la commande.</li>
+    <li>Dès que nous avons confirmé le paiement, <strong>votre pack est activé immédiatement</strong>.</li>
+  </ol>
+</div>
+{% endblock %}

@@ -25,8 +25,12 @@
 
   <main class="g-shell">
     {% if not usable %}
-    <div class="g-card" style="margin-top:24px">
-      <div class="g-alert g-alert--error">{{ icon("alert") }}<span>{{ error_message }}</span></div>
+    <div class="g-card g-unavailable">
+      <span class="g-unavailable__icon">{{ icon("alert") }}</span>
+      {% if host_name %}<p class="g-host">{{ icon("home") }}<span><strong>{{ host_name }}</strong></span></p>{% endif %}
+      <p class="g-unavailable__fr" lang="fr">{{ unavailable.fr }}</p>
+      <p class="g-unavailable__other" lang="en">{{ unavailable.en }}</p>
+      <p class="g-unavailable__other" lang="ar" dir="rtl">{{ unavailable.ar }}</p>
     </div>
     {% else %}
 

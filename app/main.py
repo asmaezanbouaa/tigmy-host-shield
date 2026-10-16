@@ -5,11 +5,12 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
-from app.routers import admin, guest
+from app.routers import admin, billing, guest
 from app.services.storage import ensure_storage_dirs
 
 logger = logging.getLogger("uvicorn.error")
@@ -49,6 +50,7 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 app.include_router(guest.router)
 app.include_router(admin.router)
 app.include_router(admin.api_router)
+app.include_router(billing.router)
 
 
 @app.on_event("startup")
@@ -113,6 +115,9 @@ def on_startup():
         migrate_v6()
         migrate_v7()
         migrate_v8()
+        from scripts.migrate_v10 import run_migrations as migrate_v10
+
+        migrate_v10()
         with SessionLocal() as db:
             n = purge_expired_id_documents(db)
             if n:
@@ -130,6 +135,53 @@ def on_startup():
         logger.warning("Database migration skipped or failed: %s", exc)
 
 
+ERROR_TITLES = {
+    401: "Connexion requise", 403: "Accès refusé", 404: "Page introuvable",
+    405: "Action impossible", 429: "Trop de demandes", 500: "Une erreur est survenue",
+}
+ERROR_MESSAGES = {
+    403: "Vous n'avez pas accès à cette page.",
+    404: "Cette page n'existe pas ou a changé.",
+    429: "Merci de réessayer un peu plus tard.",
+    500: "Un problème est survenu de notre côté. Réessayez dans un instant.",
+}
+
+
+def _wants_html(request: Request) -> bool:
+    return "text/html" in request.headers.get("accept", "") and not request.url.path.startswith("/api/")
+
+
+def _error_page(request: Request, status: int, message: str | None = None) -> HTMLResponse:
+    from app.templating import templates
+
+    is_admin = request.url.path.startswith("/admin")
+    return templates.TemplateResponse(
+        "error.html",
+        {
+            "request": request,
+            "status": status,
+            "title": ERROR_TITLES.get(status, "Erreur"),
+            "message": message or ERROR_MESSAGES.get(status, "Une erreur est survenue."),
+            "back_url": "/admin/" if is_admin else None,
+        },
+        status_code=status,
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception(request: Request, exc: StarletteHTTPException):
+    headers = getattr(exc, "headers", None) or {}
+    location = headers.get("Location") or headers.get("location")
+    if location and exc.status_code in (301, 302, 303, 307, 308):
+        return RedirectResponse(location, status_code=exc.status_code)
+    if _wants_html(request):
+        if exc.status_code == 401 and request.url.path.startswith("/admin"):
+            return RedirectResponse("/admin/login", status_code=303)  # session ended: back to the sign-in page
+        message = exc.detail if isinstance(exc.detail, str) else None
+        return _error_page(request, exc.status_code, message)
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers=headers or None)
+
+
 @app.exception_handler(Exception)
 async def unhandled_exception(request: Request, exc: Exception):
     logger.error("Unhandled error on %s %s", request.method, request.url.path)
@@ -144,15 +196,17 @@ async def unhandled_exception(request: Request, exc: Exception):
             ),
             status_code=500,
         )
+    if _wants_html(request):
+        return _error_page(request, 500)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error. Check server logs."},
+        content={"detail": "Erreur interne du serveur. Consultez les journaux."},
     )
 
 
 @app.get("/")
 def root():
-    return RedirectResponse(url="/register", status_code=302)
+    return RedirectResponse(url="/admin/login", status_code=302)
 
 
 @app.get("/health")

@@ -35,7 +35,7 @@ def assign_apartment(db: Session, submission: Submission, apartment: Apartment) 
     submission.apartment_id = apartment.id
     _regenerate(db, submission)
     db.commit()
-    return f"Apartment set to {apartment.name}. PDFs updated."
+    return f"Logement défini : {apartment.name}. PDF mis à jour."
 
 
 def confirm_submission(db: Session, submission: Submission, apartment: Apartment) -> str:
@@ -44,14 +44,14 @@ def confirm_submission(db: Session, submission: Submission, apartment: Apartment
     submission.confirmed_at = datetime.now(timezone.utc)
     _regenerate(db, submission)
     db.commit()
-    return f"Registration confirmed for {apartment.name}. PDFs updated."
+    return f"Fiche confirmée pour {apartment.name}. PDF mis à jour."
 
 
 def archive_submission(db: Session, submission: Submission) -> str:
     submission.status = SubmissionStatus.ARCHIVED.value
     submission.archived_at = datetime.now(timezone.utc)
     db.commit()
-    return "Submission moved to archive."
+    return "Fiche déplacée dans les archives."
 
 
 def update_submission_from_admin(

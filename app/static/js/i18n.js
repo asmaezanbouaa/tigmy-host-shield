@@ -570,3 +570,17 @@ Object.assign(window.GuestI18n.t.ar, {
 Object.assign(window.GuestI18n.t.fr, { registration_for: "Enregistrement pour" });
 Object.assign(window.GuestI18n.t.en, { registration_for: "Registration for" });
 Object.assign(window.GuestI18n.t.ar, { registration_for: "التسجيل لدى" });
+
+/* Registration closed for this host / too many requests */
+Object.assign(window.GuestI18n.t.fr, {
+  host_unavailable: "L'enregistrement en ligne est momentanément indisponible pour cet établissement. Veuillez contacter votre hôte.",
+  rate_limited: "Trop de demandes depuis cette connexion. Merci de réessayer un peu plus tard.",
+});
+Object.assign(window.GuestI18n.t.en, {
+  host_unavailable: "Online registration is temporarily unavailable for this property. Please contact your host.",
+  rate_limited: "Too many requests from this connection. Please try again a little later.",
+});
+Object.assign(window.GuestI18n.t.ar, {
+  host_unavailable: "التسجيل عبر الإنترنت غير متاح حاليًا لهذه المؤسسة. يرجى الاتصال بالمضيف.",
+  rate_limited: "طلبات كثيرة من هذا الاتصال. يرجى المحاولة لاحقًا.",
+});

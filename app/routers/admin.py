@@ -1,4 +1,5 @@
 import asyncio
+import secrets
 from datetime import date, datetime, time, timezone
 from pathlib import Path
 from urllib.parse import quote, urlencode
@@ -17,7 +18,10 @@ from app.models import (
     Apartment,
     Document,
     FormLink,
+    FormLinkStatus,
+    HostPack,
     HostSection,
+    PackOrder,
     Submission,
     SubmissionStatus,
 )
@@ -43,7 +47,15 @@ from app.services.registration import get_or_create_shared_link
 from app.services.admin_users import admin_accounts_from_settings
 from app.services.demo_data import has_demo_data, remove_demo_data
 from app.services.platform_stats import build_platform_stats
+from app.services import fr
 from app.services.apartment_links import ensure_unique_slug, slugify_name
+from app.services.packs import (
+    TRIAL,
+    grant_trial,
+    host_state,
+    pending_orders_count,
+    property_limit,
+)
 from app.services.sections import (
     MAX_ADMINS_PER_SECTION,
     MIN_PASSWORD_LENGTH,
@@ -57,7 +69,7 @@ from app.services.sections import (
 from app.services.sanitize import clean_text
 from app.services.id_preview import get_preview_image
 from app.services.rate_limit import client_ip, login_failures
-from app.services.storage import absolute_path
+from app.services.storage import absolute_path, unlink_if_exists
 from app.services.calendar_data import (
     build_month_calendar,
     fetch_events_for_range,
@@ -104,7 +116,7 @@ async def login_submit(request: Request, db: Session = Depends(get_db)):
     if any(login_failures.is_limited(k) for k in keys):
         return templates.TemplateResponse(
             "admin/login.html",
-            {"request": request, "error": "Too many failed attempts. Try again in 15 minutes."},
+            {"request": request, "error": "Trop de tentatives échouées. Réessayez dans 15 minutes."},
             status_code=429,
         )
     admin = db.query(AdminUser).filter(AdminUser.username == username).first()
@@ -113,19 +125,19 @@ async def login_submit(request: Request, db: Session = Depends(get_db)):
             login_failures.hit(k)
         return templates.TemplateResponse(
             "admin/login.html",
-            {"request": request, "error": "Invalid username or password"},
+            {"request": request, "error": "Identifiant ou mot de passe incorrect."},
             status_code=401,
         )
     if not admin.is_active:
         return templates.TemplateResponse(
             "admin/login.html",
-            {"request": request, "error": "This account is blocked. Contact the platform owner."},
+            {"request": request, "error": "Ce compte est bloqué. Contactez l'administrateur."},
             status_code=403,
         )
     if not admin_can_sign_in(admin):
         return templates.TemplateResponse(
             "admin/login.html",
-            {"request": request, "error": "This host account is switched off. Contact the admin."},
+            {"request": request, "error": "Ce compte hôte est désactivé. Contactez l'administrateur."},
             status_code=403,
         )
     for k in keys:
@@ -169,6 +181,8 @@ def _counts_context(db: Session, admin: AdminUser) -> dict:
     ctx["ai_threshold_pct"] = int(settings.ai_auto_confirm_threshold * 100)
     ctx["section"] = admin.active_section
     ctx["apartment_count"] = len(section_apartments(db, admin.active_section_id, active_only=True))
+    ctx["pack_info"] = host_state(db, admin.active_section_id) if admin.active_section_id else None
+    ctx["pending_orders_count"] = pending_orders_count(db) if admin.is_superadmin else 0
     return ctx
 
 
@@ -183,11 +197,11 @@ def _section_guest_url(admin: AdminUser) -> str:
 def _ai_setup_hint() -> str:
     p = settings.ai_provider_normalized
     if p == "local":
-        return "Unlimited free OCR on your server"
+        return "OCR gratuit et illimité sur votre serveur"
     if p == "gemini":
-        return "Free API key: aistudio.google.com/apikey (daily limit)"
+        return "Clé API gratuite : aistudio.google.com/apikey (limite quotidienne)"
     if p == "openai":
-        return "Paid credits required on OpenAI"
+        return "Crédits OpenAI payants nécessaires"
     return ""
 
 
@@ -246,7 +260,30 @@ async def admin_share(
             "guest_link_direct": shared_guest_form_url(db, admin.active_section_id),
             "admin_login_url": admin_login_url(),
             "admin_share_url": admin_share_url(),
+            "msg": request.query_params.get("msg"),
         },
+    )
+
+
+@router.post("/share/regenerate")
+async def share_regenerate(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    """New guest link + QR code for this host; the old link and any printed QR code stop working."""
+    section = admin.active_section
+    for link in (
+        db.query(FormLink)
+        .filter(FormLink.section_id == section.id, FormLink.is_shared.is_(True), FormLink.status == FormLinkStatus.ACTIVE.value)
+        .all()
+    ):
+        link.status = FormLinkStatus.CANCELLED.value
+    section.slug = unique_section_slug(db, f"{section.name} {secrets.token_hex(3)}", exclude_id=section.id)
+    db.commit()
+    get_or_create_shared_link(db, section.id)
+    return RedirectResponse(
+        "/admin/share?msg=" + quote("Nouveau lien et nouveau QR code générés. L'ancien lien ne fonctionne plus : pensez à réimprimer le QR code."),
+        status_code=303,
     )
 
 
@@ -278,7 +315,7 @@ async def admin_submissions(
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=f"Database error loading submissions. Run: python scripts/migrate_v2.py — {exc}",
+            detail=f"Erreur de base de données lors du chargement des fiches : {exc}",
         ) from exc
 
     export_url = build_export_url(
@@ -329,24 +366,18 @@ def _get_apartment(db: Session, admin: AdminUser, apt_public_id: str) -> Apartme
         .first()
     )
     if not apt:
-        raise HTTPException(status_code=404, detail="Apartment not found")
+        raise HTTPException(status_code=404, detail="Logement introuvable")
     return apt
 
 
-def _apartment_fields(form) -> tuple[str, str, int | None, str | None]:
+def _apartment_fields(form) -> tuple[str, str, str | None]:
     name = clean_text(str(form.get("name", "")), 128)
     address = clean_text(str(form.get("address", "")), 500)
-    raw_rate = str(form.get("nightly_rate", "")).strip().replace(" ", "")
-    rate = None
-    if raw_rate:
-        if not raw_rate.isdigit() or not 0 < int(raw_rate) <= 1_000_000:
-            return name, address, None, "Nightly rate must be a whole number of dirhams (MAD)."
-        rate = int(raw_rate)
     if not name:
-        return name, address, rate, "Give the apartment a name."
+        return name, address, "Donnez un nom au logement."
     if not address:
-        return name, address, rate, "Add the apartment's full address (it is printed on the fiche de police)."
-    return name, address, rate, None
+        return name, address, "Ajoutez l'adresse complète du logement (elle est imprimée sur la fiche de police)."
+    return name, address, None
 
 
 @router.get("/apartments", response_class=HTMLResponse)
@@ -362,12 +393,15 @@ async def apartments_page(
         .group_by(Submission.apartment_id)
         .all()
     )
+    limit, limit_pack = property_limit(db, admin.active_section_id)
     return templates.TemplateResponse(
         "admin/apartments.html",
         {
             "request": request,
             "admin": admin,
             **_counts_context(db, admin),
+            "property_limit": limit,
+            "property_limit_pack": limit_pack,
             "apartments": apartments,
             "guest_counts": guest_counts,
             "msg": request.query_params.get("msg"),
@@ -382,16 +416,24 @@ async def apartment_create(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
 ):
-    name, address, rate, err = _apartment_fields(await request.form())
+    name, address, err = _apartment_fields(await request.form())
     if err:
         return RedirectResponse(url=f"/admin/apartments?error={quote(err)}#add", status_code=303)
-    apt = Apartment(
-        section_id=admin.active_section_id, name=name, address=address, nightly_rate=rate, is_active=True
-    )
+    limit, limit_pack = property_limit(db, admin.active_section_id)
+    active_count = len(section_apartments(db, admin.active_section_id, active_only=True))
+    if limit is not None and active_count >= limit:
+        return RedirectResponse(
+            url="/admin/apartments?error=" + quote(
+                f"Votre pack « {limit_pack} » autorise {limit} logements au maximum. "
+                "Passez à un pack supérieur pour en ajouter."
+            ) + "#add",
+            status_code=303,
+        )
+    apt = Apartment(section_id=admin.active_section_id, name=name, address=address, is_active=True)
     apt.slug = ensure_unique_slug(db, slugify_name(f"{admin.active_section.slug}-{name}"))
     db.add(apt)
     db.commit()
-    return RedirectResponse(url=f"/admin/apartments?msg={quote(f'{name} added.')}", status_code=303)
+    return RedirectResponse(url=f"/admin/apartments?msg={quote(f'{name} ajouté.')}", status_code=303)
 
 
 @router.post("/apartments/{apt_public_id}/edit")
@@ -402,13 +444,13 @@ async def apartment_edit(
     admin: AdminUser = Depends(get_current_admin),
 ):
     apt = _get_apartment(db, admin, apt_public_id)
-    name, address, rate, err = _apartment_fields(await request.form())
+    name, address, err = _apartment_fields(await request.form())
     if err:
         return RedirectResponse(url=f"/admin/apartments?error={quote(err)}", status_code=303)
-    apt.name, apt.address, apt.nightly_rate = name, address, rate
+    apt.name, apt.address = name, address
     db.commit()
     return RedirectResponse(
-        url=f"/admin/apartments?msg={quote(f'{name} saved. New PDFs will use the updated details.')}",
+        url=f"/admin/apartments?msg={quote(f'{name} enregistré. Les nouveaux PDF utiliseront ces informations.')}",
         status_code=303,
     )
 
@@ -425,9 +467,9 @@ async def apartment_delete(
         # Guests' records and PDFs still point to it: hide it instead of deleting.
         apt.is_active = False
         db.commit()
-        msg = f"{apt.name} is hidden from the list. It stays on the {used} guest record(s) that use it."
+        msg = f"{apt.name} est masqué de la liste. Il reste sur les {used} fiche(s) qui l'utilisent."
     else:
-        msg = f"{apt.name} deleted."
+        msg = f"{apt.name} supprimé."
         db.delete(apt)
         db.commit()
     return RedirectResponse(url=f"/admin/apartments?msg={quote(msg)}", status_code=303)
@@ -442,7 +484,7 @@ async def apartment_restore(
     apt = _get_apartment(db, admin, apt_public_id)
     apt.is_active = True
     db.commit()
-    return RedirectResponse(url=f"/admin/apartments?msg={quote(f'{apt.name} is back in the list.')}", status_code=303)
+    return RedirectResponse(url=f"/admin/apartments?msg={quote(f'{apt.name} est de nouveau dans la liste.')}", status_code=303)
 
 
 # ---------------- Sections (platform owner only) ----------------
@@ -455,7 +497,7 @@ def _env_usernames() -> set[str]:
 def _get_section(db: Session, section_public_id: str) -> HostSection:
     section = db.query(HostSection).filter(HostSection.public_id == section_public_id).first()
     if not section:
-        raise HTTPException(status_code=404, detail="Host not found")
+        raise HTTPException(status_code=404, detail="Hôte introuvable")
     return section
 
 
@@ -478,6 +520,8 @@ async def sections_page(
             "section": sec,
             "admins": section_admins(db, sec.id),
             "stats": section_stats(db, sec.id),
+            "pack": host_state(db, sec.id),
+            "pending_orders": pending_orders_count(db, sec.id),
             "guest_url": guest_register_url(sec.slug),
         }
         for sec in sections
@@ -507,7 +551,7 @@ async def section_create(
     form = await request.form()
     name = clean_text(str(form.get("name", "")), 128)
     if not name:
-        return _sections_redirect(error="Give the host a name.", anchor="new")
+        return _sections_redirect(error="Donnez un nom à l'hôte.", anchor="new")
     accounts = []
     for i in (1, 2):
         username = str(form.get(f"username{i}", "")).strip()
@@ -516,9 +560,9 @@ async def section_create(
             continue
         err = validate_new_admin(db, username, password)
         if not err and any(u.lower() == username.lower() for u, _ in accounts):
-            err = "The two host users need different usernames."
+            err = "Les deux utilisateurs doivent avoir des identifiants différents."
         if err:
-            return _sections_redirect(error=f"User {i}: {err}", anchor="new")
+            return _sections_redirect(error=f"Utilisateur {i} : {err}", anchor="new")
         accounts.append((username, password))
 
     section = HostSection(name=name, slug=unique_section_slug(db, name), is_active=True)
@@ -526,9 +570,13 @@ async def section_create(
     db.flush()
     for username, password in accounts:
         add_section_admin(db, section, username, password)
+    grant_trial(db, section.id)  # free trial so the host can test straight away
     db.commit()
     get_or_create_shared_link(db, section.id)
-    return _sections_redirect(msg=f"Host “{name}” created with {len(accounts)} user(s).", anchor=section.public_id)
+    return _sections_redirect(
+        msg=f"Hôte « {name} » créé avec {len(accounts)} utilisateur(s) et un essai gratuit de {TRIAL['fiches']} fiches.",
+        anchor=section.public_id,
+    )
 
 
 @router.post("/sections/{section_public_id}/rename")
@@ -541,10 +589,10 @@ async def section_rename(
     section = _get_section(db, section_public_id)
     name = clean_text(str((await request.form()).get("name", "")), 128)
     if not name:
-        return _sections_redirect(error="Host name can't be empty.", anchor=section.public_id)
+        return _sections_redirect(error="Le nom de l'hôte ne peut pas être vide.", anchor=section.public_id)
     section.name = name
     db.commit()
-    return _sections_redirect(msg="Host renamed. Its guest link stays the same.", anchor=section.public_id)
+    return _sections_redirect(msg="Hôte renommé. Son lien client reste le même.", anchor=section.public_id)
 
 
 @router.post("/sections/{section_public_id}/toggle")
@@ -555,10 +603,10 @@ async def section_toggle(
 ):
     section = _get_section(db, section_public_id)
     if section.id == admin.section_id:
-        return _sections_redirect(error="You can't switch off your own section.", anchor=section.public_id)
+        return _sections_redirect(error="Vous ne pouvez pas désactiver votre propre hôte.", anchor=section.public_id)
     section.is_active = not section.is_active
     db.commit()
-    state = "switched on" if section.is_active else "switched off: its users can't sign in and its guest link is closed"
+    state = "réactivé" if section.is_active else "désactivé : ses utilisateurs ne peuvent plus se connecter et son lien client est fermé"
     return _sections_redirect(msg=f"“{section.name}” {state}.", anchor=section.public_id)
 
 
@@ -570,20 +618,24 @@ async def section_delete(
 ):
     section = _get_section(db, section_public_id)
     if section.id == admin.section_id:
-        return _sections_redirect(error="You can't delete your own section.", anchor=section.public_id)
+        return _sections_redirect(error="Vous ne pouvez pas supprimer votre propre hôte.", anchor=section.public_id)
     guests = db.query(func.count(Submission.id)).filter(Submission.section_id == section.id).scalar() or 0
     if guests:
         return _sections_redirect(
-            error=f"“{section.name}” has {guests} guest record(s). Switch it off instead, so nothing is lost.",
+            error=f"« {section.name} » a {guests} fiche(s) client. Désactivez-le plutôt, pour ne rien perdre.",
             anchor=section.public_id,
         )
     name = section.name
+    for order in db.query(PackOrder).filter(PackOrder.section_id == section.id).all():
+        unlink_if_exists(order.receipt_path)
+    db.query(HostPack).filter(HostPack.section_id == section.id).delete()
+    db.query(PackOrder).filter(PackOrder.section_id == section.id).delete()
     db.query(AdminUser).filter(AdminUser.section_id == section.id).delete()
     db.query(Apartment).filter(Apartment.section_id == section.id).delete()
     db.query(FormLink).filter(FormLink.section_id == section.id).delete()
     db.delete(section)
     db.commit()
-    return _sections_redirect(msg=f"Host “{name}” deleted.")
+    return _sections_redirect(msg=f"Hôte « {name} » supprimé.")
 
 
 @router.post("/sections/{section_public_id}/admins")
@@ -596,7 +648,7 @@ async def section_add_admin(
     section = _get_section(db, section_public_id)
     if len(section_admins(db, section.id)) >= MAX_ADMINS_PER_SECTION:
         return _sections_redirect(
-            error=f"A host can have {MAX_ADMINS_PER_SECTION} users. Remove one first.", anchor=section.public_id
+            error=f"Un hôte peut avoir {MAX_ADMINS_PER_SECTION} utilisateurs. Supprimez-en un d'abord.", anchor=section.public_id
         )
     form = await request.form()
     username = str(form.get("username", "")).strip()
@@ -606,13 +658,13 @@ async def section_add_admin(
         return _sections_redirect(error=err, anchor=section.public_id)
     add_section_admin(db, section, username, password)
     db.commit()
-    return _sections_redirect(msg=f"User “{username}” added to {section.name}.", anchor=section.public_id)
+    return _sections_redirect(msg=f"Utilisateur « {username} » ajouté à {section.name}.", anchor=section.public_id)
 
 
 def _get_section_admin(db: Session, section: HostSection, admin_id: int) -> AdminUser:
     target = db.query(AdminUser).filter(AdminUser.id == admin_id, AdminUser.section_id == section.id).first()
     if not target:
-        raise HTTPException(status_code=404, detail="Admin not found")
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
     return target
 
 
@@ -629,16 +681,16 @@ async def section_admin_password(
     target = _get_section_admin(db, section, admin_id)
     if target.username.lower() in _env_usernames():
         return _sections_redirect(page=back, 
-            error=f"“{target.username}” is set in the .env file. Change the password there.", anchor=section.public_id
+            error=f"« {target.username} » est défini dans le fichier .env. Changez le mot de passe là-bas.", anchor=section.public_id
         )
     password = str((await request.form()).get("password", ""))
     if len(password) < MIN_PASSWORD_LENGTH:
         return _sections_redirect(page=back, 
-            error=f"Password must be at least {MIN_PASSWORD_LENGTH} characters.", anchor=section.public_id
+            error=f"Le mot de passe doit contenir au moins {MIN_PASSWORD_LENGTH} caractères.", anchor=section.public_id
         )
     target.password_hash = hash_password(password)
     db.commit()
-    return _sections_redirect(page=back, msg=f"New password saved for “{target.username}”.", anchor=section.public_id)
+    return _sections_redirect(page=back, msg=f"Nouveau mot de passe enregistré pour « {target.username} ».", anchor=section.public_id)
 
 
 @router.post("/sections/{section_public_id}/admins/{admin_id}/delete")
@@ -652,15 +704,15 @@ async def section_admin_delete(
     section = _get_section(db, section_public_id)
     target = _get_section_admin(db, section, admin_id)
     if target.id == admin.id or target.is_superadmin:
-        return _sections_redirect(page=back, error="You can't remove the admin account.", anchor=section.public_id)
+        return _sections_redirect(page=back, error="Vous ne pouvez pas supprimer le compte administrateur.", anchor=section.public_id)
     if target.username.lower() in _env_usernames():
         return _sections_redirect(page=back, 
-            error=f"“{target.username}” is set in the .env file. Remove it there, then restart.", anchor=section.public_id
+            error=f"« {target.username} » est défini dans le fichier .env. Supprimez-le là-bas, puis redémarrez.", anchor=section.public_id
         )
     username = target.username
     db.delete(target)
     db.commit()
-    return _sections_redirect(page=back, msg=f"User “{username}” removed. They are signed out.", anchor=section.public_id)
+    return _sections_redirect(page=back, msg=f"Utilisateur « {username} » supprimé. Il est déconnecté.", anchor=section.public_id)
 
 
 @router.get("/profile", response_class=HTMLResponse)
@@ -672,7 +724,7 @@ async def admin_profile(
     db.refresh(admin)
     err = request.query_params.get("error")
     ok_param = request.query_params.get("success")
-    ok = "Password updated successfully." if ok_param == "password" else ok_param
+    ok = "Mot de passe mis à jour." if ok_param == "password" else ok_param
     return templates.TemplateResponse(
         "admin/profile.html",
         {
@@ -703,7 +755,7 @@ async def admin_change_password(
                 "request": request,
                 "admin": admin,
                 **_counts_context(db, admin),
-                "error": "Current password is incorrect.",
+                "error": "Le mot de passe actuel est incorrect.",
                 "success": None,
             },
             status_code=400,
@@ -715,7 +767,7 @@ async def admin_change_password(
                 "request": request,
                 "admin": admin,
                 **_counts_context(db, admin),
-                "error": f"New password must be at least {MIN_PASSWORD_LENGTH} characters.",
+                "error": f"Le nouveau mot de passe doit contenir au moins {MIN_PASSWORD_LENGTH} caractères.",
                 "success": None,
             },
             status_code=400,
@@ -727,7 +779,7 @@ async def admin_change_password(
                 "request": request,
                 "admin": admin,
                 **_counts_context(db, admin),
-                "error": "New passwords do not match.",
+                "error": "Les deux nouveaux mots de passe ne correspondent pas.",
                 "success": None,
             },
             status_code=400,
@@ -747,7 +799,7 @@ async def submission_detail(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
     purge_expired_id_documents(db)
     flash = request.query_params.get("msg", "")
     flash_error = request.query_params.get("error", "")
@@ -809,10 +861,10 @@ async def update_submission_status(
     new_status = str(form.get("status", "")).strip()
     sub = _get_sub(db, admin, public_id)
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
     allowed = {s.value for s in SubmissionStatus}
     if new_status not in allowed:
-        raise HTTPException(status_code=400, detail="Invalid status")
+        raise HTTPException(status_code=400, detail="Statut invalide")
     sub.status = new_status
     db.commit()
     return RedirectResponse(url=f"/admin/submissions/{public_id}", status_code=303)
@@ -826,10 +878,10 @@ async def view_signature(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub or not sub.signature_path:
-        raise HTTPException(status_code=404, detail="Signature not found")
+        raise HTTPException(status_code=404, detail="Signature introuvable")
     path = absolute_path(sub.signature_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Signature file missing")
+        raise HTTPException(status_code=404, detail="Fichier de signature introuvable")
     media = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
     return FileResponse(path, media_type=media)
 
@@ -843,7 +895,7 @@ async def submission_edit_page(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
     if sub.status == SubmissionStatus.ARCHIVED.value:
         return RedirectResponse(url=f"/admin/submissions/{public_id}", status_code=303)
     return templates.TemplateResponse(
@@ -867,9 +919,9 @@ async def submission_edit_save(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
     if sub.status == SubmissionStatus.ARCHIVED.value:
-        raise HTTPException(status_code=400, detail="Cannot edit archived submission")
+        raise HTTPException(status_code=400, detail="Impossible de modifier une fiche archivée")
 
     form = await request.form()
     try:
@@ -911,7 +963,7 @@ async def submission_edit_save(
         admin_notes=payload.admin_notes,
     )
     return RedirectResponse(
-        url=f"/admin/submissions/{public_id}?msg={quote('Changes saved. PDFs regenerated.')}",
+        url=f"/admin/submissions/{public_id}?msg={quote('Modifications enregistrées. Les PDF ont été régénérés.')}",
         status_code=303,
     )
 
@@ -941,14 +993,14 @@ async def confirm_submission_route(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
     if sub.status != SubmissionStatus.SUBMITTED.value:
         return RedirectResponse(url=f"/admin/submissions/{public_id}", status_code=303)
     form = await request.form()
     apartment = _apartment_from_form(db, admin, form.get("apartment"))
     if not apartment:
         return RedirectResponse(
-            url=f"/admin/submissions/{public_id}?error={quote('Choose the apartment before confirming.')}#decision",
+            url=f"/admin/submissions/{public_id}?error={quote('Choisissez le logement avant de confirmer.')}#decision",
             status_code=303,
         )
     msg = confirm_submission(db, sub, apartment)
@@ -967,12 +1019,12 @@ async def assign_apartment_route(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub or sub.status == SubmissionStatus.ARCHIVED.value:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
     form = await request.form()
     apartment = _apartment_from_form(db, admin, form.get("apartment"))
     if not apartment:
         return RedirectResponse(
-            url=f"/admin/submissions/{public_id}?error={quote('Choose an apartment from the list.')}",
+            url=f"/admin/submissions/{public_id}?error={quote('Choisissez un logement dans la liste.')}",
             status_code=303,
         )
     msg = assign_apartment(db, sub, apartment)
@@ -987,7 +1039,7 @@ async def archive_submission_route(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
     if sub.status == SubmissionStatus.ARCHIVED.value:
         return RedirectResponse(url="/admin/archive", status_code=303)
     msg = archive_submission(db, sub)
@@ -1010,7 +1062,7 @@ async def ai_verify_submission(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
 
     try:
         result = await asyncio.to_thread(verify_submission_id, sub)
@@ -1022,11 +1074,11 @@ async def ai_verify_submission(
                 {
                     "ok": True,
                     "overall": overall,
-                    "message": f"AI check complete: {overall}",
+                    "message": f"Analyse IA terminée : {fr.AI_OVERALL.get(overall, overall)}",
                 }
             )
         return RedirectResponse(
-            url=f"/admin/submissions/{public_id}?msg={quote(f'AI check complete: {overall}')}",
+            url=f"/admin/submissions/{public_id}?msg={quote(f'Analyse IA terminée : {fr.AI_OVERALL.get(overall, overall)}')}",
             status_code=303,
         )
     except ValueError as exc:
@@ -1038,7 +1090,7 @@ async def ai_verify_submission(
             status_code=303,
         )
     except Exception as exc:
-        msg = f"AI check failed: {exc}"
+        msg = f"Échec de l'analyse IA : {exc}"
         if _wants_json_response(request):
             return JSONResponse({"ok": False, "error": msg}, status_code=500)
         return RedirectResponse(
@@ -1055,11 +1107,11 @@ async def verify_id_route(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub or not sub.id_document_path:
-        raise HTTPException(status_code=404, detail="ID document not found")
+        raise HTTPException(status_code=404, detail="Pièce d'identité introuvable")
     verify_id_document(db, sub)
     hours = settings.id_retention_hours_after_verify
     return RedirectResponse(
-        url=f"/admin/submissions/{public_id}?msg={quote(f'ID verified. File will be deleted in {hours} hours.')}",
+        url=f"/admin/submissions/{public_id}?msg={quote(f'Pièce vérifiée. Le fichier sera supprimé dans {hours} h.')}",
         status_code=303,
     )
 
@@ -1073,10 +1125,10 @@ async def id_document_preview(
     """Inline image preview (converts PDF first page to PNG)."""
     sub = _get_sub(db, admin, public_id)
     if not sub or not sub.id_document_path:
-        raise HTTPException(status_code=404, detail="ID document not found")
+        raise HTTPException(status_code=404, detail="Pièce d'identité introuvable")
     path = absolute_path(sub.id_document_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="ID file missing")
+        raise HTTPException(status_code=404, detail="Fichier de pièce d'identité introuvable")
     try:
         data, media = get_preview_image(path)
     except ValueError as exc:
@@ -1093,10 +1145,10 @@ async def download_id_document(
     """Download original ID file."""
     sub = _get_sub(db, admin, public_id)
     if not sub or not sub.id_document_path:
-        raise HTTPException(status_code=404, detail="ID document not found")
+        raise HTTPException(status_code=404, detail="Pièce d'identité introuvable")
     path = absolute_path(sub.id_document_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="ID file missing")
+        raise HTTPException(status_code=404, detail="Fichier de pièce d'identité introuvable")
     media = "application/pdf" if path.suffix.lower() == ".pdf" else "image/jpeg"
     if path.suffix.lower() == ".png":
         media = "image/png"
@@ -1113,7 +1165,7 @@ async def guest_link_qr(
     if url and url.strip():
         target = url.strip()
         if not target.startswith(("http://", "https://")):
-            raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
+            raise HTTPException(status_code=400, detail="L'adresse doit commencer par http:// ou https://")
     else:
         target = _section_guest_url(admin)
     png = make_qr_png(target)
@@ -1176,10 +1228,10 @@ async def calendar_page(
     weeks, month_start, month_end = build_month_calendar(y, m, events)
     (prev_y, prev_m), (next_y, next_m) = month_nav(y, m)
 
-    month_name = month_start.strftime("%B %Y")
+    month_name = fr.fmonth(y, m)
     month_start_iso = month_start.isoformat()
     month_end_iso = month_end.isoformat()
-    weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    weekdays = fr.WEEKDAYS_SHORT
 
     list_events = sorted(events, key=lambda e: (e.arrival_date, e.guest_name))
 
@@ -1259,7 +1311,7 @@ async def download_archive_zip(
 ):
     data = build_archive_zip(db, admin.active_section_id)
     if not data:
-        raise HTTPException(status_code=404, detail="No archived submissions to export")
+        raise HTTPException(status_code=404, detail="Aucune fiche archivée à exporter")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d")
     return Response(
         content=data,
@@ -1284,13 +1336,13 @@ async def purge_archive_quarterly(
     current = len(archived_submissions(db, admin.active_section_id))
     if current == 0:
         return RedirectResponse(
-            url="/admin/archive?error=No+archived+records+to+purge",
+            url="/admin/archive?error=Aucune+fiche+archivée+à+purger",
             status_code=303,
         )
     purged, cumulative = purge_all_archived(db, admin.active_section_id)
     msg = (
-        f"Quarterly purge complete: {purged} record(s) removed. "
-        f"Total archived (all time): {cumulative}."
+        f"Purge trimestrielle terminée : {purged} fiche(s) supprimée(s). "
+        f"Total archivé (depuis le début) : {cumulative}."
     )
     return RedirectResponse(url=f"/admin/archive?msg={quote(msg)}", status_code=303)
 
@@ -1303,7 +1355,7 @@ async def purge_archived_submission(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub or sub.status != SubmissionStatus.ARCHIVED.value:
-        raise HTTPException(status_code=404, detail="Archived submission not found")
+        raise HTTPException(status_code=404, detail="Fiche archivée introuvable")
     permanently_delete_submission(db, sub)
     return RedirectResponse(url="/admin/archive?purged=1", status_code=303)
 
@@ -1316,10 +1368,10 @@ async def download_fiche_pdf(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub or not sub.document:
-        raise HTTPException(status_code=404, detail="PDF not found")
+        raise HTTPException(status_code=404, detail="PDF introuvable")
     path = absolute_path(sub.document.pdf_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="PDF file missing on disk")
+        raise HTTPException(status_code=404, detail="Fichier PDF introuvable")
     return FileResponse(
         path,
         media_type="application/pdf",
@@ -1335,10 +1387,10 @@ async def download_rules_pdf(
 ):
     sub = _get_sub(db, admin, public_id)
     if not sub or not sub.document or not sub.document.rules_pdf_path:
-        raise HTTPException(status_code=404, detail="Rules PDF not found")
+        raise HTTPException(status_code=404, detail="PDF du règlement introuvable")
     path = absolute_path(sub.document.rules_pdf_path)
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Rules PDF file missing on disk")
+        raise HTTPException(status_code=404, detail="Fichier PDF du règlement introuvable")
     return FileResponse(
         path,
         media_type="application/pdf",
@@ -1473,18 +1525,18 @@ async def section_admin_block(
     section = _get_section(db, section_public_id)
     target = _get_section_admin(db, section, admin_id)
     if target.id == admin.id or target.is_superadmin:
-        return _sections_redirect(page=back, error="You can't block the admin account.", anchor=section.public_id)
+        return _sections_redirect(page=back, error="Vous ne pouvez pas bloquer le compte administrateur.", anchor=section.public_id)
     if target.username.lower() in _env_usernames():
         return _sections_redirect(page=back, 
-            error=f"“{target.username}” is set in the .env file and is unblocked on every restart. Remove it there instead.",
+            error=f"« {target.username} » est défini dans le fichier .env et est débloqué à chaque redémarrage. Supprimez-le là-bas à la place.",
             anchor=section.public_id,
         )
     target.is_active = not target.is_active
     db.commit()
     msg = (
-        f"“{target.username}” is unblocked and can sign in again."
+        f"« {target.username} » est débloqué et peut se reconnecter."
         if target.is_active
-        else f"“{target.username}” is blocked and signed out everywhere."
+        else f"« {target.username} » est bloqué et déconnecté partout."
     )
     return _sections_redirect(page=back, msg=msg, anchor=section.public_id)
 
@@ -1515,7 +1567,7 @@ async def remove_demo(
 ):
     sections, guests = remove_demo_data(db)
     redirect = RedirectResponse(
-        url=f"/admin/stats?msg={quote(f'Demo data removed: {sections} host(s), {guests} guest record(s).')}",
+        url=f"/admin/stats?msg={quote(f'Données de démonstration supprimées : {sections} hôte(s), {guests} fiche(s).')}",
         status_code=303,
     )
     redirect.delete_cookie(OWNER_VIEW_COOKIE)
@@ -1529,14 +1581,14 @@ api_router = APIRouter(prefix="/api/admin", tags=["admin-api"])
 def api_login(body: AdminLogin, request: Request, response: Response, db: Session = Depends(get_db)):
     keys = (f"ip:{client_ip(request)}", f"user:{body.username.strip().lower()}")
     if any(login_failures.is_limited(k) for k in keys):
-        raise HTTPException(status_code=429, detail="Too many failed attempts. Try again in 15 minutes.")
+        raise HTTPException(status_code=429, detail="Trop de tentatives échouées. Réessayez dans 15 minutes.")
     admin = db.query(AdminUser).filter(AdminUser.username == body.username, AdminUser.is_active).first()
     if not admin or not verify_password(body.password, admin.password_hash):
         for k in keys:
             login_failures.hit(k)
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Identifiants invalides")
     if not admin_can_sign_in(admin):
-        raise HTTPException(status_code=403, detail="Host account is switched off")
+        raise HTTPException(status_code=403, detail="Compte hôte désactivé")
     admin.last_login_at = datetime.now(timezone.utc)
     db.commit()
     for k in keys:

@@ -1,0 +1,40 @@
+{# Pack countdown card. Usage: {% from "_pack.html" import pack_card %}{{ pack_card(pack_info, actions=True) }} #}
+{% from "_icons.html" import icon %}
+{% macro pack_card(p, actions=True) -%}
+{% if p.status == 'none' %}
+<section class="pack-card pack-card--bad">
+  <div class="pack-card__head"><span class="pack-card__icon">{{ icon("package") }}</span><div><h2>Aucun pack actif</h2><p class="subtitle">Commandez un pack pour que vos clients puissent s'enregistrer.</p></div></div>
+  {% if actions %}<a href="/admin/packs" class="btn btn-primary">Commander un pack</a>{% endif %}
+</section>
+{% else %}
+<section class="pack-card pack-card--{{ 'ok' if p.status == 'active' and not (p.low or p.expiring_soon) else ('warn' if p.status == 'active' else 'bad') }}">
+  <div class="pack-card__head">
+    <span class="pack-card__icon">{{ icon("package") }}</span>
+    <div>
+      <h2>Pack {{ p.name }}</h2>
+      <p class="subtitle">
+        {% if p.status == 'active' %}Valable jusqu'au {{ p.expires_at|fdate }} · encore {{ p.days_left }} {{ plural(p.days_left, "jour", "jours") }}
+        {% elif p.status == 'exhausted' %}Toutes les fiches ont été utilisées
+        {% else %}Expiré le {{ p.expires_at|fdate }}{% endif %}
+      </p>
+    </div>
+    <span class="chip {{ 'chip--green' if p.status == 'active' else 'chip--red' }}">{{ PACK_STATE_LABELS[p.status] }}</span>
+  </div>
+  <div class="pack-card__count">
+    <span class="pack-card__remaining">{{ p.remaining }}</span>
+    <span class="pack-card__of">{{ plural(p.remaining, "fiche restante", "fiches restantes") }} sur {{ p.total }}</span>
+  </div>
+  <div class="pack-bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ p.total }}" aria-valuenow="{{ p.remaining }}" aria-label="Fiches restantes">
+    <span class="pack-bar__fill" style="width: {{ 100 - p.percent }}%"></span>
+  </div>
+  <p class="pack-card__meta">
+    {{ p.used }} {{ plural(p.used, "fiche utilisée", "fiches utilisées") }} · commencé le {{ p.starts_at|fdate }}{% if p.carried_over %} · dont {{ p.carried_over }} reportées de votre ancien pack{% endif %}
+  </p>
+  {% if actions %}
+  <div class="pack-card__actions">
+    <a href="/admin/packs" class="btn {{ 'btn-secondary' if p.status == 'active' and not (p.low or p.expiring_soon) else 'btn-primary' }} btn-sm">{{ icon("package") }}{{ "Voir les packs" if p.status == 'active' else "Commander un pack" }}</a>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{%- endmacro %}

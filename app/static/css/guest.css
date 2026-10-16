@@ -440,3 +440,10 @@ html[dir="rtl"] .g-btn .g-flip { transform: scaleX(-1); }
 .g-host strong { color: var(--clay-700); }
 .g-host svg { width: 16px; height: 16px; color: var(--clay-500); flex: none; }
 .g-host--form { margin: 18px 0 0; }
+
+/* Registration closed for this host (pack used up / over) */
+.g-unavailable { margin-top: 28px; text-align: center; }
+.g-unavailable__icon { display: inline-grid; place-items: center; width: 56px; height: 56px; margin-bottom: 12px; border-radius: 16px; background: var(--saffron-50); color: var(--saffron-ink, #8a5a0b); }
+.g-unavailable__icon svg { width: 26px; height: 26px; }
+.g-unavailable__fr { font-size: 1.05rem; font-weight: 600; color: var(--ink); margin: 8px 0 14px; }
+.g-unavailable__other { margin: 6px 0; color: var(--ink-2); font-size: 0.92rem; }

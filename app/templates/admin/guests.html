@@ -1,66 +1,66 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
 {% set active = 'guests' %}
-{% block title %}All guests{% endblock %}
+{% block title %}Tous les clients{% endblock %}
 
 {% block content %}
 <div class="page-head">
   <div>
-    <h1 class="admin-page-title">All guests</h1>
-    <p class="admin-page-lead">Every guest registration from every host. Open one to see it exactly as its host does.</p>
+    <h1 class="admin-page-title">Tous les clients</h1>
+    <p class="admin-page-lead">Toutes les fiches de tous les hôtes. Ouvrez-en une pour la voir exactement comme son hôte la voit.</p>
   </div>
 </div>
 
 <div class="admin-panel">
   <form class="filters" method="get" action="/admin/guests" id="guests-filter-form">
-    <input type="search" name="q" placeholder="Name, ID number or nationality…" value="{{ q }}" autocomplete="off">
-    <select name="host" aria-label="Host">
-      <option value="">All hosts</option>
+    <input type="search" name="q" placeholder="Nom, numéro de pièce ou nationalité…" value="{{ q }}" autocomplete="off">
+    <select name="host" aria-label="Hôte">
+      <option value="">Tous les hôtes</option>
       {% for sec in sections %}
       <option value="{{ sec.public_id }}" {% if host == sec.public_id %}selected{% endif %}>{{ sec.name }}</option>
       {% endfor %}
     </select>
-    <select name="status_filter" aria-label="Status">
-      <option value="">All statuses</option>
+    <select name="status_filter" aria-label="Statut">
+      <option value="">Tous les statuts</option>
       {% for st in statuses %}
-      <option value="{{ st }}" {% if status_filter == st %}selected{% endif %}>{{ st|capitalize }}</option>
+      <option value="{{ st }}" {% if status_filter == st %}selected{% endif %}>{{ st|status_fr }}</option>
       {% endfor %}
     </select>
-    <button type="submit" class="btn btn-secondary btn-sm">{{ icon("search") }}Filter</button>
-    {% if q or host or status_filter %}<a href="/admin/guests" class="btn btn-secondary btn-sm">Clear</a>{% endif %}
+    <button type="submit" class="btn btn-secondary btn-sm">{{ icon("search") }}Filtrer</button>
+    {% if q or host or status_filter %}<a href="/admin/guests" class="btn btn-secondary btn-sm">Effacer</a>{% endif %}
   </form>
-  <p class="subtitle" style="margin:0.5rem 0 1rem"><strong>{{ total }}</strong> guest registration{{ "s" if total != 1 }}{% if total > guests|length %} · showing the latest {{ guests|length }}{% endif %}</p>
+  <p class="subtitle" style="margin:0.5rem 0 1rem"><strong>{{ total }}</strong> {{ plural(total, "fiche", "fiches") }}{% if total > guests|length %} · les {{ guests|length }} plus récentes{% endif %}</p>
 
   <div class="admin-table-wrap">
     <table class="data-table">
       <thead>
-        <tr><th>Guest</th><th>Host</th><th>Property</th><th>Stay</th><th>Nationality</th><th>Status</th><th>Submitted</th><th></th></tr>
+        <tr><th>Client</th><th>Hôte</th><th>Logement</th><th>Séjour</th><th>Nationalité</th><th>Statut</th><th>Reçue le</th><th></th></tr>
       </thead>
       <tbody>
         {% for sub in guests %}
         {% set sec = section_by_id.get(sub.section_id) %}
         <tr>
           <td><strong>{{ sub.last_name }}</strong> {{ sub.first_name }}<br><span class="subtitle">{{ sub.id_document_number }}</span></td>
-          <td data-label="Host">{{ sec.name if sec else "—" }}{% if sec and not sec.is_active %} <span class="chip chip--muted">off</span>{% endif %}</td>
-          <td data-label="Property">{% if sub.apartment and sub.apartment.section_id %}{{ sub.apartment.name }}{% else %}<span class="chip chip--amber">Not chosen</span>{% endif %}</td>
-          <td data-label="Stay"><span>{{ sub.arrival_date }} → {{ sub.departure_date }}<br><span class="subtitle">{{ sub.number_of_guests }} guest{{ "s" if sub.number_of_guests != 1 }}</span></span></td>
-          <td data-label="Nationality">{{ sub.nationality }}</td>
-          <td data-label="Status"><span>
-            <span class="status-pill status-{{ sub.status }}">{{ sub.status }}</span>
-            {% if sub.ai_auto_confirmed %}<br><span class="ai-badge ai-badge--auto">AI approved</span>{% endif %}
+          <td data-label="Hôte">{{ sec.name if sec else "—" }}{% if sec and not sec.is_active %} <span class="chip chip--muted">désactivé</span>{% endif %}</td>
+          <td data-label="Logement">{% if sub.apartment and sub.apartment.section_id %}{{ sub.apartment.name }}{% else %}<span class="chip chip--amber">Non choisi</span>{% endif %}</td>
+          <td data-label="Séjour"><span>{{ sub.arrival_date|fday }} → {{ sub.departure_date|fday }}<br><span class="subtitle">{{ sub.number_of_guests }} {{ plural(sub.number_of_guests, "voyageur", "voyageurs") }}</span></span></td>
+          <td data-label="Nationalité">{{ sub.nationality }}</td>
+          <td data-label="Statut"><span>
+            <span class="status-pill status-{{ sub.status }}">{{ sub.status|status_fr }}</span>
+            {% if sub.ai_auto_confirmed %}<br><span class="ai-badge ai-badge--auto">Validée par l'IA</span>{% endif %}
           </span></td>
-          <td data-label="Submitted">{{ sub.submitted_at.strftime('%d %b %Y') }}</td>
+          <td data-label="Reçue le">{{ sub.submitted_at|fdate }}</td>
           <td class="actions-cell">
             {% if sec %}
             <form method="post" action="/admin/sections/{{ sec.public_id }}/open">
               <input type="hidden" name="next" value="/admin/submissions/{{ sub.public_id }}">
-              <button type="submit" class="btn btn-secondary btn-sm">{{ icon("eye") }}Open</button>
+              <button type="submit" class="btn btn-secondary btn-sm">{{ icon("eye") }}Ouvrir</button>
             </form>
             {% endif %}
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8">No guests match these filters.</td></tr>
+        <tr><td colspan="8">Aucun client ne correspond à ces filtres.</td></tr>
         {% endfor %}
       </tbody>
     </table>

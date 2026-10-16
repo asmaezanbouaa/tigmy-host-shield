@@ -1,43 +1,40 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
 {% set active = 'share' %}
-{% block title %}Share with guests{% endblock %}
+{% block title %}Lien et QR code{% endblock %}
 
 {% block content %}
-<h1 class="admin-page-title">Share with guests</h1>
-<p class="admin-page-lead">The guest link for <strong>{{ section.name }}</strong>. Guests who use it only appear in this host's dashboard. Send it in Airbnb messages or print the QR code in your apartments.</p>
+<h1 class="admin-page-title">Lien et QR code clients</h1>
+<p class="admin-page-lead">Le lien d'enregistrement de <strong>{{ section.name }}</strong>. Les clients qui l'utilisent apparaissent uniquement dans votre espace. Envoyez-le par message (Airbnb, WhatsApp…) ou imprimez le QR code dans vos logements.</p>
+
+{% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
 
 <div class="admin-panel">
   <div class="share-grid">
     <div class="share-grid__main">
-      <label class="share-label">Registration link</label>
+      <label class="share-label">Votre lien d'enregistrement</label>
       <div class="copy-box">
         <input type="text" readonly id="guest-link-main" value="{{ guest_link }}">
-        <button type="button" class="btn btn-primary btn-sm" style="width:auto" onclick="copyLink('guest-link-main', this)">{{ icon("copy") }}<span>Copy</span></button>
+        <button type="button" class="btn btn-primary btn-sm" style="width:auto" onclick="copyLink('guest-link-main', this)">{{ icon("copy") }}<span>Copier</span></button>
       </div>
-      <p class="subtitle" style="margin:0.75rem 0 0">Direct form URL (optional):</p>
-      <code class="share-url-code">{{ guest_link_direct }}</code>
-      <p class="subtitle" style="margin:1rem 0 0">Admin</p>
-      <p class="subtitle" style="margin:0.25rem 0 0"><a href="{{ admin_login_url }}">{{ admin_login_url }}</a></p>
+      <p class="subtitle" style="margin:0.9rem 0 0">Le client choisit sa langue (français, anglais ou arabe), remplit ses informations, envoie sa pièce d'identité et signe. Vous recevez la fiche dans <a href="/admin/submissions">Fiches</a>.</p>
+
+      <div class="regen-box">
+        <p><strong>Lien partagé par erreur ?</strong> Générez un nouveau lien : l'ancien lien et l'ancien QR code cessent de fonctionner immédiatement.</p>
+        <form method="post" action="/admin/share/regenerate" onsubmit="return confirm('Générer un nouveau lien et un nouveau QR code ? L\'ancien lien et le QR code déjà imprimés ne fonctionneront plus.');">
+          <button type="submit" class="btn btn-secondary btn-sm">{{ icon("refresh") }}Générer un nouveau lien</button>
+        </form>
+      </div>
     </div>
     <div class="share-grid__qr">
       <label class="share-label">QR code</label>
       <div class="qr-box">
-        <img src="/admin/qr.png" width="200" height="200" alt="QR code for guest registration">
+        <img src="/admin/qr.png?v={{ guest_link|length }}{{ section.slug }}" width="200" height="200" alt="QR code d'enregistrement des clients">
       </div>
-      <a class="btn btn-secondary btn-sm" href="/admin/qr.png" download="tigmy-host-shield-qr.png" style="width:100%;margin-top:0.75rem">{{ icon("download") }}Download PNG</a>
-      <p class="subtitle" style="margin:0.75rem 0 0;text-align:center">Print and place in your property</p>
+      <a class="btn btn-secondary btn-sm" href="/admin/qr.png" download="qr-code-{{ section.slug }}.png" style="width:100%;margin-top:0.75rem">{{ icon("download") }}Télécharger le QR code</a>
+      <p class="subtitle" style="margin:0.75rem 0 0;text-align:center">À imprimer et à afficher dans votre logement</p>
     </div>
   </div>
-</div>
-
-<div class="admin-panel" style="margin-top:1.25rem">
-  <h2 style="font-size:1rem;margin:0 0 0.5rem">Before going live</h2>
-  <ul class="admin-tips-list">
-    <li>Set <code>BASE_URL</code> in <code>.env</code> to your public HTTPS address (see <code>DEPLOY.md</code>).</li>
-    <li>PDFs show <strong>waiting for dynamic assigning</strong> for the property until booking sync is added.</li>
-    <li>Guests only fill personal details, ID, and signature.</li>
-  </ul>
 </div>
 {% endblock %}
 
@@ -49,7 +46,7 @@
     navigator.clipboard.writeText(el.value);
     const label = btn.querySelector('span') || btn;
     const old = label.textContent;
-    label.textContent = 'Copied!';
+    label.textContent = 'Copié !';
     setTimeout(() => { label.textContent = old; }, 2000);
   }
 </script>

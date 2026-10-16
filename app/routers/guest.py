@@ -15,6 +15,7 @@ from app.services.form_links import is_link_usable
 from app.services.registration import get_or_create_shared_link
 from app.services.sections import section_by_slug
 from app.services.id_quality import check_id_image
+from app.services.packs import can_accept_registration, consume_fiche
 from app.services.rate_limit import client_ip, guest_submissions, id_photo_checks
 from app.services.sanitize import clean_text
 from app.services.storage import ensure_storage_dirs, save_id_document, save_signature_from_data_url
@@ -87,20 +88,41 @@ class _GuestFormBody(BaseModel):
 def _get_link_by_token(db: Session, token: str) -> FormLink:
     link = db.query(FormLink).filter(FormLink.token == token).first()
     if not link:
-        raise HTTPException(status_code=404, detail="Form link not found")
+        raise HTTPException(status_code=404, detail="Ce lien d'enregistrement n'existe pas ou a changé. Demandez le lien à jour à votre hôte.")
     return link
 
 
-def _link_usable(db: Session, link: FormLink) -> tuple[bool, str]:
+UNAVAILABLE_MESSAGES = {
+    # Shown to guests who cannot choose a language yet: French first, then English and Arabic
+    "host": {
+        "fr": "L'enregistrement en ligne est momentanément indisponible pour cet établissement. Veuillez contacter votre hôte.",
+        "en": "Online registration is temporarily unavailable for this property. Please contact your host.",
+        "ar": "التسجيل عبر الإنترنت غير متاح حاليًا لهذه المؤسسة. يرجى الاتصال بالمضيف.",
+    },
+    "link": {
+        "fr": "Ce lien n'est plus valide. Veuillez demander un nouveau lien à votre hôte.",
+        "en": "This link is no longer valid. Please ask your host for a new one.",
+        "ar": "هذا الرابط لم يعد صالحًا. يرجى طلب رابط جديد من المضيف.",
+    },
+}
+
+
+def _availability(db: Session, link: FormLink) -> str:
+    """"" when guests can register, otherwise why not: "host" (host off, or its pack is used up / over) or "link"."""
     if link.section_id is not None:
         section = db.get(HostSection, link.section_id)
         if not section or not section.is_active:
-            return False, "This registration link is no longer active."
-    return is_link_usable(link)
+            return "host"
+        accepts, _ = can_accept_registration(db, link.section_id)
+        if not accepts:
+            return "host"
+    ok, _ = is_link_usable(link)
+    return "" if ok else "link"
 
 
 def _form_context(request: Request, token: str, db: Session, link: FormLink):
-    ok, message = _link_usable(db, link)
+    unavailable = _availability(db, link)
+    ok = not unavailable
 
     fresh = request.query_params.get("fresh") == "1"
     lang_param = request.query_params.get("lang", "").strip().lower()
@@ -115,7 +137,7 @@ def _form_context(request: Request, token: str, db: Session, link: FormLink):
         "token": token,
         "host_name": host.name if host else "",
         "usable": ok,
-        "error_message": message if not ok else "",
+        "unavailable": UNAVAILABLE_MESSAGES.get(unavailable),
         "selected_lang": selected_lang,
         "fresh_start": fresh,
         "rules_fr": settings.load_rules_fr(),
@@ -127,17 +149,19 @@ def _form_context(request: Request, token: str, db: Session, link: FormLink):
 
 
 @router.get("/register", response_class=HTMLResponse)
-async def guest_register_redirect(db: Session = Depends(get_db)):
-    """Default section's guest link (kept for links and QR codes already shared)."""
-    link = get_or_create_shared_link(db)
-    return RedirectResponse(url=f"/f/{link.token}?fresh=1", status_code=302)
+async def guest_register_no_host():
+    """Every host has its own link (/register/<host>): the bare address cannot tell which host to use."""
+    raise HTTPException(
+        status_code=404,
+        detail="Pour vous enregistrer, utilisez le lien ou le QR code donné par votre hôte.",
+    )
 
 
 @router.get("/register/{section_slug}", response_class=HTMLResponse)
 async def guest_register_section_redirect(section_slug: str, db: Session = Depends(get_db)):
     section = section_by_slug(db, section_slug)
     if not section:
-        raise HTTPException(status_code=404, detail="Registration link not found")
+        raise HTTPException(status_code=404, detail="Ce lien d'enregistrement n'existe pas ou a changé. Demandez le lien à jour à votre hôte.")
     link = get_or_create_shared_link(db, section.id)
     return RedirectResponse(url=f"/f/{link.token}?fresh=1", status_code=302)
 
@@ -181,11 +205,11 @@ async def check_id_photo(
     """Instant quality check while the guest is still on the ID step (same rules as on submit)."""
     ip_key = client_ip(request)
     if id_photo_checks.is_limited(ip_key):
-        raise HTTPException(status_code=429, detail="Too many photo checks. Please try again later.")
+        return {"ok": False, "code": "rate_limited"}
     link = _get_link_by_token(db, token)
-    ok, message = _link_usable(db, link)
-    if not ok:
-        raise HTTPException(status_code=400, detail=message)
+    unavailable = _availability(db, link)
+    if unavailable:
+        return {"ok": False, "code": "host_unavailable", "message": UNAVAILABLE_MESSAGES[unavailable]["fr"]}
     data = await id_scan.read()
     if not data or len(data) > 10 * 1024 * 1024:
         return {"ok": False, "code": "id_too_large" if data else "id_unreadable"}
@@ -218,16 +242,16 @@ async def submit_guest_form(
 ):
     ip_key = client_ip(request)
     if guest_submissions.is_limited(ip_key):
-        raise HTTPException(
-            status_code=429,
-            detail="Too many registrations from this connection. Please try again later.",
-        )
+        raise HTTPException(status_code=429, detail={"code": "rate_limited", "message": "Trop de demandes."})
 
     ensure_storage_dirs()
     link = _get_link_by_token(db, token)
-    ok, message = _link_usable(db, link)
-    if not ok:
-        raise HTTPException(status_code=400, detail=message)
+    unavailable = _availability(db, link)
+    if unavailable:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "host_unavailable", "message": UNAVAILABLE_MESSAGES[unavailable]["fr"]},
+        )
 
     placeholder_apt = get_or_create_placeholder_apartment(db)
 
@@ -313,6 +337,9 @@ async def submit_guest_form(
 
     if link.single_use and not link.is_shared:
         link.status = FormLinkStatus.SUBMITTED.value
+
+    if link.section_id is not None:
+        consume_fiche(db, link.section_id)  # one more fiche used on the host's pack
 
     db.commit()
     guest_submissions.hit(ip_key)

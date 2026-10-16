@@ -13,7 +13,10 @@ OWNER_VIEW_COOKIE = "owner_view_section"
 
 
 # Pages the admin uses without opening a host. Every other /admin page belongs to a host.
-ADMIN_PAGES = ("/admin/stats", "/admin/sections", "/admin/view", "/admin/guests", "/admin/users", "/admin/profile", "/admin/logout")
+ADMIN_PAGES = (
+    "/admin/stats", "/admin/sections", "/admin/view", "/admin/guests", "/admin/users", "/admin/orders",
+    "/admin/profile", "/admin/logout",
+)
 
 
 def get_current_admin(

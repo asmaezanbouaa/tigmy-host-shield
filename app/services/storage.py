@@ -21,6 +21,7 @@ def ensure_storage_dirs() -> None:
     settings.pdfs_path.mkdir(parents=True, exist_ok=True)
     settings.id_documents_path.mkdir(parents=True, exist_ok=True)
     settings.archive_exports_path.mkdir(parents=True, exist_ok=True)
+    settings.receipts_path.mkdir(parents=True, exist_ok=True)
     (PROJECT_ROOT / "data").mkdir(parents=True, exist_ok=True)
 
 

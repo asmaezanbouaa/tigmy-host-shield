@@ -7,40 +7,27 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import ACTIVE_SUBMISSION_STATUSES, Submission, SubmissionStatus
+from app.services import fr
 from app.services.property_placeholder import establishment_for
 
 
 CSV_COLUMNS = [
-    "reference",
-    "status",
-    "last_name",
-    "first_name",
-    "establishment",
-    "nationality",
-    "date_of_birth",
-    "country_of_residence",
-    "guests",
-    "children",
-    "arrival_date",
-    "departure_date",
-    "id_document_type",
-    "id_document_number",
-    "submitted_at",
-    "confirmed_at",
-    "archived_at",
+    "Référence", "Statut", "Nom", "Prénom", "Établissement", "Nationalité", "Date de naissance",
+    "Pays de résidence", "Voyageurs", "Enfants", "Date d'arrivée", "Date de départ", "Type de pièce",
+    "N° de pièce", "Enregistré le", "Confirmé le", "Archivé le",
 ]
 
 
 def _fmt_dt(dt: datetime | None) -> str:
     if not dt:
         return ""
-    return dt.strftime("%Y-%m-%d %H:%M UTC")
+    return fr.local(dt).strftime("%d/%m/%Y %H:%M")
 
 
 def submission_to_row(sub: Submission) -> list[str]:
     return [
         sub.public_id,
-        sub.status,
+        fr.status_fr(sub.status),
         sub.last_name,
         sub.first_name,
         establishment_for(sub)[0],

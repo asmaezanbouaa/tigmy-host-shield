@@ -9,7 +9,7 @@ from app.services.auth import hash_password
 
 MAX_ADMINS_PER_SECTION = 2
 DEFAULT_SECTION_SLUG = "main"
-DEFAULT_SECTION_NAME = "Main section"
+DEFAULT_SECTION_NAME = "Hôte principal"
 MIN_PASSWORD_LENGTH = 10
 
 
@@ -79,13 +79,13 @@ def section_stats(db: Session, section_id: int) -> dict[str, int]:
 def validate_new_admin(db: Session, username: str, password: str) -> str | None:
     """Return an error message, or None when the username/password are acceptable."""
     if not username or len(username) < 3 or len(username) > 64:
-        return "Username must be 3–64 characters."
+        return "L'identifiant doit contenir 3 à 64 caractères."
     if not all(c.isalnum() or c in "._-" for c in username):
-        return "Username can only use letters, numbers, dots, dashes and underscores."
+        return "L'identifiant ne peut contenir que des lettres, chiffres, points, tirets et underscores."
     if db.query(AdminUser).filter(func.lower(AdminUser.username) == username.lower()).first():
-        return f"The username “{username}” is already taken."
+        return f"L'identifiant « {username} » est déjà utilisé."
     if len(password) < MIN_PASSWORD_LENGTH:
-        return f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+        return f"Le mot de passe doit contenir au moins {MIN_PASSWORD_LENGTH} caractères."
     return None
 
 

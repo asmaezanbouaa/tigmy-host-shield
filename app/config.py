@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     pdfs_dir: str = "pdfs"
     id_documents_dir: str = "id_documents"
     archive_exports_dir: str = "archive_exports"
+    receipts_dir: str = "receipts"
 
     id_retention_hours_after_verify: int = 14
     archive_purge_interval_days: int = 90
@@ -60,6 +61,13 @@ class Settings(BaseSettings):
 
     ai_auto_verify_on_submit: bool = True
     ai_auto_confirm_threshold: float = 0.8
+
+    # Payment by bank transfer + support (kept in .env, never committed: the repository is public)
+    bank_holder: str = ""
+    bank_rib: str = ""
+    bank_iban: str = ""
+    bank_swift: str = ""
+    support_whatsapp: str = ""  # international format without "+", e.g. 2126xxxxxxxx
 
     @property
     def is_production(self) -> bool:
@@ -123,6 +131,10 @@ class Settings(BaseSettings):
     @property
     def archive_exports_path(self) -> Path:
         return self.storage_path / self.archive_exports_dir
+
+    @property
+    def receipts_path(self) -> Path:
+        return self.storage_path / self.receipts_dir
 
     def load_rules_fr(self) -> str:
         if self.rules_fr_path.exists():

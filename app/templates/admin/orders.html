@@ -1,0 +1,49 @@
+{% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
+{% set active = 'orders' if all_hosts else 'packs' %}
+{% block title %}Commandes{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="admin-page-title">Commandes</h1>
+    <p class="admin-page-lead">{% if all_hosts %}Les commandes de packs de tous les hôtes. Vérifiez le virement et le reçu, puis <strong>confirmez</strong> : le pack est activé immédiatement.{% else %}L'historique de vos commandes de packs.{% endif %}</p>
+  </div>
+  {% if not all_hosts %}<a href="/admin/packs" class="btn btn-primary">{{ icon("package") }}Commander un pack</a>{% endif %}
+</div>
+
+{% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+<div class="calendar-view-tabs order-tabs">
+  <a href="/admin/orders?status=pending" class="calendar-tab {% if status == 'pending' %}calendar-tab--active{% endif %}">En attente</a>
+  <a href="/admin/orders?status=confirmed" class="calendar-tab {% if status == 'confirmed' %}calendar-tab--active{% endif %}">Confirmées</a>
+  <a href="/admin/orders?status=closed" class="calendar-tab {% if status == 'closed' %}calendar-tab--active{% endif %}">Refusées / annulées</a>
+  <a href="/admin/orders?status=all" class="calendar-tab {% if status == 'all' %}calendar-tab--active{% endif %}">Toutes</a>
+</div>
+
+<div class="admin-panel" style="margin-top:14px">
+  <div class="admin-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Référence</th>{% if all_hosts %}<th>Hôte</th>{% endif %}<th>Commande</th><th>Montant</th><th>Date</th><th>Statut</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td><strong>{{ o.reference }}</strong></td>
+          {% if all_hosts %}<td data-label="Hôte">{{ o.section.name }}</td>{% endif %}
+          <td data-label="Commande">{% if o.kind == 'topup' %}Recharge de {{ o.fiches }} fiches{% else %}Pack {{ PACKS[o.pack_key].name }}{% endif %}</td>
+          <td data-label="Montant">{{ o.price_dh|dh }} DH</td>
+          <td data-label="Date">{{ o.created_at|fdatetime }}</td>
+          <td data-label="Statut"><span class="chip {{ 'chip--green' if o.status == 'confirmed' else ('chip--red' if o.status in ('refused', 'cancelled') else 'chip--amber') }}">{{ ORDER_STATUS_LABELS[o.status] }}</span></td>
+          <td class="actions-cell"><a class="btn {{ 'btn-primary' if all_hosts and o.status in ('awaiting_payment', 'receipt_sent') else 'btn-secondary' }} btn-sm" href="/admin/orders/{{ o.reference }}">{% if all_hosts and o.status in ('awaiting_payment', 'receipt_sent') %}Vérifier{% else %}Ouvrir{% endif %}</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ 7 if all_hosts else 6 }}">Aucune commande ici.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

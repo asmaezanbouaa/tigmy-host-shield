@@ -52,7 +52,7 @@ Reply with ONLY valid JSON (no markdown), this exact structure:
 {{
   "overall": "match" | "partial" | "mismatch" | "unclear",
   "confidence": 0.0 to 1.0,
-  "summary": "one short sentence for the host in English",
+  "summary": "one short sentence for the host, in French",
   "fields": [
     {{"field": "last_name", "form_value": "...", "id_value": "...", "status": "match"|"mismatch"|"missing"|"unclear"}},
     {{"field": "first_name", "form_value": "...", "id_value": "...", "status": "match"|"mismatch"|"missing"|"unclear"}},
@@ -78,7 +78,7 @@ def _parse_ai_response(text: str) -> dict:
     """Parse JSON from the model; fall back to plain-text heuristics."""
     text = (text or "").strip()
     if not text:
-        raise ValueError("Empty response from AI model.")
+        raise ValueError("Réponse vide du modèle IA.")
     try:
         return _parse_json_response(text)
     except json.JSONDecodeError:
@@ -117,14 +117,14 @@ def _config_hint() -> str:
         )
     if p == "local":
         return (
-            "Set AI_PROVIDER=local in .env. Install: "
+            "Définissez AI_PROVIDER=local dans .env. Installation : "
             "sudo apt install tesseract-ocr tesseract-ocr-fra && pip install pytesseract"
         )
     if p == "openai":
         return (
             "OpenAI needs paid credits. For free unlimited OCR: AI_PROVIDER=local"
         )
-    return "Set AI_PROVIDER=local, gemini, or openai in .env"
+    return "Définissez AI_PROVIDER=local, gemini ou openai dans le fichier .env"
 
 
 def _verify_openai(sub: Submission, image_bytes: bytes, media_type: str) -> dict:
@@ -270,11 +270,11 @@ def verify_submission_id(sub: Submission) -> dict:
     if not cfg.ai_verification_enabled:
         raise ValueError(_config_hint())
     if not sub.id_document_path:
-        raise ValueError("No ID document uploaded for this submission.")
+        raise ValueError("Aucune pièce d'identité n'a été envoyée pour cette fiche.")
 
     path = absolute_path(sub.id_document_path)
     if not path.exists():
-        raise ValueError("ID document file is missing on disk.")
+        raise ValueError("Le fichier de la pièce d'identité est introuvable sur le serveur.")
 
     image_bytes, media_type = _image_bytes_for_id(path)
     provider = cfg.ai_provider_normalized

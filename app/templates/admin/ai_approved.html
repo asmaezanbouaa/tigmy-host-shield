@@ -1,21 +1,21 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
 {% set active = 'ai_approved' %}
-{% block title %}AI-approved{% endblock %}
+{% block title %}Validées par l'IA{% endblock %}
 
 {% block content %}
-<h1 class="admin-page-title">AI-approved guests</h1>
+<h1 class="admin-page-title">Clients validés par l'IA</h1>
 <p class="admin-page-lead">
-  AI matched these guests' forms to their ID with at least <strong>{{ ai_threshold_pct }}%</strong> confidence.
-  Open each one waiting for an apartment, choose it, and confirm.
+  L'IA a comparé la fiche de ces clients à leur pièce d'identité avec au moins <strong>{{ ai_threshold_pct }} %</strong> de confiance.
+  Ouvrez chacun de ceux qui attendent un logement, choisissez-le, puis confirmez.
 </p>
 
 <div class="admin-ai-banner admin-ai-banner--success">
   <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("sparkles") }}</span>
   <div>
-    <strong>Powered by AI</strong>
+    <strong>Gagnez du temps avec l'IA</strong>
     <p class="subtitle" style="margin:0.25rem 0 0">
-      {{ app_name }} compares each registration to the uploaded ID scan in seconds. You only choose the apartment.
+      {{ app_name }} compare chaque fiche à la pièce d'identité envoyée en quelques secondes. Vous n'avez plus qu'à choisir le logement.
     </p>
   </div>
 </div>
@@ -25,10 +25,10 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>Guest</th>
-          <th>Stay</th>
-          <th>AI confidence</th>
-          <th>Apartment</th>
+          <th>Client</th>
+          <th>Séjour</th>
+          <th>Confiance de l'IA</th>
+          <th>Logement</th>
           <th>Action</th>
         </tr>
       </thead>
@@ -38,12 +38,12 @@
         <tr>
           <td>
             <strong>{{ sub.last_name }}</strong> {{ sub.first_name }}
-            <br><span class="status-pill status-{{ sub.status }}">{{ sub.status }}</span>
+            <br><span class="status-pill status-{{ sub.status }}">{{ sub.status|status_fr }}</span>
           </td>
-          <td data-label="Stay">{{ sub.arrival_date }} → {{ sub.departure_date }}</td>
-          <td data-label="AI confidence"><span>
+          <td data-label="Séjour">{{ sub.arrival_date|fday }} → {{ sub.departure_date|fday }}</td>
+          <td data-label="Confiance de l'IA"><span>
             {% if row.confidence_pct is not none %}
-            <span class="ai-confidence-pill ai-confidence-pill--high">{{ row.confidence_pct }}%</span>
+            <span class="ai-confidence-pill ai-confidence-pill--high">{{ row.confidence_pct }} %</span>
             {% if row.ai_summary %}
             <br><span class="subtitle">{{ row.ai_summary[:80] }}{% if row.ai_summary|length > 80 %}…{% endif %}</span>
             {% endif %}
@@ -51,19 +51,19 @@
             —
             {% endif %}
           </span></td>
-          <td data-label="Apartment">
+          <td data-label="Logement">
             {% if sub.apartment and sub.apartment.section_id %}{{ sub.apartment.name }}
-            {% else %}<span class="chip chip--amber">Choose apartment</span>{% endif %}
+            {% else %}<span class="chip chip--amber">À choisir</span>{% endif %}
           </td>
           <td class="actions-cell">
-            <a class="btn {% if sub.status == 'submitted' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" href="/admin/submissions/{{ sub.public_id }}#apartment">{% if sub.status == 'submitted' %}Choose apartment{% else %}View{% endif %}</a>
+            <a class="btn {% if sub.status == 'submitted' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" href="/admin/submissions/{{ sub.public_id }}#apartment">{% if sub.status == 'submitted' %}Choisir le logement{% else %}Voir{% endif %}</a>
           </td>
         </tr>
         {% else %}
         <tr>
           <td colspan="5">
-            No AI-approved guests yet. When a guest's form matches their ID (≥ {{ ai_threshold_pct }}%),
-            they appear here for you to choose the apartment.
+            Aucun client validé par l'IA pour le moment. Quand la fiche d'un client correspond à sa pièce d'identité (≥ {{ ai_threshold_pct }} %),
+            il apparaît ici pour que vous choisissiez le logement.
           </td>
         </tr>
         {% endfor %}

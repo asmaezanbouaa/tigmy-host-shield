@@ -5,8 +5,8 @@
 
 {% block content %}
 <p class="breadcrumb">
-  <a href="/admin/submissions">Submissions</a>
-  {% if submission.status == 'archived' %} · <a href="/admin/archive">Archive</a>{% endif %}
+  <a href="/admin/submissions">Fiches</a>
+  {% if submission.status == 'archived' %} · <a href="/admin/archive">Archives</a>{% endif %}
   · <span>{{ submission.last_name }} {{ submission.first_name }}</span>
 </p>
 
@@ -21,10 +21,10 @@
 <div class="admin-ai-banner admin-ai-banner--success">
   <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("sparkles") }}</span>
   <div>
-    <strong>AI approved this guest's ID</strong>
+    <strong>L'IA a validé la pièce d'identité de ce client</strong>
     <p class="subtitle" style="margin:0.25rem 0 0">
-      {% if submission.status == 'submitted' %}The form matched the ID scan (confidence ≥ {{ ai_threshold_pct }}%). Choose the apartment, then confirm.
-      {% else %}The form matched the ID scan at submit time (confidence ≥ {{ ai_threshold_pct }}%).{% endif %}
+      {% if submission.status == 'submitted' %}La fiche correspond à la pièce d'identité (confiance ≥ {{ ai_threshold_pct }} %). Choisissez le logement, puis confirmez.
+      {% else %}La fiche correspondait à la pièce d'identité à l'envoi (confiance ≥ {{ ai_threshold_pct }} %).{% endif %}
     </p>
   </div>
 </div>
@@ -32,8 +32,8 @@
 <div class="admin-ai-banner admin-ai-banner--review">
   <span class="admin-ai-banner__icon" aria-hidden="true">{{ icon("search") }}</span>
   <div>
-    <strong>AI flagged for manual review</strong>
-    <p class="subtitle" style="margin:0.25rem 0 0">Confidence was below {{ ai_threshold_pct }}%. Check what AI saw below, then confirm or edit.</p>
+    <strong>L'IA demande une vérification manuelle</strong>
+    <p class="subtitle" style="margin:0.25rem 0 0">La confiance était inférieure à {{ ai_threshold_pct }} %. Regardez ce que l'IA a lu ci-dessous, puis confirmez ou modifiez la fiche.</p>
   </div>
 </div>
 {% endif %}
@@ -42,17 +42,17 @@
   <header class="review-header">
     <h1 class="review-header__title">{{ submission.last_name }} {{ submission.first_name }}</h1>
     <p class="subtitle review-header__meta">
-      Ref. {{ submission.public_id[:8]|upper }} · {{ submission.submitted_at.strftime('%d %b %Y %H:%M UTC') }}
+      Réf. {{ submission.public_id[:8]|upper }} · reçue le {{ submission.submitted_at|fdatetime }}
     </p>
     <p class="review-header__status">
-      <span class="status-pill status-{{ submission.status }}">{{ submission.status }}</span>
+      <span class="status-pill status-{{ submission.status }}">{{ submission.status|status_fr }}</span>
       {% if ai_auto_confirmed %}
-      <span class="ai-badge ai-badge--auto">AI approved</span>
+      <span class="ai-badge ai-badge--auto">Validée par l'IA</span>
       {% elif needs_manual_review %}
-      <span class="ai-badge ai-badge--review">Needs review</span>
+      <span class="ai-badge ai-badge--review">À vérifier</span>
       {% endif %}
       {% if submission.status == 'submitted' %}
-      <span class="subtitle">Review details and ID below, then take your decision at the bottom.</span>
+      <span class="subtitle">Vérifiez les informations et la pièce d'identité, puis décidez en bas de page.</span>
       {% endif %}
     </p>
   </header>
@@ -60,60 +60,60 @@
   <div class="review-workspace">
     <div class="review-main">
       <section class="review-card">
-        <h2 class="review-section-label"><span class="review-step">1</span> Guest details</h2>
+        <h2 class="review-section-label"><span class="review-step">1</span> Informations du client</h2>
         <dl class="review-dl">
-          <div><dt>Name</dt><dd>{{ submission.first_name }} {{ submission.last_name }}</dd></div>
-          <div><dt>Nationality</dt><dd>{{ submission.nationality }}</dd></div>
-          <div><dt>Date of birth</dt><dd>{{ submission.date_of_birth }}</dd></div>
-          <div><dt>Residence</dt><dd>{{ submission.country_of_residence }}</dd></div>
-          <div><dt>Stay</dt><dd>{{ submission.arrival_date }} → {{ submission.departure_date }}</dd></div>
-          <div><dt>Guests</dt><dd>{{ submission.number_of_guests }} ({{ submission.number_of_kids }} children)</dd></div>
-          <div><dt>ID type</dt><dd>{{ submission.id_document_type }}</dd></div>
-          <div><dt>ID number</dt><dd><strong>{{ submission.id_document_number }}</strong></dd></div>
+          <div><dt>Nom</dt><dd>{{ submission.first_name }} {{ submission.last_name }}</dd></div>
+          <div><dt>Nationalité</dt><dd>{{ submission.nationality }}</dd></div>
+          <div><dt>Date de naissance</dt><dd>{{ submission.date_of_birth|fday }}</dd></div>
+          <div><dt>Pays de résidence</dt><dd>{{ submission.country_of_residence }}</dd></div>
+          <div><dt>Séjour</dt><dd>{{ submission.arrival_date|fday }} → {{ submission.departure_date|fday }}</dd></div>
+          <div><dt>Voyageurs</dt><dd>{{ submission.number_of_guests }} (dont {{ submission.number_of_kids }} {{ plural(submission.number_of_kids, "enfant", "enfants") }})</dd></div>
+          <div><dt>Type de pièce</dt><dd>{{ submission.id_document_type }}</dd></div>
+          <div><dt>N° de pièce</dt><dd><strong>{{ submission.id_document_number }}</strong></dd></div>
         </dl>
         {% if submission.admin_notes %}
-        <p class="review-note"><strong>Notes:</strong> {{ submission.admin_notes }}</p>
+        <p class="review-note"><strong>Notes :</strong> {{ submission.admin_notes }}</p>
         {% endif %}
       </section>
 
       <section class="review-card">
-        <h2 class="review-section-label"><span class="review-step">2</span> Identity document</h2>
+        <h2 class="review-section-label"><span class="review-step">2</span> Pièce d'identité</h2>
         {% if has_id_preview %}
         <div class="id-preview-wrap">
           <img
             src="/admin/submissions/{{ submission.public_id }}/id-preview"
-            alt="ID document scan"
+            alt="Pièce d'identité envoyée"
             class="id-preview-img"
             loading="lazy"
           >
         </div>
-        <p class="subtitle id-preview-caption">Compare the scan above with the guest details. Open full file if needed.</p>
-        <a class="btn-link btn-sm" href="/admin/submissions/{{ submission.public_id }}/id-document" target="_blank" rel="noopener">Open original file</a>
+        <p class="subtitle id-preview-caption">Comparez l'image ci-dessus avec les informations du client. Ouvrez le fichier complet si besoin.</p>
+        <a class="btn-link btn-sm" href="/admin/submissions/{{ submission.public_id }}/id-document" target="_blank" rel="noopener">Ouvrir le fichier d'origine</a>
         {% if not submission.id_document_verified_at %}
         <div class="review-id-verify-row">
           <form method="post" action="/admin/submissions/{{ submission.public_id }}/verify-id">
-            <button type="submit" class="btn btn-confirm btn-sm">Mark ID verified</button>
+            <button type="submit" class="btn btn-confirm btn-sm">Marquer la pièce comme vérifiée</button>
           </form>
-          <span class="subtitle">File auto-deleted {{ id_retention_hours }}h after verification.</span>
+          <span class="subtitle">Fichier supprimé automatiquement {{ id_retention_hours }} h après la vérification.</span>
         </div>
         {% else %}
         <p class="subtitle" style="margin-top:0.75rem">
-          ✓ Verified {{ submission.id_document_verified_at.strftime('%d %b %Y %H:%M') }} — scan removed after {{ id_retention_hours }}h.
+          ✓ Vérifiée le {{ submission.id_document_verified_at|fdatetime }} — l'image est supprimée {{ id_retention_hours }} h après.
         </p>
         {% endif %}
         {% elif submission.id_document_path and not has_id_preview %}
-        <p class="subtitle">ID scan was verified and removed from storage.</p>
+        <p class="subtitle">La pièce d'identité a été vérifiée et l'image supprimée du stockage.</p>
         {% else %}
-        <p class="subtitle">No ID scan uploaded.</p>
+        <p class="subtitle">Aucune pièce d'identité envoyée.</p>
         {% endif %}
       </section>
 
       <section class="review-card" id="apartment">
-        <h2 class="review-section-label"><span class="review-step">3</span> Apartment</h2>
+        <h2 class="review-section-label"><span class="review-step">3</span> Logement</h2>
         {% if not apartments and not assigned_apartment %}
-        <div class="apt-missing">{{ icon("alert") }}<span>No apartments yet. <a href="/admin/apartments#add">Add your apartments</a> to confirm guests.</span></div>
+        <div class="apt-missing">{{ icon("alert") }}<span>Aucun logement pour le moment. <a href="/admin/apartments#add">Ajoutez vos logements</a> pour pouvoir confirmer vos clients.</span></div>
         {% elif submission.status == 'submitted' %}
-        <p class="subtitle" style="margin:0 0 10px">Which apartment is this guest staying in? It is printed on the fiche de police.</p>
+        <p class="subtitle" style="margin:0 0 10px">Dans quel logement ce client séjourne-t-il ? Il sera imprimé sur la fiche de police.</p>
         <div class="apt-choice">
           {% for apt in apartments %}
           <label>
@@ -122,16 +122,16 @@
           </label>
           {% endfor %}
         </div>
-        <p class="subtitle" style="margin:10px 0 0">Then press <strong>Confirm registration</strong> below. <a href="/admin/apartments">Manage apartments</a></p>
+        <p class="subtitle" style="margin:10px 0 0">Appuyez ensuite sur <strong>Confirmer la fiche</strong> en bas. <a href="/admin/apartments">Gérer les logements</a></p>
         {% else %}
           {% if assigned_apartment %}
           <div class="apt-assigned">{{ icon("building") }}<span><strong>{{ assigned_apartment.name }}</strong><br><span style="font-size:0.86rem">{{ assigned_apartment.address }}</span></span></div>
           {% else %}
-          <div class="apt-missing">{{ icon("alert") }}<span>No apartment chosen. The PDFs say “waiting for dynamic assigning”.</span></div>
+          <div class="apt-missing">{{ icon("alert") }}<span>Aucun logement choisi. Les PDF indiquent « waiting for dynamic assigning ».</span></div>
           {% endif %}
           {% if submission.status != 'archived' and apartments %}
           <details class="disclose" style="margin-top:12px" {% if not assigned_apartment %}open{% endif %}>
-            <summary class="btn btn-secondary btn-sm">{{ icon("pen") }}{{ "Change apartment" if assigned_apartment else "Choose apartment" }}</summary>
+            <summary class="btn btn-secondary btn-sm">{{ icon("pen") }}{{ "Changer de logement" if assigned_apartment else "Choisir le logement" }}</summary>
             <form method="post" action="/admin/submissions/{{ submission.public_id }}/apartment" style="margin-top:12px">
               <div class="apt-choice">
                 {% for apt in apartments %}
@@ -141,7 +141,7 @@
                 </label>
                 {% endfor %}
               </div>
-              <button type="submit" class="btn btn-primary btn-sm" style="margin-top:10px">Save apartment &amp; update PDFs</button>
+              <button type="submit" class="btn btn-primary btn-sm" style="margin-top:10px">Enregistrer le logement et mettre à jour les PDF</button>
             </form>
           </details>
           {% endif %}
@@ -149,39 +149,39 @@
       </section>
 
       <section class="review-card">
-        <h2 class="review-section-label"><span class="review-step">4</span> Generated documents</h2>
+        <h2 class="review-section-label"><span class="review-step">4</span> Documents générés</h2>
         {% if submission.document %}
         <div class="review-docs">
           <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf">{{ icon("file") }}Fiche de police</a>
           <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf/rules">{{ icon("pen") }}Règlement signé</a>
         </div>
         {% else %}
-        <p class="subtitle">PDFs not generated.</p>
+        <p class="subtitle">PDF non générés.</p>
         {% endif %}
         {% if submission.signature_path %}
         <div class="review-signature">
-          <p class="subtitle" style="margin-bottom:0.5rem">Signature</p>
+          <p class="subtitle" style="margin-bottom:0.5rem">Signature du client</p>
           <img src="/admin/submissions/{{ submission.public_id }}/signature" alt="Signature" class="review-signature__img">
         </div>
         {% endif %}
       </section>
     </div>
 
-    <aside class="review-ai-sidebar" aria-label="AI verification assistant">
+    <aside class="review-ai-sidebar" aria-label="Assistant de vérification IA">
       <div class="review-ai-sidebar__inner">
-        <h2 class="review-ai-sidebar__title">AI assistant</h2>
+        <h2 class="review-ai-sidebar__title">Assistant IA</h2>
         <p class="review-ai-disclaimer">
           {% if ai_auto_confirmed %}
-          <strong>Confirmed automatically.</strong> AI matched this form to the ID at submit time.
+          <strong>Pièce conforme.</strong> L'IA a comparé cette fiche à la pièce d'identité à l'envoi. Il reste à choisir le logement et à confirmer.
           {% elif needs_manual_review %}
-          <strong>Needs your decision.</strong> AI checked this submission but confidence was below {{ ai_threshold_pct }}%.
+          <strong>À vous de décider.</strong> L'IA a analysé cette fiche mais sa confiance était inférieure à {{ ai_threshold_pct }} %.
           {% else %}
-          <strong>Admin decides.</strong> AI suggests whether the form matches the ID. You confirm or edit yourself.
+          <strong>Vous décidez.</strong> L'IA indique si la fiche correspond à la pièce d'identité ; vous confirmez ou modifiez vous-même.
           {% endif %}
         </p>
         {% if ai_provider_label %}
         <p class="subtitle" style="margin:0 0 0.75rem;font-size:0.8rem">
-          Engine: <strong>{{ ai_provider_label }}</strong>
+          Moteur : <strong>{{ ai_provider_label }}</strong>
         </p>
         {% endif %}
 
@@ -189,51 +189,51 @@
           {% if ai_enabled %}
           <form id="ai-verify-form" method="post" action="/admin/submissions/{{ submission.public_id }}/ai-verify" class="review-ai-form">
             <button type="submit" class="btn btn-primary btn-sm" style="width:100%" id="ai-verify-btn">
-              Run AI check
+              Lancer l'analyse IA
             </button>
           </form>
           <div id="ai-verify-error" class="alert alert-error" hidden style="margin-top:0.75rem;font-size:0.85rem"></div>
           {% else %}
-          <p class="subtitle" style="font-size:0.85rem">AI is off. Set <code>AI_PROVIDER=local</code> in <code>.env</code> and restart the app.</p>
+          <p class="subtitle" style="font-size:0.85rem">L'IA est désactivée. Définissez <code>AI_PROVIDER=local</code> dans <code>.env</code> et redémarrez l'application.</p>
           {% endif %}
         {% elif not has_id_preview %}
-        <p class="subtitle" style="font-size:0.85rem">No ID scan on this submission — AI check is not available.</p>
+        <p class="subtitle" style="font-size:0.85rem">Aucune pièce d'identité sur cette fiche : l'analyse IA n'est pas disponible.</p>
         {% endif %}
 
         {% if ai_result %}
         <div class="ai-result ai-result--{{ ai_result.overall }}">
           <div class="ai-result__head">
-            <span class="ai-result__label">Suggestion</span>
-            <span class="ai-result__badge ai-result__badge--{{ ai_result.overall }}">{{ ai_result.overall }}</span>
+            <span class="ai-result__label">Avis de l'IA</span>
+            <span class="ai-result__badge ai-result__badge--{{ ai_result.overall }}">{{ AI_OVERALL.get(ai_result.overall, ai_result.overall) }}</span>
           </div>
           {% if ai_result.confidence is defined %}
-          <p class="subtitle">{{ (ai_result.confidence * 100)|int }}% confidence{% if not ai_auto_confirmed %} — below {{ ai_threshold_pct }}% threshold{% endif %}</p>
+          <p class="subtitle">Confiance : {{ (ai_result.confidence * 100)|int }} %{% if not ai_auto_confirmed %} — sous le seuil de {{ ai_threshold_pct }} %{% endif %}</p>
           {% endif %}
           {% if ai_result.summary %}
           <p class="ai-result__summary">{{ ai_result.summary }}</p>
           {% endif %}
           {% if ai_result.ocr_preview %}
           <details class="ai-ocr-preview">
-            <summary>What AI read on the ID</summary>
+            <summary>Ce que l'IA a lu sur la pièce</summary>
             <pre class="ai-ocr-preview__text">{{ ai_result.ocr_preview }}</pre>
           </details>
           {% endif %}
           {% if ai_result.fields %}
           <table class="ai-result__table">
-            <thead><tr><th>Field</th><th>Status</th></tr></thead>
+            <thead><tr><th>Champ</th><th>Résultat</th></tr></thead>
             <tbody>
               {% for f in ai_result.fields %}
-              <tr class="ai-row--{{ f.status }}" title="Form: {{ f.form_value or '—' }} | ID: {{ f.id_value or '—' }}">
-                <td>{{ f.field|replace('_', ' ')|title }}</td>
-                <td><span class="ai-field-status ai-field-status--{{ f.status }}">{{ f.status }}</span></td>
+              <tr class="ai-row--{{ f.status }}" title="Fiche : {{ f.form_value or '—' }} | Pièce : {{ f.id_value or '—' }}">
+                <td>{{ AI_FIELDS.get(f.field, f.field) }}</td>
+                <td><span class="ai-field-status ai-field-status--{{ f.status }}">{{ AI_FIELD_STATUS.get(f.status, f.status) }}</span></td>
               </tr>
               {% endfor %}
             </tbody>
           </table>
-          <p class="subtitle ai-result__legend">Hover a row for form vs ID values.</p>
+          <p class="subtitle ai-result__legend">Survolez une ligne pour voir la valeur de la fiche et celle de la pièce.</p>
           {% endif %}
           {% if submission.ai_verification_at %}
-          <p class="subtitle" style="margin-top:0.5rem">Last run {{ submission.ai_verification_at.strftime('%d %b %H:%M') }}</p>
+          <p class="subtitle" style="margin-top:0.5rem">Dernière analyse : {{ submission.ai_verification_at|fdatetime }}</p>
           {% endif %}
         </div>
         {% endif %}
@@ -242,27 +242,27 @@
   </div>
 
   {% if can_edit or can_confirm or can_archive %}
-  <section class="review-actions review-actions--footer" aria-label="Your decision" id="decision">
-    <h2 class="review-section-label">Your decision</h2>
+  <section class="review-actions review-actions--footer" aria-label="Votre décision" id="decision">
+    <h2 class="review-section-label">Votre décision</h2>
     <p class="subtitle review-actions__hint">
-      After reviewing details and ID{% if ai_result %} (and the AI suggestion){% endif %}, choose the apartment and an action.
+      Après avoir vérifié les informations et la pièce d'identité{% if ai_result %} (et l'avis de l'IA){% endif %}, choisissez le logement puis une action.
     </p>
     <div class="review-actions__bar">
       {% if can_edit %}
       <a class="btn btn-secondary review-actions__btn" href="/admin/submissions/{{ submission.public_id }}/edit">
-        {{ icon("pen") }}Edit &amp; resave
+        {{ icon("pen") }}Modifier
       </a>
       {% endif %}
       {% if can_confirm %}
       <form method="post" action="/admin/submissions/{{ submission.public_id }}/confirm" class="review-actions__form" id="confirm-form"
             onsubmit="if (!this.querySelector('[name=apartment]') &amp;&amp; !document.querySelector('input[form=confirm-form]:checked')) { document.getElementById('apartment').scrollIntoView({behavior:'smooth'}); document.getElementById('apartment').classList.add('needs-choice'); return false; }">
-        <button type="submit" class="btn btn-confirm review-actions__btn" {% if not apartments %}disabled title="Add an apartment first"{% endif %}>{{ icon("check") }}Confirm registration</button>
+        <button type="submit" class="btn btn-confirm review-actions__btn" {% if not apartments %}disabled title="Ajoutez d'abord un logement"{% endif %}>{{ icon("check") }}Confirmer la fiche</button>
       </form>
       {% endif %}
       {% if can_archive %}
       <form method="post" action="/admin/submissions/{{ submission.public_id }}/archive" class="review-actions__form"
-            onsubmit="return confirm('Move this submission to the archive?');">
-        <button type="submit" class="btn btn-danger review-actions__btn review-actions__btn--outline">Archive</button>
+            onsubmit="return confirm('Déplacer cette fiche dans les archives ?');">
+        <button type="submit" class="btn btn-danger review-actions__btn review-actions__btn--outline">Archiver</button>
       </form>
       {% endif %}
     </div>
@@ -278,7 +278,7 @@
   if (!form) return;
   const btn = document.getElementById('ai-verify-btn');
   const errEl = document.getElementById('ai-verify-error');
-  const defaultLabel = btn ? btn.textContent : 'Run AI check';
+  const defaultLabel = btn ? btn.textContent : 'Lancer l\'analyse IA';
 
   function resetBtn() {
     if (btn) {
@@ -292,7 +292,7 @@
     if (errEl) errEl.hidden = true;
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'Checking…';
+      btn.textContent = 'Analyse en cours…';
     }
 
     const controller = new AbortController();
@@ -312,7 +312,7 @@
         return;
       }
       if (errEl) {
-        errEl.textContent = data.error || data.detail || 'AI check failed.';
+        errEl.textContent = data.error || data.detail || 'Échec de l\'analyse IA.';
         errEl.hidden = false;
       }
       resetBtn();
@@ -321,8 +321,8 @@
       if (errEl) {
         errEl.textContent =
           err.name === 'AbortError'
-            ? 'Timed out — try again or use AI_PROVIDER=local for faster OCR.'
-            : 'Network error: ' + (err.message || 'could not reach server');
+            ? 'Délai dépassé : réessayez dans un instant.'
+            : 'Erreur réseau : ' + (err.message || 'serveur injoignable');
         errEl.hidden = false;
       }
       resetBtn();

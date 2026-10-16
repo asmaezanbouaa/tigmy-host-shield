@@ -17,7 +17,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Image, PageBreak, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import Image, KeepInFrame, PageBreak, Paragraph, Spacer, Table, TableStyle
 from reportlab.platypus.doctemplate import BaseDocTemplate, Frame, PageTemplate
 
 from app.config import PROJECT_ROOT, get_settings
@@ -86,10 +86,11 @@ def _styles() -> dict:
         "meta_r": ParagraphStyle("meta_r", fontName="Helvetica", fontSize=7.6, leading=10, textColor=INK_2, alignment=TA_RIGHT),
         "notice": ParagraphStyle("notice", fontName="Helvetica-Oblique", fontSize=7.4, leading=10, textColor=INK_2, alignment=TA_JUSTIFY),
         "notice_ar": ParagraphStyle("notice_ar", fontName=AR_FONT, fontSize=8.4, leading=12, textColor=INK_2, alignment=TA_RIGHT),
+        "article_inline": ParagraphStyle("article_inline", fontName="Helvetica", fontSize=7.8, leading=10.4, textColor=INK, alignment=TA_JUSTIFY, spaceAfter=2.6),
         "article_title": ParagraphStyle("article_title", fontName="Helvetica-Bold", fontSize=8.4, leading=11, textColor=CLAY_DARK, spaceBefore=5, spaceAfter=1.5),
         "article_body": ParagraphStyle("article_body", fontName="Helvetica", fontSize=7.9, leading=11, textColor=INK, alignment=TA_JUSTIFY, spaceAfter=2),
-        "article_title_ar": ParagraphStyle("article_title_ar", fontName=AR_FONT_BOLD, fontSize=9.4, leading=13, textColor=CLAY_DARK, alignment=TA_RIGHT, spaceBefore=5, spaceAfter=1),
-        "article_body_ar": ParagraphStyle("article_body_ar", fontName=AR_FONT, fontSize=8.8, leading=13.5, textColor=INK, alignment=TA_RIGHT),
+        "article_title_ar": ParagraphStyle("article_title_ar", fontName=AR_FONT_BOLD, fontSize=9.2, leading=12.4, textColor=CLAY_DARK, alignment=TA_RIGHT, spaceBefore=3.5, spaceAfter=0),
+        "article_body_ar": ParagraphStyle("article_body_ar", fontName=AR_FONT, fontSize=8.5, leading=12.2, textColor=INK, alignment=TA_RIGHT),
         "small": ParagraphStyle("small", fontName="Helvetica", fontSize=6.8, leading=9, textColor=MUTED, alignment=TA_CENTER),
     }
 
@@ -294,7 +295,7 @@ def _signatures(signature_file: Path, styles: dict, guest_fr: str, guest_ar: str
 
     def box(title_fr, title_ar, body):
         b = Table([[Paragraph(_escape(title_fr), styles["section"]), Paragraph(_escape(ar(title_ar)), styles["section_ar"])],
-                   [body, ""]], colWidths=[half * 0.55, half * 0.45], rowHeights=[None, 2.3 * cm])
+                   [body, ""]], colWidths=[half * 0.55, half * 0.45], rowHeights=[None, 1.9 * cm])
         b.setStyle(TableStyle([
             ("SPAN", (0, 1), (1, 1)),
             ("BACKGROUND", (0, 0), (-1, 0), SAND_2),
@@ -449,11 +450,12 @@ def _rules_page_latin(submission, apartment_name, apartment_address, rules_text,
     story = [_title_block(heading[0], heading[1], doc_title or "", styles),
              _guest_block(submission, apartment_name, apartment_address, styles, lang), Spacer(1, 2 * mm)]
     for art_title, body in articles:
-        story.append(Paragraph(_escape(art_title), styles["article_title"]))
-        if body:
-            story.append(Paragraph(_escape(" ".join(body)), styles["article_body"]))
-    story += [Spacer(1, 3 * mm), _attest(attest_fr, styles),
-              Spacer(1, 3 * mm),
+        story.append(Paragraph(
+            f'<font name="Helvetica-Bold" color="#7A3319">{_escape(art_title)}</font>&nbsp; {_escape(" ".join(body))}',
+            styles["article_inline"],
+        ))
+    story += [Spacer(1, 2.5 * mm), _attest(attest_fr, styles),
+              Spacer(1, 2.5 * mm),
               _signatures(signature_file, styles, sig_label, "توقيع النزيل",
                           "Host stamp" if lang == "en" else "Cachet de l'établissement")]
     return story
@@ -495,31 +497,39 @@ def _rules_page_arabic(submission, apartment_name, apartment_address, rules_text
     return story
 
 
+PAGE_CONTENT_MAX_H = 23.7 * cm  # frame height is 24.05 cm
+
+
+def _one_page(story: list) -> KeepInFrame:
+    """Keep rules + declaration + signature on a single page (scaled down only if the text is long)."""
+    return KeepInFrame(CONTENT_W, PAGE_CONTENT_MAX_H, story, mode="shrink", hAlign="LEFT", vAlign="TOP")
+
+
 def generate_rules_pdf(submission: Submission, apartment_name: str, apartment_address: str,
                        signature_file: Path, output_path: Path) -> None:
     _register_fonts()
     styles = _styles()
     name = f"<b>{_escape(submission.first_name)} {_escape(submission.last_name)}</b>"
-    story = _rules_page_latin(
+    story = [_one_page(_rules_page_latin(
         submission, apartment_name, apartment_address, settings.load_rules_fr(),
         ("RÈGLEMENT INTÉRIEUR", "النظام الداخلي"),
         f"Je soussigné(e), {name}, déclare avoir pris connaissance de l'intégralité du présent règlement et "
         "m'engage à le respecter pendant toute la durée du séjour, sous peine de résiliation du contrat et de "
         "poursuites conformément à la loi marocaine en vigueur.",
-        "Signature du voyageur", signature_file, styles)
+        "Signature du voyageur", signature_file, styles))]
     story.append(PageBreak())
-    story += _rules_page_latin(
+    story += [_one_page(_rules_page_latin(
         submission, apartment_name, apartment_address, settings.load_rules_en(),
         ("HOUSE RULES — ENGLISH VERSION", "النظام الداخلي"),
         f"I, the undersigned, {name}, declare that I have read these rules in full and agree to comply with them "
         "throughout my stay, failing which the rental agreement may be terminated and legal action taken under "
         "applicable Moroccan law.",
-        "Guest signature", signature_file, styles, lang="en")
+        "Guest signature", signature_file, styles, lang="en"))]
     pages = 2
     rules_ar = settings.load_rules_ar()
     if rules_ar.strip():
         story.append(PageBreak())
-        story += _rules_page_arabic(submission, apartment_name, apartment_address, rules_ar, signature_file, styles)
+        story += [_one_page(_rules_page_arabic(submission, apartment_name, apartment_address, rules_ar, signature_file, styles))]
         pages = 3
     _build(output_path, story, ref=submission.public_id[:8].upper(), host_name=_host_name(submission),
            title="Règlement intérieur signé", headers=[("RÈGLEMENT", "")], total_pages=pages)

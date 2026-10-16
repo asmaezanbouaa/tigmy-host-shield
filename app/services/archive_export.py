@@ -8,6 +8,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
+from app.services import fr
 from app.models import Submission, SubmissionStatus
 from app.services.export_data import build_submissions_csv
 from app.services.registry_meta import KEY_ARCHIVE_LAST_PURGE_AT, get_iso_datetime, section_key
@@ -63,11 +64,11 @@ def can_quarterly_purge(db: Session, section_id: int) -> tuple[bool, str]:
     """True if 90 days passed since the section's last purge (or never purged)."""
     last = get_iso_datetime(db, section_key(KEY_ARCHIVE_LAST_PURGE_AT, section_id))
     if last is None:
-        return True, "No previous quarterly purge on record."
+        return True, "Aucune purge trimestrielle enregistrée."
     days = settings.archive_purge_interval_days
     next_due = last + timedelta(days=days)
     now = datetime.now(timezone.utc)
     if now >= next_due:
-        return True, f"Last purge: {last.strftime('%Y-%m-%d')}. Ready for new cycle."
+        return True, f"Dernière purge : {fr.fdate(last)}. Prête pour un nouveau cycle."
     remaining = (next_due - now).days
-    return False, f"Next purge available in {remaining} day(s) (last: {last.strftime('%Y-%m-%d')})."
+    return False, f"Prochaine purge possible dans {remaining} jour(s) (dernière : {fr.fdate(last)})."

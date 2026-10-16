@@ -1,28 +1,28 @@
 {% extends "admin/base.html" %}
 {% from "_icons.html" import icon %}
 {% set active = 'calendar' %}
-{% block title %}Calendar{% endblock %}
+{% block title %}Calendrier{% endblock %}
 
 {% block content %}
-<h1 class="admin-page-title">Arrival calendar</h1>
-<p class="admin-page-lead">{{ event_count }} booking(s) in {{ month_name }}.</p>
+<h1 class="admin-page-title">Calendrier des arrivées</h1>
+<p class="admin-page-lead">{{ event_count }} {{ plural(event_count, "séjour", "séjours") }} en {{ month_name|lower }}.</p>
 
 <div class="admin-panel">
   <div class="admin-panel__head admin-panel__head--row">
     <div></div>
     <div class="calendar-nav">
-      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ prev_year }}&month={{ prev_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}">{{ icon("arrow-left") }}<span class="sr-hide">Prev</span></a>
+      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ prev_year }}&month={{ prev_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}">{{ icon("arrow-left") }}<span class="sr-hide">Précédent</span></a>
       <strong class="calendar-nav__title">{{ month_name }}</strong>
-      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ next_year }}&month={{ next_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}"><span class="sr-hide">Next</span>{{ icon("arrow-right") }}</a>
+      <a class="btn btn-secondary btn-sm" href="/admin/calendar?year={{ next_year }}&month={{ next_month }}&view={{ view }}{% if include_archived %}&include_archived=true{% endif %}"><span class="sr-hide">Suivant</span>{{ icon("arrow-right") }}</a>
     </div>
   </div>
 
   <div class="calendar-toolbar">
     <div class="calendar-view-tabs">
       <a href="/admin/calendar?year={{ year }}&month={{ month }}&view=month{% if include_archived %}&include_archived=true{% endif %}"
-         class="calendar-tab {% if view == 'month' %}calendar-tab--active{% endif %}">Month</a>
+         class="calendar-tab {% if view == 'month' %}calendar-tab--active{% endif %}">Mois</a>
       <a href="/admin/calendar?year={{ year }}&month={{ month }}&view=list{% if include_archived %}&include_archived=true{% endif %}"
-         class="calendar-tab {% if view == 'list' %}calendar-tab--active{% endif %}">List</a>
+         class="calendar-tab {% if view == 'list' %}calendar-tab--active{% endif %}">Liste</a>
     </div>
     <form class="filters calendar-filters" method="get" action="/admin/calendar">
       <input type="hidden" name="year" value="{{ year }}">
@@ -30,11 +30,11 @@
       <input type="hidden" name="view" value="{{ view }}">
       <label class="calendar-check">
         <input type="checkbox" name="include_archived" value="true" {% if include_archived %}checked{% endif %}>
-        Include archived
+        Inclure les archives
       </label>
-      <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+      <button type="submit" class="btn btn-secondary btn-sm">Appliquer</button>
     </form>
-    <a class="btn btn-secondary btn-sm" href="/admin/export.csv?arrival_from={{ month_start_iso }}&arrival_to={{ month_end_iso }}{% if include_archived %}&include_archived=true{% endif %}">Export month (CSV)</a>
+    <a class="btn btn-secondary btn-sm" href="/admin/export.csv?arrival_from={{ month_start_iso }}&arrival_to={{ month_end_iso }}{% if include_archived %}&include_archived=true{% endif %}">Exporter le mois (CSV)</a>
   </div>
 
   {% if view == 'month' %}
@@ -57,7 +57,7 @@
           </a>
           {% endfor %}
           {% if cell.events|length > 3 %}
-          <span class="calendar-more">+{{ cell.events|length - 3 }} more</span>
+          <span class="calendar-more">+{{ cell.events|length - 3 }} autres</span>
           {% endif %}
         </div>
         {% endif %}
@@ -67,22 +67,22 @@
     {% endfor %}
   </div>
   <div class="calendar-legend">
-    <span><span class="status-pill status-submitted">submitted</span> awaiting review</span>
-    <span><span class="status-pill status-confirmed">confirmed</span> approved</span>
-    <span><span class="status-pill status-issue">issue</span> notified</span>
+    <span><span class="status-pill status-submitted">À traiter</span> en attente</span>
+    <span><span class="status-pill status-confirmed">Confirmé</span> validé</span>
+    <span><span class="status-pill status-issue">Problème</span> signalé</span>
   </div>
   {% else %}
   <div class="admin-table-wrap">
     <table class="data-table calendar-list-table">
       <thead>
         <tr>
-          <th>Guest</th>
-          <th>Arrival</th>
-          <th>Departure</th>
-          <th>Apartment</th>
-          <th>Nights</th>
-          <th>Guests</th>
-          <th>Status</th>
+          <th>Client</th>
+          <th>Arrivée</th>
+          <th>Départ</th>
+          <th>Logement</th>
+          <th>Nuits</th>
+          <th>Voyageurs</th>
+          <th>Statut</th>
           <th></th>
         </tr>
       </thead>
@@ -90,16 +90,16 @@
         {% for ev in list_events %}
         <tr>
           <td><strong>{{ ev.guest_name }}</strong><br><span class="subtitle">{{ ev.id_number }}</span></td>
-          <td data-label="Arrival">{{ ev.arrival_date }}</td>
-          <td data-label="Departure">{{ ev.departure_date }}</td>
-          <td data-label="Apartment">{{ ev.apartment or "—" }}</td>
-          <td data-label="Nights">{{ ev.nights }}</td>
-          <td data-label="Guests">{{ ev.guests }}</td>
-          <td data-label="Status"><span class="status-pill status-{{ ev.status }}">{{ ev.status }}</span></td>
-          <td class="actions-cell"><a class="btn btn-secondary btn-sm" href="{{ ev.detail_url }}">Open</a></td>
+          <td data-label="Arrivée">{{ ev.arrival_date|fday }}</td>
+          <td data-label="Départ">{{ ev.departure_date|fday }}</td>
+          <td data-label="Logement">{{ ev.apartment or "—" }}</td>
+          <td data-label="Nuits">{{ ev.nights }}</td>
+          <td data-label="Voyageurs">{{ ev.guests }}</td>
+          <td data-label="Statut"><span class="status-pill status-{{ ev.status }}">{{ ev.status|status_fr }}</span></td>
+          <td class="actions-cell"><a class="btn btn-secondary btn-sm" href="{{ ev.detail_url }}">Ouvrir</a></td>
         </tr>
         {% else %}
-        <tr><td colspan="8">No stays in this month.</td></tr>
+        <tr><td colspan="8">Aucun séjour ce mois-ci.</td></tr>
         {% endfor %}
       </tbody>
     </table>

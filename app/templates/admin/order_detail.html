@@ -1,0 +1,159 @@
+{% extends "admin/base.html" %}
+{% from "_icons.html" import icon %}
+{% set active = 'orders' if (admin.is_superadmin and not admin.is_viewing_other_section) else 'packs' %}
+{% block title %}Commande {{ order.reference }}{% endblock %}
+
+{% block content %}
+{% set pending = order.status in ('awaiting_payment', 'receipt_sent') %}
+{% set host_view = not admin.is_superadmin or admin.is_viewing_other_section %}
+{% set wa_msg = "Bonjour, je suis " ~ order.section.name ~ ". Commande " ~ order.reference ~ " : " ~ title ~ " (" ~ order.price_dh ~ " DH)." ~ (" Voici mon reçu de virement." if order.status == 'receipt_sent' else " Je viens de commander.") %}
+
+<p class="breadcrumb">
+  {% if host_view %}<a href="/admin/packs">Mon pack</a>{% else %}<a href="/admin/orders">Commandes</a>{% endif %}
+  · <span>{{ order.reference }}</span>
+</p>
+
+{% if msg %}<div class="alert alert-success">{{ msg }}</div>{% endif %}
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+{% if is_new %}<div class="alert alert-success">Commande créée. Suivez les étapes ci-dessous pour la payer : votre pack sera activé dès que nous aurons confirmé le virement.</div>{% endif %}
+
+<div class="admin-panel order-head">
+  <div>
+    <p class="order-head__ref">{{ order.reference }}</p>
+    <h1 class="order-head__title">{{ title }}</h1>
+    <p class="subtitle" style="margin:4px 0 0">
+      {% if not host_view %}{{ order.section.name }}{% if order.ordered_by %} · commandé par {{ order.ordered_by.username }}{% endif %} · {% endif %}
+      {{ order.fiches|dh }} fiches · passée le {{ order.created_at|fdatetime }}
+    </p>
+  </div>
+  <div class="order-head__side">
+    <p class="order-head__price">{{ order.price_dh|dh }} <small>DH</small></p>
+    <span class="chip {{ 'chip--green' if order.status == 'confirmed' else ('chip--red' if order.status in ('refused', 'cancelled') else 'chip--amber') }}">{{ ORDER_STATUS_LABELS[order.status] }}</span>
+  </div>
+</div>
+
+{% if order.status == 'confirmed' %}
+<div class="alert alert-success">Commande confirmée le {{ order.decided_at|fdatetime }}. {% if order.kind == 'topup' %}Les fiches ont été ajoutées à votre pack.{% else %}Le pack est activé.{% endif %}</div>
+{% elif order.status == 'refused' %}
+<div class="alert alert-error"><strong>Commande refusée.</strong> {{ order.refusal_reason }}{% if host_view %} <a href="/admin/packs">Passer une nouvelle commande</a>{% endif %}</div>
+{% elif order.status == 'cancelled' %}
+<div class="alert alert-error">Commande annulée le {{ order.decided_at|fdatetime }}.</div>
+{% endif %}
+
+{% if pending and host_view %}
+<div class="admin-panel pay-steps">
+  <h2>Comment payer</h2>
+
+  <div class="pay-step">
+    <span class="pay-step__n">1</span>
+    <div class="pay-step__body">
+      <h3>Faites un virement bancaire de <strong>{{ order.price_dh|dh }} DH</strong></h3>
+      {% if bank %}
+      <dl class="bank">
+        {% for label, value in bank %}
+        <div class="bank__row">
+          <dt>{{ label }}</dt>
+          <dd><code>{{ value }}</code><button type="button" class="copy-btn" data-copy="{{ value }}" aria-label="Copier {{ label }}">{{ icon("copy") }}<span>Copier</span></button></dd>
+        </div>
+        {% endfor %}
+        <div class="bank__row bank__row--ref">
+          <dt>Motif du virement</dt>
+          <dd><code>{{ order.reference }}</code><button type="button" class="copy-btn" data-copy="{{ order.reference }}" aria-label="Copier la référence">{{ icon("copy") }}<span>Copier</span></button></dd>
+        </div>
+      </dl>
+      <p class="subtitle" style="margin:10px 0 0">Indiquez bien la référence <strong>{{ order.reference }}</strong> dans le motif du virement : elle nous permet d'identifier votre paiement.</p>
+      {% else %}
+      <div class="alert alert-error" style="margin-top:8px">Les coordonnées bancaires ne sont pas encore disponibles. Contactez-nous sur WhatsApp pour les recevoir.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="pay-step">
+    <span class="pay-step__n">2</span>
+    <div class="pay-step__body">
+      <h3>Envoyez la photo ou le PDF du reçu</h3>
+      {% if order.receipt_path %}
+      <div class="receipt-box">
+        {% if receipt_is_pdf %}
+        <a class="btn btn-secondary btn-sm" href="/admin/orders/{{ order.reference }}/receipt" target="_blank" rel="noopener">{{ icon("file") }}Voir le reçu envoyé (PDF)</a>
+        {% else %}
+        <a href="/admin/orders/{{ order.reference }}/receipt" target="_blank" rel="noopener"><img class="receipt-box__img" src="/admin/orders/{{ order.reference }}/receipt" alt="Reçu de virement envoyé"></a>
+        {% endif %}
+        <p class="subtitle" style="margin:6px 0 0">Envoyé le {{ order.receipt_uploaded_at|fdatetime }}. Vous pouvez le remplacer ci-dessous.</p>
+      </div>
+      {% endif %}
+      <form method="post" action="/admin/orders/{{ order.reference }}/receipt" enctype="multipart/form-data" class="receipt-form">
+        <input type="file" name="receipt" id="receipt" accept="image/jpeg,image/png,application/pdf" required>
+        <button type="submit" class="btn btn-primary">{{ icon("upload") }}{{ "Remplacer le reçu" if order.receipt_path else "Envoyer le reçu" }}</button>
+      </form>
+      <p class="subtitle" style="margin:8px 0 0">JPG, PNG ou PDF, 5 Mo maximum.</p>
+    </div>
+  </div>
+
+  <div class="pay-step">
+    <span class="pay-step__n">3</span>
+    <div class="pay-step__body">
+      <h3>Nous vérifions et activons votre pack</h3>
+      <p class="subtitle" style="margin:0">Dès que le virement est confirmé, {% if order.kind == 'topup' %}les fiches sont ajoutées à votre pack{% else %}votre pack est activé{% endif %} automatiquement et vous le voyez sur la page <a href="/admin/packs">Mon pack</a>.</p>
+    </div>
+  </div>
+
+  <div class="pay-actions">
+    {% if wa(wa_msg) %}<a href="{{ wa(wa_msg) }}" target="_blank" rel="noopener" class="btn btn-secondary">{{ icon("chat") }}Écrire sur WhatsApp</a>{% endif %}
+    <form method="post" action="/admin/orders/{{ order.reference }}/cancel" onsubmit="return confirm('Annuler cette commande ?');">
+      <button type="submit" class="btn btn-danger">Annuler la commande</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if not host_view %}
+<div class="admin-panel">
+  <h2>Reçu de virement</h2>
+  {% if order.receipt_path %}
+    {% if receipt_is_pdf %}
+    <a class="btn btn-secondary" href="/admin/orders/{{ order.reference }}/receipt" target="_blank" rel="noopener">{{ icon("file") }}Ouvrir le reçu (PDF)</a>
+    {% else %}
+    <a href="/admin/orders/{{ order.reference }}/receipt" target="_blank" rel="noopener"><img class="receipt-box__img receipt-box__img--big" src="/admin/orders/{{ order.reference }}/receipt" alt="Reçu de virement"></a>
+    {% endif %}
+    <p class="subtitle" style="margin:8px 0 0">Envoyé le {{ order.receipt_uploaded_at|fdatetime }}.</p>
+  {% else %}
+  <p class="subtitle" style="margin:0">Aucun reçu envoyé pour le moment.</p>
+  {% endif %}
+</div>
+
+{% if pending %}
+<div class="admin-panel">
+  <h2>Décision</h2>
+  {% if activates %}
+  <p class="subtitle" style="margin-top:-6px">Confirmer activera <strong>{{ title }}</strong> : {{ activates.fiches|dh }} fiches pour 2 mois{% if activates.carried %}, plus {{ activates.carried }} fiches restantes de son pack actuel (reportées){% endif %}.</p>
+  {% else %}
+  <p class="subtitle" style="margin-top:-6px">Confirmer ajoutera <strong>{{ order.fiches }} fiches</strong> au pack actuel de {{ order.section.name }}.</p>
+  {% endif %}
+  <div class="decision-row">
+    <form method="post" action="/admin/orders/{{ order.reference }}/confirm" onsubmit="return confirm('Confirmer le paiement de {{ order.price_dh }} DH reçu de {{ order.section.name|e }} ?');">
+      <button type="submit" class="btn btn-confirm">{{ icon("check") }}Confirmer le paiement et activer</button>
+    </form>
+    <form method="post" action="/admin/orders/{{ order.reference }}/refuse" class="refuse-form">
+      <input type="text" name="reason" required maxlength="300" placeholder="Motif du refus (visible par l'hôte)">
+      <button type="submit" class="btn btn-danger">{{ icon("x-circle") }}Refuser</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll(".copy-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(btn.dataset.copy); } catch (e) { return; }
+      const label = btn.querySelector("span");
+      const old = label.textContent;
+      label.textContent = "Copié !";
+      setTimeout(() => (label.textContent = old), 1800);
+    });
+  });
+</script>
+{% endblock %}

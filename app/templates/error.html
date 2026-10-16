@@ -1,0 +1,27 @@
+{% from "_icons.html" import icon, fonts %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ title }} — {{ app_name }}</title>
+  {{ fonts() }}
+  <link rel="stylesheet" href="/static/css/guest.css?v={{ asset_v }}">
+</head>
+<body class="g-body">
+  <header class="g-topbar">
+    <span class="g-brand">
+      <img src="/static/img/logo-192.png" alt="">
+      <span><span class="g-brand__name">{{ app_name }}</span></span>
+    </span>
+  </header>
+  <main class="g-shell">
+    <div class="g-card g-unavailable">
+      <span class="g-unavailable__icon">{{ icon("alert") }}</span>
+      <h1 class="g-display" style="font-size:1.7rem;margin:6px 0 10px">{{ title }}</h1>
+      <p class="g-unavailable__fr">{{ message }}</p>
+      {% if back_url %}<p><a class="g-btn g-btn--primary" href="{{ back_url }}">Retour au tableau de bord</a></p>{% endif %}
+      <p class="g-hint" style="margin-top:14px">Code {{ status }}</p>
+    </div>
+  </main>
+</body>
+</html>
