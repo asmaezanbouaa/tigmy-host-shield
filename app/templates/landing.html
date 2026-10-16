@@ -4,142 +4,293 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{{ app_name }} — La fiche de police de vos voyageurs, sans papier</title>
-  <meta name="description" content="Vos voyageurs remplissent leur fiche depuis leur téléphone, la pièce d'identité est vérifiée, et vous obtenez une fiche de police officielle en PDF. Pensé pour les hôtes marocains.">
+  <meta name="description" content="Vos voyageurs remplissent leur fiche depuis leur téléphone, l'IA vérifie la pièce d'identité, et vous obtenez une fiche de police officielle en PDF. Pensé pour les hôtes marocains.">
+  <meta name="theme-color" content="#0c2420">
   {{ fonts() }}
   <link rel="stylesheet" href="/static/css/landing.css?v={{ asset_v }}">
 </head>
 <body>
   {% set hello = "Bonjour, je souhaite en savoir plus sur " ~ app_name ~ "." %}
-  <header class="bar">
-    <div class="wrap">
+
+  <header class="bar" id="bar">
+    <div class="wrap bar__in">
       <a href="#top" class="brand"><img src="/static/img/logo-192.png" alt="">{{ app_name }}</a>
-      <a href="/admin/login" class="btn btn--ghost btn--sm">Espace hôte</a>
+      <nav class="bar__nav" aria-label="Sections">
+        <a href="#ia">L'IA</a><a href="#fonctions">Fonctions</a><a href="#tarifs">Tarifs</a><a href="#faq">FAQ</a>
+      </nav>
+      <a href="/admin/login" class="btn btn--glass btn--sm">Espace hôte</a>
     </div>
   </header>
 
+  <!-- ============================== HERO -->
   <section class="hero" id="top">
-    <div class="wrap">
-      <div>
-        <span class="kicker">{{ icon("sparkles") }} Propulsé par l'IA · Pour les hôtes Airbnb, riads et hôtels au Maroc</span>
-        <h1>La fiche de police de vos voyageurs, <em>sans papier</em> et sans courir après eux.</h1>
-        <p>Envoyez un lien ou un QR code à votre voyageur. Il remplit sa fiche depuis son téléphone, photographie sa pièce d'identité et signe. Notre IA lit et vérifie la pièce, puis vous recevez une fiche officielle en PDF, prête à imprimer.</p>
-        <div class="cta">
-          {% if wa(hello) %}<a class="btn btn--wa" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat") }}Nous écrire sur WhatsApp</a>{% endif %}
-          <a class="btn btn--primary" href="#ia">{{ icon("sparkles") }}Découvrir l'IA</a>
-          <a class="btn btn--ghost" href="#tarifs">Voir les tarifs</a>
+    <div class="hero__glow hero__glow--a"></div><div class="hero__glow hero__glow--b"></div><div class="hero__pattern"></div>
+    <div class="wrap hero__grid">
+      <div class="hero__copy">
+        <span class="pill reveal"><i class="pulse"></i>Propulsé par l'IA · Fait pour le Maroc</span>
+        <h1 class="reveal d1">La fiche de police de vos voyageurs, <span class="gold">sans papier</span>.</h1>
+        <p class="hero__sub reveal d2">Un lien ou un QR code. Votre voyageur remplit tout depuis son téléphone, notre IA vérifie sa pièce d'identité en quelques secondes, et vous recevez une fiche officielle en PDF.</p>
+        <div class="cta reveal d3">
+          {% if wa(hello) %}<a class="btn btn--gold" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat","i") }}Demander une démo</a>{% endif %}
+          <a class="btn btn--glass" href="#ia">{{ icon("sparkles","i") }}Voir l'IA en action</a>
         </div>
-        <p class="note">Essai gratuit : {{ trial.fiches }} fiches pendant {{ trial.days }} jours, sans engagement.</p>
+        <ul class="trust reveal d4">
+          <li><b>FR · EN · AR</b><span>formulaire voyageur</span></li>
+          <li><b>0 app</b><span>à installer</span></li>
+          <li><b>{{ trial.fiches }} fiches</b><span>offertes à l'essai</span></li>
+        </ul>
       </div>
-      <div class="phone" aria-hidden="true">
-        <small>Votre lien personnel</small>
-        <div class="fld">Nom et prénom</div>
-        <div class="fld">Nationalité</div>
-        <div class="fld">Logement : Appartement Agdal</div>
-        <div class="ok">{{ icon("shield") }}Pièce d'identité lisible</div>
-        <div class="go">Envoyer ma fiche</div>
+
+      <div class="hero__visual reveal d2" id="tilt">
+        <div class="phone">
+          <div class="phone__notch"></div>
+          <div class="phone__screen">
+            <div class="phone__top"><img src="/static/img/logo-192.png" alt=""><b>{{ app_name }}</b></div>
+            <div class="idcard idcard--sm" data-scan>
+              <div class="idcard__photo"></div>
+              <div class="idcard__lines"><i></i><i></i><i></i></div>
+              <div class="idcard__mrz"><i></i><i></i></div>
+              <div class="scan"></div>
+              <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span>
+            </div>
+            <div class="phone__status"><span class="spin"></span><span class="phone__t">Analyse de la pièce…</span></div>
+            <div class="phone__fld"><small>Nom</small>Sara BENNANI</div>
+            <div class="phone__fld"><small>N° de pièce</small>AB123456</div>
+            <div class="phone__go">Envoyer ma fiche</div>
+          </div>
+        </div>
+        <div class="float float--a">{{ icon("shield","i") }}<div><b>Pièce vérifiée</b><span>Nette et lisible</span></div></div>
+        <div class="float float--b">{{ icon("file","i") }}<div><b>Fiche de police</b><span>PDF prêt à imprimer</span></div></div>
+        <div class="float float--c">{{ icon("sparkles","i") }}<div><b>Validée par l'IA</b><span>en quelques secondes</span></div></div>
       </div>
     </div>
   </section>
 
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee__track">
+      {% for _ in range(2) %}
+      <span>Airbnb</span><i>✦</i><span>Riads</span><i>✦</i><span>Maisons d'hôtes</span><i>✦</i><span>Conciergeries</span><i>✦</i><span>Petits hôtels</span><i>✦</i><span>Grands hôtels</span><i>✦</i>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ============================== AI -->
   <section class="ai" id="ia">
+    <div class="ai__glow"></div>
     <div class="wrap">
-      <span class="kicker kicker--dark">{{ icon("sparkles") }} Notre différence</span>
-      <h2>Une IA qui lit la pièce d'identité <em>à votre place</em></h2>
-      <p class="lead">Fini la vérification à l'œil et les fiches remplies de travers. Dès que le voyageur envoie sa fiche, l'intelligence artificielle fait le contrôle en quelques secondes.</p>
-      <div class="ai-grid">
-        <div class="ai-list">
-          <div class="ai-item"><span class="ai-n">1</span><div><h3>Elle contrôle la photo</h3><p>Image nette, contours visibles, vraie pièce d'identité. Sinon le voyageur reprend sa photo tout de suite, avant l'envoi.</p></div></div>
-          <div class="ai-item"><span class="ai-n">2</span><div><h3>Elle lit le document</h3><p>Lecture automatique du nom, du numéro de pièce et de la date de naissance sur la photo, même en arabe ou en caractères latins.</p></div></div>
-          <div class="ai-item"><span class="ai-n">3</span><div><h3>Elle compare avec la fiche</h3><p>Ce que le voyageur a écrit doit correspondre à ce qui figure sur sa pièce. Chaque champ est marqué conforme ou à vérifier.</p></div></div>
-          <div class="ai-item"><span class="ai-n">4</span><div><h3>Elle valide ou vous alerte</h3><p>Dossier cohérent : validé automatiquement. Doute : il vous est signalé avec les champs à regarder. Vous gardez toujours la décision finale.</p></div></div>
+      <div class="head reveal">
+        <span class="pill pill--gold">{{ icon("sparkles","i") }}Notre différence</span>
+        <h2>Une IA qui lit la pièce d'identité <span class="gold">à votre place</span></h2>
+        <p>Fini la vérification à l'œil et les fiches remplies de travers. Chaque fiche est contrôlée automatiquement avant même d'arriver chez vous.</p>
+      </div>
+
+      <div class="ai__demo reveal d1" id="aidemo">
+        <div class="ai__left">
+          <div class="idcard" data-scan>
+            <div class="idcard__head"><b>ROYAUME DU MAROC</b><span>CARTE NATIONALE · EXEMPLE</span></div>
+            <div class="idcard__photo"></div>
+            <div class="idcard__data">
+              <div class="f f1"><small>Nom</small><b>BENNANI</b></div>
+              <div class="f f2"><small>Prénom</small><b>Sara</b></div>
+              <div class="f f3"><small>Né(e) le</small><b>04.03.1992</b></div>
+              <div class="f f4"><small>N°</small><b>AB123456</b></div>
+            </div>
+            <div class="idcard__mrz"><i></i><i></i></div>
+            <div class="scan"></div>
+            <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span>
+          </div>
         </div>
-        <div class="ai-card" aria-hidden="true">
-          <div class="ai-card__head">{{ icon("sparkles") }}<strong>Rapport de l'IA</strong><span>3 secondes</span></div>
-          <div class="ai-row"><span>Nom et prénom</span><b class="yes">Conforme</b></div>
-          <div class="ai-row"><span>Numéro de pièce</span><b class="yes">Conforme</b></div>
-          <div class="ai-row"><span>Date de naissance</span><b class="yes">Conforme</b></div>
-          <div class="ai-row"><span>Qualité de la photo</span><b class="yes">Nette</b></div>
-          <div class="ai-verdict">{{ icon("shield") }}Validée par l'IA</div>
+        <div class="ai__report">
+          <div class="rep__head">{{ icon("sparkles","i") }}<b>Rapport de l'IA</b><span class="live"><i class="pulse"></i>en direct</span></div>
+          <ul class="rep__list">
+            <li data-i="0"><span class="chk">{{ icon("check","i") }}</span>Photo nette, contours visibles<em>Nette</em></li>
+            <li data-i="1"><span class="chk">{{ icon("check","i") }}</span>Nom et prénom lus<em>Conforme</em></li>
+            <li data-i="2"><span class="chk">{{ icon("check","i") }}</span>Date de naissance lue<em>Conforme</em></li>
+            <li data-i="3"><span class="chk">{{ icon("check","i") }}</span>Numéro de pièce lu<em>Conforme</em></li>
+          </ul>
+          <div class="rep__verdict">{{ icon("shield","i") }}Validée par l'IA</div>
+          <p class="rep__note">Exemple illustratif. En cas de doute, la fiche vous est signalée et vous décidez.</p>
         </div>
       </div>
-      <p class="ai-foot">Moins de saisie, moins d'erreurs, et votre temps réservé à vos voyageurs.</p>
-    </div>
-  </section>
 
-  <section>
-    <div class="wrap">
-      <h2>Comment ça marche</h2>
-      <p class="lead">Trois étapes, aucune application à installer, ni pour vous ni pour votre voyageur.</p>
-      <div class="steps">
-        <div class="step"><span class="num">1</span><h3>Vous partagez votre lien</h3><p>Chaque hôte a son lien et son QR code personnels. Envoyez-les sur WhatsApp ou affichez le QR dans le logement.</p></div>
-        <div class="step"><span class="num">2</span><h3>Le voyageur remplit sa fiche</h3><p>En français, en anglais ou en arabe. Il choisit le logement, photographie sa pièce d'identité, accepte le règlement et signe à l'écran.</p></div>
-        <div class="step"><span class="num">3</span><h3>L'IA vérifie, vous recevez la fiche officielle</h3><p>Vous confirmez en un clic et téléchargez la fiche de police et le règlement signé en PDF, en français et en arabe.</p></div>
+      <div class="ai__points">
+        <div class="pt reveal"><b>1</b><h3>Elle contrôle la photo</h3><p>Image nette, vraie pièce d'identité. Sinon le voyageur reprend sa photo tout de suite.</p></div>
+        <div class="pt reveal d1"><b>2</b><h3>Elle lit le document</h3><p>Nom, numéro de pièce et date de naissance extraits automatiquement de la photo.</p></div>
+        <div class="pt reveal d2"><b>3</b><h3>Elle compare à la fiche</h3><p>Ce que le voyageur a écrit doit correspondre à sa pièce, champ par champ.</p></div>
+        <div class="pt reveal d3"><b>4</b><h3>Elle valide ou alerte</h3><p>Dossier cohérent : validé. Doute : signalé. Vous gardez toujours la décision finale.</p></div>
       </div>
     </div>
   </section>
 
-  <section class="alt">
+  <!-- ============================== HOW -->
+  <section class="how" id="comment">
     <div class="wrap">
-      <h2>Ce que vous gagnez</h2>
-      <div class="grid">
-        <div class="card"><span class="ic">{{ icon("shield") }}</span><div><h3>Pièces d'identité vérifiées par IA</h3><p>L'IA contrôle que la photo est nette et ressemble à une vraie pièce, et lit les informations pour les comparer à la fiche. Plus de photos floues ou au hasard.</p></div></div>
-        <div class="card"><span class="ic">{{ icon("file") }}</span><div><h3>PDF d'aspect officiel</h3><p>Fiche de police et règlement intérieur bilingues, avec votre logo, signature du voyageur sur la même page que les règles.</p></div></div>
-        <div class="card"><span class="ic">{{ icon("qr") }}</span><div><h3>Votre lien et votre QR code</h3><p>Un lien par hôte : vous savez toujours à quel hôte appartient chaque voyageur. Vous pouvez le renouveler à tout moment.</p></div></div>
-        <div class="card"><span class="ic">{{ icon("building") }}</span><div><h3>Tous vos logements, un seul espace</h3><p>Le voyageur choisit son logement avant d'envoyer sa fiche. Calendrier des arrivées et archives incluses.</p></div></div>
-        <div class="card"><span class="ic">{{ icon("sparkles") }}</span><div><h3>Validation automatique par IA</h3><p>Les dossiers complets et cohérents sont validés automatiquement : vous ne traitez que ce qui demande votre attention.</p></div></div>
-        <div class="card"><span class="ic">{{ icon("lock") }}</span><div><h3>Vos données restent privées</h3><p>Connexion sécurisée (HTTPS). Vous ne voyez que vos logements et vos voyageurs, personne d'autre.</p></div></div>
+      <div class="head head--dark reveal">
+        <span class="pill pill--clay">Simple</span>
+        <h2>Trois étapes. Aucune application.</h2>
+        <p>Ni vous, ni votre voyageur n'avez quoi que ce soit à installer.</p>
+      </div>
+      <div class="timeline">
+        <div class="tl reveal"><span class="tl__n">01</span><div class="tl__ic">{{ icon("qr","i") }}</div><h3>Partagez votre lien</h3><p>Chaque hôte a son lien et son QR code. Envoyez-les sur WhatsApp ou affichez le QR dans le logement.</p></div>
+        <div class="tl reveal d1"><span class="tl__n">02</span><div class="tl__ic">{{ icon("sparkles","i") }}</div><h3>Le voyageur remplit, l'IA vérifie</h3><p>En français, anglais ou arabe : logement, pièce d'identité, règlement et signature à l'écran.</p></div>
+        <div class="tl reveal d2"><span class="tl__n">03</span><div class="tl__ic">{{ icon("file","i") }}</div><h3>Vous téléchargez le PDF</h3><p>Fiche de police et règlement signé, bilingues et d'aspect officiel, avec votre logo.</p></div>
       </div>
     </div>
   </section>
 
-  <section id="tarifs">
+  <!-- ============================== BENTO -->
+  <section class="feat" id="fonctions">
     <div class="wrap">
-      <h2>Des tarifs simples, payés par virement</h2>
-      <p class="lead">Une fiche = un voyageur enregistré. Vous payez seulement ce que vous utilisez, valable 2 mois.</p>
-      <div class="prices">
+      <div class="head reveal">
+        <span class="pill pill--gold">Tout est inclus</span>
+        <h2>Conçu pour les hôtes <span class="gold">marocains</span></h2>
+      </div>
+      <div class="bento">
+        <article class="bx bx--big reveal"><div class="bx__ic">{{ icon("file","i") }}</div><h3>Des PDF d'aspect officiel</h3><p>Fiche de police et règlement intérieur bilingues français et arabe. La signature du voyageur est sur la même page que les règles.</p>
+          <div class="docs"><div class="doc"><i></i><i></i><i></i><i></i></div><div class="doc doc--b"><i></i><i></i><i></i><i></i></div></div></article>
+        <article class="bx reveal d1"><div class="bx__ic">{{ icon("qr","i") }}</div><h3>Un lien et un QR par hôte</h3><p>Vous savez toujours à quel hôte appartient chaque voyageur. Renouvelable en un clic.</p></article>
+        <article class="bx reveal d2"><div class="bx__ic">{{ icon("building","i") }}</div><h3>Tous vos logements</h3><p>Le voyageur choisit son logement avant d'envoyer. Calendrier des arrivées et archives.</p></article>
+        <article class="bx bx--green reveal d1"><div class="bx__ic">{{ icon("lock","i") }}</div><h3>Données privées</h3><p>Connexion sécurisée HTTPS. Vous ne voyez que vos logements et vos voyageurs.</p></article>
+        <article class="bx bx--wide reveal d2"><div class="bx__ic">{{ icon("chat","i") }}</div><h3>Support WhatsApp</h3><p>Une question ? Écrivez-nous directement depuis votre espace hôte.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== STATS -->
+  <section class="stats">
+    <div class="wrap stats__grid">
+      <div class="st reveal"><b data-count="3">3</b><span>langues pour le voyageur</span></div>
+      <div class="st reveal d1"><b data-count="{{ trial.fiches }}">{{ trial.fiches }}</b><span>fiches offertes à l'essai</span></div>
+      <div class="st reveal d2"><b data-count="2">2</b><span>mois de validité par pack</span></div>
+      <div class="st reveal d3"><b data-count="0">0</b><span>application à installer</span></div>
+    </div>
+  </section>
+
+  <!-- ============================== PRICING -->
+  <section class="price" id="tarifs">
+    <div class="wrap">
+      <div class="head reveal">
+        <span class="pill pill--gold">Tarifs</span>
+        <h2>Simple. Payé par virement.</h2>
+        <p>Une fiche = un voyageur enregistré. Vous payez ce que vous utilisez, valable 2 mois.</p>
+      </div>
+      <div class="plans">
         {% for p in packs %}
-        <div class="price {% if p.fiches == 250 %}pop{% endif %}">
+        <div class="plan reveal {% if p.fiches == 250 %}plan--pop{% endif %}" style="--d:{{ loop.index0 * 70 }}ms">
+          {% if p.fiches == 250 %}<span class="plan__tag">Le plus choisi</span>{% endif %}
           <h3>{{ p.name }}</h3>
-          <div class="aud">{{ p.audience }}</div>
-          <div class="amt">{{ p.price }} <small>DH</small></div>
-          <div class="fi">{{ p.fiches }} fiches</div>
-          <div class="per">soit {{ per_fiche(p.price, p.fiches) }} DH par fiche</div>
+          <div class="plan__aud">{{ p.audience }}</div>
+          <div class="plan__amt">{{ p.price }}<small>DH</small></div>
+          <div class="plan__fi"><b>{{ p.fiches }}</b> fiches</div>
+          <div class="plan__per">soit {{ per_fiche(p.price, p.fiches) }} DH par fiche</div>
         </div>
         {% endfor %}
       </div>
-      <div class="trial">
-        {{ icon("clock") }}
-        <div><strong>Essayez gratuitement</strong>{{ trial.fiches }} fiches offertes pendant {{ trial.days }} jours à l'ouverture de votre compte. Besoin de plus ? Rechargez {{ topup.fiches }} fiches pour {{ topup.price }} DH.</div>
+      <div class="trialbar reveal">
+        <span class="trialbar__ic">{{ icon("sparkles","i") }}</span>
+        <div><b>Essayez gratuitement</b>{{ trial.fiches }} fiches offertes pendant {{ trial.days }} jours à l'ouverture de votre compte. Besoin de plus ? Rechargez {{ topup.fiches }} fiches pour {{ topup.price }} DH.</div>
       </div>
     </div>
   </section>
 
-  <section class="alt">
+  <!-- ============================== FAQ -->
+  <section class="faq" id="faq">
     <div class="wrap">
-      <h2>Questions fréquentes</h2>
-      <div class="faq">
-        <details><summary>Mon voyageur doit-il créer un compte ?</summary><p>Non. Il ouvre votre lien, remplit le formulaire et c'est terminé. Aucune application, aucun mot de passe.</p></details>
-        <details><summary>Comment je paye ?</summary><p>Par virement bancaire. Vous choisissez un pack, les coordonnées s'affichent, vous envoyez votre reçu depuis la plateforme et le pack est activé dès confirmation.</p></details>
-        <details><summary>Que se passe-t-il quand mes fiches sont épuisées ?</summary><p>Vos voyageurs ne peuvent plus s'enregistrer jusqu'au prochain pack ou à la recharge. Vos fiches existantes restent accessibles. Un avertissement apparaît avant d'arriver à zéro.</p></details>
-        <details><summary>Les fiches imprimées sont-elles valables ?</summary><p>Le PDF reprend la forme de la fiche de police d'hébergement et peut être imprimé et conservé. Vous restez responsable de vos démarches auprès des autorités.</p></details>
-        <details><summary>Et si un voyageur envoie une mauvaise photo ?</summary><p>La plateforme la refuse tout de suite et lui demande de reprendre une photo nette de sa pièce, avant même l'envoi de la fiche.</p></details>
+      <div class="head head--dark reveal"><h2>Questions fréquentes</h2></div>
+      <div class="faq__list">
+        <details class="reveal"><summary>Mon voyageur doit-il créer un compte ?</summary><p>Non. Il ouvre votre lien, remplit le formulaire et c'est terminé. Aucune application, aucun mot de passe.</p></details>
+        <details class="reveal"><summary>Comment je paye ?</summary><p>Par virement bancaire. Vous choisissez un pack, les coordonnées s'affichent, vous envoyez votre reçu depuis la plateforme et le pack est activé dès confirmation.</p></details>
+        <details class="reveal"><summary>Que se passe-t-il quand mes fiches sont épuisées ?</summary><p>Vos voyageurs ne peuvent plus s'enregistrer jusqu'au prochain pack ou à la recharge. Vos fiches existantes restent accessibles. Un avertissement apparaît avant d'arriver à zéro.</p></details>
+        <details class="reveal"><summary>Les fiches imprimées sont-elles valables ?</summary><p>Le PDF reprend la forme de la fiche de police d'hébergement et peut être imprimé et conservé. Vous restez responsable de vos démarches auprès des autorités.</p></details>
+        <details class="reveal"><summary>Et si un voyageur envoie une mauvaise photo ?</summary><p>La plateforme la refuse tout de suite et lui demande de reprendre une photo nette de sa pièce, avant même l'envoi de la fiche.</p></details>
       </div>
     </div>
   </section>
 
-  <section>
-    <div class="wrap">
-      <div class="final">
-        <h2>Prêt à simplifier vos arrivées&nbsp;?</h2>
-        <p>Écrivez-nous : nous ouvrons votre espace hôte avec {{ trial.fiches }} fiches gratuites pour tester.</p>
-        <div class="cta">
-          {% if wa(hello) %}<a class="btn btn--wa" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat") }}WhatsApp</a>{% endif %}
-          <a class="btn btn--ghost" href="/admin/login">J'ai déjà un compte</a>
-        </div>
+  <!-- ============================== FINAL -->
+  <section class="final">
+    <div class="hero__glow hero__glow--a"></div><div class="hero__pattern"></div>
+    <div class="wrap final__in reveal">
+      <h2>Prêt à simplifier <span class="gold">vos arrivées</span> ?</h2>
+      <p>Écrivez-nous : nous ouvrons votre espace hôte avec {{ trial.fiches }} fiches gratuites pour tester.</p>
+      <div class="cta cta--c">
+        {% if wa(hello) %}<a class="btn btn--gold btn--lg" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat","i") }}Écrire sur WhatsApp</a>{% endif %}
+        <a class="btn btn--glass btn--lg" href="/admin/login">J'ai déjà un compte</a>
       </div>
     </div>
   </section>
 
-  <footer><div class="wrap">{{ app_name }} · Fait au Maroc</div></footer>
+  <footer class="foot"><div class="wrap">{{ app_name }} · Fait au Maroc</div></footer>
+
+  {% if wa(hello) %}<a class="wafab" href="{{ wa(hello) }}" target="_blank" rel="noopener" aria-label="WhatsApp">{{ icon("chat","i") }}<span>WhatsApp</span></a>{% endif %}
+
+  <script>
+  (function () {
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var bar = document.getElementById("bar");
+    function onScroll() { bar.classList.toggle("is-solid", window.scrollY > 24); }
+    onScroll(); window.addEventListener("scroll", onScroll, { passive: true });
+
+    var revealEls = document.querySelectorAll(".reveal");
+    if (reduce || !("IntersectionObserver" in window)) {
+      revealEls.forEach(function (e) { e.classList.add("in"); });
+    } else {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } });
+      }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+      revealEls.forEach(function (e) { io.observe(e); });
+    }
+
+    // animated counters
+    document.querySelectorAll("[data-count]").forEach(function (el) {
+      var target = parseInt(el.dataset.count, 10);
+      if (reduce || !("IntersectionObserver" in window) || !target) return;
+      el.textContent = "0";
+      var co = new IntersectionObserver(function (es) {
+        if (!es[0].isIntersecting) return; co.disconnect();
+        var t0 = performance.now();
+        (function tick(t) {
+          var p = Math.min((t - t0) / 1100, 1);
+          el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+          if (p < 1) requestAnimationFrame(tick);
+        })(t0);
+      }, { threshold: 0.6 });
+      co.observe(el);
+    });
+
+    // AI demo: scan, then tick the report line by line, then verdict. Loops while visible.
+    var demo = document.getElementById("aidemo");
+    if (demo && !reduce && "IntersectionObserver" in window) {
+      var items = demo.querySelectorAll(".rep__list li");
+      var verdict = demo.querySelector(".rep__verdict");
+      var timers = [];
+      function clear() { timers.forEach(clearTimeout); timers = []; }
+      function reset() { demo.classList.remove("scanning"); items.forEach(function (i) { i.classList.remove("done"); }); verdict.classList.remove("on"); }
+      function run() {
+        clear(); reset();
+        void demo.offsetWidth; demo.classList.add("scanning");
+        items.forEach(function (it, i) { timers.push(setTimeout(function () { it.classList.add("done"); }, 900 + i * 650)); });
+        timers.push(setTimeout(function () { verdict.classList.add("on"); }, 900 + items.length * 650 + 150));
+        timers.push(setTimeout(run, 9000));
+      }
+      new IntersectionObserver(function (es) { es[0].isIntersecting ? run() : (clear(), reset()); }, { threshold: 0.35 }).observe(demo);
+    } else if (demo) {
+      demo.querySelectorAll(".rep__list li").forEach(function (i) { i.classList.add("done"); });
+      demo.querySelector(".rep__verdict").classList.add("on");
+    }
+
+    // hero phone tilt (desktop pointers only)
+    var tilt = document.getElementById("tilt");
+    if (tilt && !reduce && window.matchMedia("(hover:hover) and (min-width: 900px)").matches) {
+      var hero = document.querySelector(".hero");
+      hero.addEventListener("mousemove", function (e) {
+        var r = hero.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+        tilt.style.transform = "rotateY(" + (x * 8) + "deg) rotateX(" + (-y * 6) + "deg)";
+      });
+      hero.addEventListener("mouseleave", function () { tilt.style.transform = ""; });
+    }
+  })();
+  </script>
 </body>
 </html>
