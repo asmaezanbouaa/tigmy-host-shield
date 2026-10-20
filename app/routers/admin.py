@@ -570,11 +570,11 @@ async def section_create(
     db.flush()
     for username, password in accounts:
         add_section_admin(db, section, username, password)
-    grant_trial(db, section.id)  # free trial so the host can test straight away
+    grant_trial(db, section.id)  # welcome pack so the host can start straight away
     db.commit()
     get_or_create_shared_link(db, section.id)
     return _sections_redirect(
-        msg=f"Hôte « {name} » créé avec {len(accounts)} utilisateur(s) et un essai gratuit de {TRIAL['fiches']} fiches.",
+        msg=f"Hôte « {name} » créé avec {len(accounts)} utilisateur(s) et le pack de bienvenue ({TRIAL['fiches']} fiches gratuites pendant {TRIAL['days']} jours).",
         anchor=section.public_id,
     )
 

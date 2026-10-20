@@ -47,8 +47,8 @@ PACKS: dict[str, dict] = {
         "fiches": 4000, "price": 1200, "max_properties": None, "icon": "building",
     },
 }
-# Not for sale: given automatically to a new host, or by the admin.
-TRIAL = {"name": "Essai gratuit", "fiches": 10, "days": 14, "max_properties": 4}
+# Not for sale: welcome pack given automatically to a new host (fewer than 10 properties), or by the admin.
+TRIAL = {"name": "Pack de bienvenue", "fiches": 50, "days": 30, "max_properties": 9}
 CUSTOM = {"name": "Complément de fiches", "max_properties": None}
 TOPUP = {"name": "Recharge de fiches", "fiches": 50, "price": 30}
 
