@@ -375,3 +375,23 @@ details p{padding:0 22px 20px;color:var(--ink-2);font-size:.95rem}
 .final .btn--glass{background:transparent;border-color:rgba(255,255,255,.5);color:#fff}
 .final .btn--glass:hover{background:rgba(255,255,255,.14)}
 .foot{background:var(--em-d);color:#a9d4c6;border-top:0;padding-bottom:90px}
+
+/* ---------- welcome pack (free) */
+.gift{display:inline-flex;align-items:center;gap:10px;margin-top:22px;padding:10px 16px;border-radius:14px;background:linear-gradient(135deg,#fdf4e3,#f9e5bd);border:1px solid #efd9a8;color:#6b4a0b;font-size:.92rem}
+.gift .i{color:var(--clay-d);width:22px;height:22px}
+.gift b{color:var(--clay-d)}
+.welcome{position:relative;overflow:hidden;max-width:880px;margin:0 auto 34px;padding:30px 26px;border-radius:28px;text-align:center;color:#fff;background:linear-gradient(150deg,#d0693c,#a8481f);box-shadow:0 30px 60px rgba(168,72,31,.3)}
+.welcome::before{content:"";position:absolute;inset:0;background:url(/static/img/zellij-gold.svg) center/90px;opacity:.16;pointer-events:none}
+.welcome>*{position:relative}
+.welcome__ribbon{position:absolute!important;top:16px;right:-38px;transform:rotate(38deg);width:150px;background:linear-gradient(135deg,var(--gold-2),var(--gold));color:#3a2a05;font-weight:800;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;padding:5px 0}
+.welcome__main{display:flex;align-items:center;justify-content:center;gap:16px;text-align:left;margin-bottom:22px}
+.welcome__ic{width:54px;height:54px;border-radius:16px;background:rgba(255,255,255,.2);display:grid;place-items:center;flex:none}
+.welcome__ic .i{width:28px;height:28px;color:var(--gold-2)}
+.welcome h3{font-size:1.7rem;color:#fff}
+.welcome p{color:#fbe3d3;font-size:.95rem;margin-top:2px}
+.welcome__nums{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px}
+.welcome__nums div{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:18px;padding:14px 8px}
+.welcome__nums b{display:block;font-family:Fraunces,serif;font-size:clamp(1.7rem,6vw,2.6rem);line-height:1;color:#fff6dc}
+.welcome__nums span{display:block;margin-top:6px;font-size:.8rem;color:#fbe3d3}
+.welcome .btn--gold{background:#fff;color:var(--clay-d);box-shadow:0 12px 28px rgba(60,20,5,.3)}
+@media(max-width:560px){.welcome{padding:26px 16px}.welcome__main{flex-direction:column;text-align:center}.welcome__ribbon{right:-46px;top:14px}}

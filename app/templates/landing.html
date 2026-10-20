@@ -32,8 +32,9 @@
         <span class="pill reveal"><i class="pulse"></i>Propulsé par l'IA · Fait pour le Maroc</span>
         <h1 class="reveal d1">La fiche de police de vos voyageurs, <span class="gold">sans papier</span>.</h1>
         <p class="hero__sub reveal d2">Un lien ou un QR code. Votre voyageur remplit tout depuis son téléphone, notre IA vérifie sa pièce d'identité en quelques secondes, et vous recevez une fiche officielle en PDF.</p>
+        <div class="gift reveal d3">{{ icon("sparkles","i") }}<span><b>{{ trial.fiches }} fiches gratuites</b> pendant {{ trial.days }} jours pour tout nouvel hôte</span></div>
         <div class="cta reveal d3">
-          {% if wa(hello) %}<a class="btn btn--gold" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat","i") }}Demander une démo</a>{% endif %}
+          {% if wa(hello) %}<a class="btn btn--gold" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat","i") }}Obtenir mes {{ trial.fiches }} fiches gratuites</a>{% endif %}
           <a class="btn btn--glass" href="#ia">{{ icon("sparkles","i") }}Voir l'IA en action</a>
         </div>
         <ul class="trust reveal d4">
@@ -177,6 +178,22 @@
         <h2>Simple. Payé par virement.</h2>
         <p>Une fiche = un voyageur enregistré. Vous payez ce que vous utilisez, valable 2 mois.</p>
       </div>
+      <div class="welcome reveal">
+        <div class="welcome__ribbon">Offert</div>
+        <div class="welcome__main">
+          <span class="welcome__ic">{{ icon("sparkles","i") }}</span>
+          <div>
+            <h3>{{ trial.name }}</h3>
+            <p>Pour tout nouvel hôte de moins de 10 logements. Aucun paiement, aucun engagement.</p>
+          </div>
+        </div>
+        <div class="welcome__nums">
+          <div><b>{{ trial.fiches }}</b><span>fiches gratuites</span></div>
+          <div><b>{{ trial.days }}</b><span>jours pour les utiliser</span></div>
+          <div><b>0&nbsp;DH</b><span>à payer</span></div>
+        </div>
+        {% if wa(hello) %}<a class="btn btn--gold" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat","i") }}Je veux mon pack gratuit</a>{% endif %}
+      </div>
       <div class="plans">
         {% for p in packs %}
         <div class="plan reveal {% if p.fiches == 250 %}plan--pop{% endif %}" style="--d:{{ loop.index0 * 70 }}ms">
@@ -191,7 +208,7 @@
       </div>
       <div class="trialbar reveal">
         <span class="trialbar__ic">{{ icon("sparkles","i") }}</span>
-        <div><b>Pack de bienvenue offert</b>{{ trial.fiches }} fiches gratuites pendant {{ trial.days }} jours à l'ouverture de votre compte (moins de 10 logements). Besoin de plus ? Rechargez {{ topup.fiches }} fiches pour {{ topup.price }} DH.</div>
+        <div><b>Besoin de plus de fiches ?</b>Rechargez {{ topup.fiches }} fiches pour {{ topup.price }} DH.</div>
       </div>
     </div>
   </section>
