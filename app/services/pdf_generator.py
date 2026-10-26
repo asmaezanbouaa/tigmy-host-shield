@@ -21,7 +21,7 @@ from reportlab.platypus.doctemplate import BaseDocTemplate, Frame, PageTemplate
 
 from app.config import PROJECT_ROOT, get_settings
 from app.models import Submission
-from app.services.pdf_assets import ensure_logo_assets
+from app.services.pdf_assets import ensure_logo_assets, logo_ratio
 
 settings = get_settings()
 
@@ -123,9 +123,9 @@ def _draw_header(canvas, ref_line: str, date_line: str) -> None:
     canvas.saveState()
     logo, _ = ensure_logo_assets()
     if logo.exists():
-        w = 4.6 * cm
-        h = w * 573 / 1200
-        canvas.drawImage(str(logo), MARGIN_L - 0.15 * cm, top - h, width=w, height=h, mask="auto")
+        h = 2.35 * cm
+        w = h / logo_ratio()
+        canvas.drawImage(str(logo), MARGIN_L - 0.1 * cm, top - h, width=w, height=h, mask="auto")
     canvas.setFillColor(CLAY_DARK)
     canvas.setFont("Helvetica-Bold", 12)
     canvas.drawRightString(PAGE_W - MARGIN_R, top - 0.75 * cm, ref_line)
@@ -140,8 +140,8 @@ def _draw_header(canvas, ref_line: str, date_line: str) -> None:
 def _draw_watermark(canvas) -> None:
     _, watermark = ensure_logo_assets()
     if watermark.exists():
-        w = 13 * cm
-        h = w * 573 / 1200
+        h = 12 * cm
+        w = h / logo_ratio()
         canvas.drawImage(str(watermark), PAGE_W / 2 - w / 2, PAGE_H / 2 - h / 2 - 1 * cm, width=w, height=h, mask="auto")
 
 
@@ -154,8 +154,9 @@ def _draw_footer(canvas, page: int, total: int, ref: str, host_name: str) -> Non
     logo, _ = ensure_logo_assets()
     text_x = MARGIN_L
     if logo.exists():
-        w = 1.9 * cm
-        canvas.drawImage(str(logo), MARGIN_L, y - 0.42 * cm, width=w, height=w * 573 / 1200, mask="auto")
+        h = 1.0 * cm
+        w = h / logo_ratio()
+        canvas.drawImage(str(logo), MARGIN_L, y - 0.45 * cm, width=w, height=h, mask="auto")
         text_x = MARGIN_L + w + 0.35 * cm
     canvas.setFillColor(INK)
     canvas.setFont("Helvetica-Bold", 8)
@@ -343,20 +344,20 @@ def _parties(submission: Submission, styles: dict) -> Table:
     return t
 
 
-def _travelers(submission: Submission, signature_file: Path, styles: dict, f: float = 1.0) -> Table:
-    """Signature table: who signs, and the signature itself (identity details are in the parties block)."""
-    sig = (Image(str(signature_file), width=3.4 * cm, height=1.2 * cm)
-           if signature_file.exists() else Paragraph("—", styles["cell"]))
-    rows = [[Paragraph("Voyageur", styles["cell_h"]), Paragraph("Signature", styles["cell_h"])],
-            [Paragraph(f"<b>{_escape(submission.last_name).upper()} {_escape(submission.first_name)}</b>", styles["cell"]), sig]]
+def _travelers(submission: Submission, styles: dict, f: float = 1.0) -> Table:
+    """Who stays: name, nationality and ID number of the guest (blank lines for accompanying persons)."""
+    rows = [[Paragraph(h, styles["cell_h"]) for h in ("Nom et prénom", "Nationalité", "N° CIN / Passeport")],
+            [Paragraph(f"<b>{_escape(submission.last_name).upper()} {_escape(submission.first_name)}</b>", styles["cell"]),
+             Paragraph(_escape(submission.nationality), styles["cell"]),
+             Paragraph(_escape(submission.id_document_number), styles["cell"])]]
     extra = min(max((submission.number_of_guests or 1) - 1, 0), 5)
-    rows += [[Paragraph("Accompagnant", styles["sig_small"]), ""] for _ in range(extra)]
-    t = Table(rows, colWidths=[CONTENT_W * 0.55, CONTENT_W * 0.45], rowHeights=[None, 1.7 * cm * f] + [0.95 * cm * f] * extra)
+    rows += [["", "", ""] for _ in range(extra)]
+    t = Table(rows, colWidths=[CONTENT_W * 0.4, CONTENT_W * 0.28, CONTENT_W * 0.32],
+              rowHeights=[None, None] + [0.85 * cm * f] * extra)
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), CLAY), ("GRID", (0, 0), (-1, -1), 0.5, LINE),
         ("BOX", (0, 0), (-1, -1), 0.8, CLAY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (1, 1), (1, 1), "CENTER"),
-        ("TOPPADDING", (0, 0), (-1, -1), 4 * f), ("BOTTOMPADDING", (0, 0), (-1, -1), 4 * f),
+        ("TOPPADDING", (0, 0), (-1, -1), 5 * f), ("BOTTOMPADDING", (0, 0), (-1, -1), 5 * f),
         ("LEFTPADDING", (0, 0), (-1, -1), 9), ("RIGHTPADDING", (0, 0), (-1, -1), 9),
     ]))
     return t
@@ -418,7 +419,7 @@ def _contract_story(submission: Submission, apartment_name: str, apartment_addre
                   f"<b>Date de check-in : {_escape(_fdate(submission.arrival_date))}</b> &nbsp;&nbsp; "
                   f"<b>Date de check-out : {_escape(_fdate(submission.departure_date))}</b>{stay} · {guests}.", styles["body"]),
         Paragraph("Article 2 – Identification des voyageurs", styles["h2l"]),
-        _travelers(submission, signature_file, styles, f), gap(1.6),
+        _travelers(submission, styles, f), gap(1.6),
         Paragraph("Le Voyageur certifie l'exactitude et l'exhaustivité des informations communiquées. Toute fausse "
                   "déclaration engage sa seule responsabilité.", styles["body"]),
     ]
