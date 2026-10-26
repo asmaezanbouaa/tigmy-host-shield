@@ -1,4 +1,4 @@
-# Tigmy Host Shield on Render — https://tigmy-host-shield.onrender.com
+# Tigmi Host Shield on Render — https://tigmy-host-shield.onrender.com
 # Deploy: Render Dashboard → New → Blueprint → connect GitHub repo
 services:
   - type: web
@@ -13,7 +13,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.9"
       - key: APP_NAME
-        value: Tigmy Host Shield
+        value: Tigmi Host Shield
       - key: APP_ENV
         value: production
       - key: DEBUG

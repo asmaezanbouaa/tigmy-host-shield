@@ -308,7 +308,7 @@ def page_bg(c):
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
 
-def footer(c, n, total, brand="Tigmy Host Shield"):
+def footer(c, n, total, brand="Tigmi Host Shield"):
     c.setStrokeColor(LINE)
     c.setLineWidth(0.8)
     c.line(M, 36, W - M, 36)
@@ -383,7 +383,7 @@ def page_cover(c, a):
     # phone with scan in the arch
     px, py, pw, ph = ax + 45, ay + 70, 160, 300
     sx, sy, sw, sh = phone(c, px, py, pw, ph)
-    txt(c, "Tigmy Host Shield", sx + 12, sy + sh - 14, SERIF_B, 9.5, INK)
+    txt(c, "Tigmi Host Shield", sx + 12, sy + sh - 14, SERIF_B, 9.5, INK)
     rrect(c, sx + 12, sy + sh - 86, sw - 24, 58, 7, "#f6e3b4", "#e5c987")
     rrect(c, sx + 20, sy + sh - 80, 20, 26, 3, "#b9a273")
     for k, ww in enumerate((52, 40, 30)):
@@ -410,7 +410,7 @@ def page_cover(c, a):
     zstrip(c, 24, 16)
     # texts
     c.drawImage(str(LOGO), M, H - 120, 46, 46, mask="auto")
-    txt(c, "Tigmy Host Shield", M + 58, H - 102, SERIF_B, 17, INK)
+    txt(c, "Tigmi Host Shield", M + 58, H - 102, SERIF_B, 17, INK)
     txt(c, "GUIDE DE DÉMARRAGE", M, H - 200, SANS_B, 10, CLAY)
     txt(c, "Bienvenue,", M, H - 252, SERIF_B, 44, INK)
     txt(c, a.name + " !", M, H - 300, SERIF_B, 44, CLAY)
@@ -924,7 +924,7 @@ def main() -> None:
     a.link = f"{a.base.rstrip('/')}/register/{a.slug}"
     c = canvas.Canvas(a.out, pagesize=A4)
     c.setTitle(f"Guide de démarrage — {a.name}")
-    c.setAuthor("Tigmy Host Shield")
+    c.setAuthor("Tigmi Host Shield")
     total = len(PAGES)
     for n, fn in enumerate(PAGES, 1):
         fn(c, a)

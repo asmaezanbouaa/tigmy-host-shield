@@ -110,7 +110,7 @@ mkdir -p data storage backups
 step "App service (starts on boot, restarts on crash)"
 sudo tee /etc/systemd/system/tigmy.service >/dev/null <<EOF
 [Unit]
-Description=Tigmy Host Shield
+Description=Tigmi Host Shield
 After=network.target
 
 [Service]

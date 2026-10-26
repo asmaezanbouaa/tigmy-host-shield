@@ -58,7 +58,7 @@ sed -i "s|^BASE_URL=.*|BASE_URL=${PUBLIC_URL}|" .env
 
 echo ""
 echo "============================================"
-echo "  Tigmy Host Shield is LIVE"
+echo "  Tigmi Host Shield is LIVE"
 echo ""
 echo "  Guest link (share this):  ${PUBLIC_URL}/register"
 echo "  Admin login:              ${PUBLIC_URL}/admin/login"

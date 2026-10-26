@@ -55,5 +55,5 @@ Copy the new URL from the terminal and update `BASE_URL` in `.env` each time the
 
 ## App name vs URL
 
-- **App name** (browser title, headers): `APP_NAME=Tigmy Host Shield` in `.env`
+- **App name** (browser title, headers): `APP_NAME=Tigmi Host Shield` in `.env`
 - **Link hostname**: only changes with Render, your domain, or a new random trycloudflare URL

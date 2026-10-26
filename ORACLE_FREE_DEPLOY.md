@@ -1,4 +1,4 @@
-# Put Tigmy Host Shield online — free, secure, with your own link
+# Put Tigmi Host Shield online — free, secure, with your own link
 
 Result: **`https://YOURNAME.duckdns.org`** running 24/7 on a free Oracle Cloud server, with HTTPS,
 a firewall, automatic security updates, protection against password guessing, and daily backups.

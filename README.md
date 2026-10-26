@@ -1,4 +1,4 @@
-# Tigmy Host Shield
+# Tigmi Host Shield
 
 Guest registration platform for short-term rental hosts (Airbnb-style). Guests complete a secure form in **French, English, or Arabic**, upload an ID scan, sign digitally, and receive official PDFs. Hosts review submissions in an admin dashboard.
 

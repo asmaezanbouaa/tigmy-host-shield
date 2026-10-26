@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "Tigmy Host Shield"
+    app_name: str = "Tigmi Host Shield"
     app_env: str = "development"
     debug: bool = True
     secret_key: str = "dev-secret-change-in-production"

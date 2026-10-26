@@ -39,9 +39,9 @@ SAND_2 = colors.HexColor("#F5ECDF")
 WHITE = colors.white
 
 PAGE_W, PAGE_H = A4
-MARGIN_L = MARGIN_R = 1.6 * cm
-HEADER_H = 3.75 * cm
-FOOTER_H = 1.9 * cm
+MARGIN_L = MARGIN_R = 1.35 * cm
+HEADER_H = 2.55 * cm
+FOOTER_H = 1.6 * cm
 CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R
 
 AR_FONT, AR_FONT_BOLD = "NotoNaskhArabic", "NotoNaskhArabic-Bold"
@@ -118,22 +118,27 @@ def _zellige_band(canvas, y: float, x0: float, x1: float, color=SAFFRON, size: f
 
 
 def _draw_header(canvas, ref_line: str, date_line: str) -> None:
-    """Letterhead: TIGMI logo on the left, contract reference on the right, ornament rule below."""
-    top = PAGE_H - 0.85 * cm
+    """Letterhead: logo on the left, contract title in the middle, contract number on the right."""
+    top = PAGE_H - 0.6 * cm
     canvas.saveState()
     logo, _ = ensure_logo_assets()
+    h = 1.9 * cm
+    w = h / logo_ratio()
     if logo.exists():
-        h = 2.35 * cm
-        w = h / logo_ratio()
         canvas.drawImage(str(logo), MARGIN_L - 0.1 * cm, top - h, width=w, height=h, mask="auto")
-    canvas.setFillColor(CLAY_DARK)
-    canvas.setFont("Helvetica-Bold", 12)
-    canvas.drawRightString(PAGE_W - MARGIN_R, top - 0.75 * cm, ref_line)
+    right_w = 4.4 * cm
+    mid = MARGIN_L + w + (CONTENT_W - w - right_w) / 2
+    title = "CONTRAT DE LOCATION SAISONNIÈRE"
+    room = CONTENT_W - w - right_w - 0.4 * cm
+    size = 17.0
+    while size > 11 and pdfmetrics.stringWidth(title, "Helvetica-Bold", size) > room:
+        size -= 0.25
+    canvas.setFillColor(CLAY)
+    canvas.setFont("Helvetica-Bold", size)
+    canvas.drawCentredString(mid, top - 1.2 * cm, title)
     canvas.setFillColor(INK_2)
-    canvas.setFont("Helvetica", 8.8)
-    canvas.drawRightString(PAGE_W - MARGIN_R, top - 1.3 * cm, date_line)
-    canvas.drawRightString(PAGE_W - MARGIN_R, top - 1.75 * cm, "Location saisonnière")
-    _zellige_band(canvas, top - 2.55 * cm, MARGIN_L, PAGE_W - MARGIN_R)
+    canvas.setFont("Helvetica", 10)
+    canvas.drawRightString(PAGE_W - MARGIN_R, top - 1.25 * cm, ref_line)
     canvas.restoreState()
 
 
@@ -147,7 +152,7 @@ def _draw_watermark(canvas) -> None:
 
 def _draw_footer(canvas, page: int, total: int, ref: str, host_name: str) -> None:
     canvas.saveState()
-    y = 1.25 * cm
+    y = 0.95 * cm
     canvas.setStrokeColor(CLAY)
     canvas.setLineWidth(0.8)
     canvas.line(MARGIN_L, y + 0.55 * cm, PAGE_W - MARGIN_R, y + 0.55 * cm)
@@ -184,7 +189,7 @@ def _build(output_path, story: list, *, ref: str, host_name: str, title: str,
         _draw_footer(canvas, counter[0], total_pages, ref, host_name)
 
     doc = BaseDocTemplate(output_path if hasattr(output_path, "write") else str(output_path), pagesize=A4, leftMargin=MARGIN_L, rightMargin=MARGIN_R,
-                          topMargin=HEADER_H, bottomMargin=FOOTER_H + 0.4 * cm, title=title, author=settings.app_name)
+                          topMargin=HEADER_H, bottomMargin=FOOTER_H + 0.15 * cm, title=title, author=settings.app_name)
     frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main",
                   leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
     doc.addPageTemplates([PageTemplate(id="page", frames=[frame], onPage=on_page)])
@@ -199,29 +204,27 @@ PLACEHOLDER_HINT = "À préciser par l'Hôte (logement non encore attribué)"
 HOUSE_RULES = [
     "Respecter la capacité maximale autorisée du logement.",
     "Ne recevoir aucun visiteur ni voyageur non déclaré sans l'accord écrit préalable de l'Hôte.",
-    "Respecter le voisinage et s'abstenir de toute nuisance sonore entre 22h00 et 09h00.",
-    "S'interdire toute fête ou événement dans le logement.",
-    "Maintenir le logement en bon état comme un bon père de famille.",
-    "Signaler immédiatement à l'Hôte tout dommage ou incident.",
+    "Respecter le voisinage, s'abstenir de toute nuisance sonore entre 22h00 et 09h00 et s'interdire toute fête "
+    "ou événement dans le logement.",
+    "Maintenir le logement en bon état comme un bon père de famille et signaler immédiatement à l'Hôte tout "
+    "dommage ou incident.",
     "Respecter les horaires d'arrivée (check-in) et de départ (check-out) fixés par l'Hôte, et quitter le "
     "logement à l'heure prévue.",
     "Restituer les clés et équipements mis à disposition à la fin du séjour.",
-    "Ne pas louer, sous-louer, prêter ni mettre le logement à la disposition d'autres personnes pendant son "
-    "séjour : le Voyageur n'a aucun droit de le relouer.",
-    "Conformément à la législation marocaine, tout couple dont au moins un membre est de nationalité marocaine "
-    "doit présenter un acte de mariage ; les couples non mariés comprenant une personne de nationalité marocaine "
-    "ne sont pas autorisés.",
-    "S'interdire d'introduire, de détenir ou de consommer de l'alcool, des drogues ou toute substance illicite, "
-    "ainsi que toute prostitution ou activité illégale, strictement interdites et signalées aux autorités.",
+    "Ne pas louer ni sous-louer le logement, et ne pas le prêter ou le mettre à la disposition d'autres "
+    "personnes pendant son séjour.",
+    "Tout couple comprenant une personne de nationalité marocaine doit présenter un acte de mariage, "
+    "sinon il n'est pas autorisé.",
+    "L'alcool, les drogues, les substances illicites, la prostitution et toute activité illégale sont "
+    "strictement interdits et seront signalés aux autorités.",
     "Respecter les lois et règlements en vigueur au Royaume du Maroc.",
 ]
 
 ARTICLES = [
     ("Article 3 – Données personnelles",
-     "Le Voyageur consent expressément à ce que l'Hôte recueille et conserve une copie ou une photographie de sa "
-     "pièce d'identité (CIN ou passeport), aux seules fins d'enregistrement du séjour et de respect des obligations "
-     "légales de déclaration de la clientèle. Ce traitement est effectué conformément à la loi n° 09-08. Le "
-     "Voyageur dispose d'un droit d'accès, de rectification et d'opposition."),
+     "Le Voyageur consent à ce que l'Hôte recueille et conserve une copie ou une photographie de sa pièce "
+     "d'identité (CIN ou passeport). Ces données servent uniquement à l'enregistrement du séjour et au respect "
+     "des obligations de déclaration de la clientèle."),
 ]
 AFTER_RULES = [
     ("Article 5 – Responsabilité",
@@ -234,17 +237,15 @@ AFTER_RULES = [
     ("Article 7 – Force obligatoire",
      "Conformément à l'article 230 du Dahir des obligations et des contrats (DOC), les obligations contractées "
      "valablement tiennent lieu de loi à ceux qui les ont faites. Le Voyageur reconnaît avoir lu et compris le "
-     "présent contrat."),
+     "contrat."),
     ("Article 8 – Droit applicable et juridiction",
-     "Le présent contrat est soumis au droit marocain. À défaut de règlement amiable, tout litige relève de la "
+     "Le contrat est soumis au droit marocain et tout litige non réglé à l'amiable relève de la "
      "compétence exclusive des tribunaux de Rabat."),
 ]
 DECLARATION = (
     "Le Voyageur déclare avoir lu et approuvé l'ensemble des articles ci-dessus. Il signe le présent contrat par "
-    "voie électronique, conformément à la loi n° 43-20 relative aux services de confiance pour les transactions "
-    "électroniques (Dahir n° 1-20-100 du 31 décembre 2020) et aux dispositions du Code des obligations et des "
-    "contrats (DOC) : la signature électronique produit les effets juridiques attachés à la signature manuscrite "
-    "dans les conditions prévues par cette loi. La mention « Lu et approuvé » est apposée électroniquement."
+    "voie électronique, conformément au Dahir n° 1-20-100 du 31 décembre 2020, la mention « Lu et approuvé » "
+    "étant apposée électroniquement."
 )
 
 
@@ -291,30 +292,21 @@ def _host_lines(submission: Submission) -> list[str]:
 
 
 def _st(f: float = 1.0) -> dict:
-    """Contract text styles; every size is multiplied by f so the text can be fitted to the pages."""
+    """Contract text styles (10 pt body at f = 1); every size is multiplied by f so the text fits the page."""
     s = _styles()
     s.update({
-        "doc_title": ParagraphStyle("doc_title", fontName="Helvetica-Bold", fontSize=19 * f, leading=23 * f, textColor=CLAY, alignment=TA_CENTER),
-        "subtitle": ParagraphStyle("subtitle", fontName="Helvetica", fontSize=9.5 * f, leading=12 * f, textColor=MUTED, alignment=TA_CENTER),
-        "h2": ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=12 * f, leading=15 * f, textColor=CLAY, alignment=TA_CENTER,
-                             spaceBefore=4 * f, spaceAfter=3 * f, keepWithNext=1),
-        "h2l": ParagraphStyle("h2l", fontName="Helvetica-Bold", fontSize=10.2 * f, leading=13 * f, textColor=CLAY,
-                              spaceBefore=6 * f, spaceAfter=2.5 * f, keepWithNext=1),
-        "party_tag": ParagraphStyle("party_tag", fontName="Helvetica-Bold", fontSize=8.4 * f, leading=11 * f, textColor=CLAY),
-        "party": ParagraphStyle("party", fontName="Helvetica", fontSize=9.4 * f, leading=12.6 * f, textColor=INK),
-        "body": ParagraphStyle("body", fontName="Helvetica", fontSize=9.3 * f, leading=12.8 * f, textColor=INK, alignment=TA_JUSTIFY),
-        "rule": ParagraphStyle("rule", fontName="Helvetica", fontSize=9.3 * f, leading=12.4 * f, textColor=INK, alignment=TA_JUSTIFY,
-                               leftIndent=16 * f, firstLineIndent=-16 * f, spaceAfter=1.2 * f),
-        "cell": ParagraphStyle("cell", fontName="Helvetica", fontSize=9.4 * f, leading=12 * f, textColor=INK),
-        "cell_h": ParagraphStyle("cell_h", fontName="Helvetica-Bold", fontSize=9 * f, leading=11.5 * f, textColor=WHITE),
-        "sig_small": ParagraphStyle("sig_small", fontName="Helvetica", fontSize=8 * f, leading=10.4 * f, textColor=INK_2),
+        "party_tag": ParagraphStyle("party_tag", fontName="Helvetica-Bold", fontSize=8.6 * f, leading=11 * f, textColor=CLAY),
+        "party": ParagraphStyle("party", fontName="Helvetica", fontSize=10 * f, leading=12.6 * f, textColor=INK),
+        "body": ParagraphStyle("body", fontName="Helvetica", fontSize=10 * f, leading=12.5 * f, textColor=INK,
+                               alignment=TA_JUSTIFY, spaceBefore=2.4 * f),
+        "h2l": ParagraphStyle("h2l", fontName="Helvetica-Bold", fontSize=10.4 * f, leading=13 * f, textColor=CLAY,
+                              spaceBefore=4 * f, spaceAfter=1 * f, keepWithNext=1),
+        "rule": ParagraphStyle("rule", fontName="Helvetica", fontSize=10 * f, leading=12.3 * f, textColor=INK,
+                               alignment=TA_JUSTIFY, leftIndent=16 * f, firstLineIndent=-16 * f),
+        "cell": ParagraphStyle("cell", fontName="Helvetica", fontSize=10 * f, leading=12 * f, textColor=INK),
+        "sig_small": ParagraphStyle("sig_small", fontName="Helvetica", fontSize=8.4 * f, leading=10.6 * f, textColor=INK_2),
     })
     return s
-
-
-def _title_block(styles: dict) -> list:
-    return [Paragraph("CONTRAT DE LOCATION SAISONNIÈRE", styles["doc_title"]),
-            Paragraph("Hébergement touristique — Location de courte durée", styles["subtitle"])]
 
 
 def _parties(submission: Submission, styles: dict) -> Table:
@@ -344,32 +336,13 @@ def _parties(submission: Submission, styles: dict) -> Table:
     return t
 
 
-def _travelers(submission: Submission, styles: dict, f: float = 1.0) -> Table:
-    """Who stays: name, nationality and ID number of the guest (blank lines for accompanying persons)."""
-    rows = [[Paragraph(h, styles["cell_h"]) for h in ("Nom et prénom", "Nationalité", "N° CIN / Passeport")],
-            [Paragraph(f"<b>{_escape(submission.last_name).upper()} {_escape(submission.first_name)}</b>", styles["cell"]),
-             Paragraph(_escape(submission.nationality), styles["cell"]),
-             Paragraph(_escape(submission.id_document_number), styles["cell"])]]
-    extra = min(max((submission.number_of_guests or 1) - 1, 0), 5)
-    rows += [["", "", ""] for _ in range(extra)]
-    t = Table(rows, colWidths=[CONTENT_W * 0.4, CONTENT_W * 0.28, CONTENT_W * 0.32],
-              rowHeights=[None, None] + [0.85 * cm * f] * extra)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), CLAY), ("GRID", (0, 0), (-1, -1), 0.5, LINE),
-        ("BOX", (0, 0), (-1, -1), 0.8, CLAY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 5 * f), ("BOTTOMPADDING", (0, 0), (-1, -1), 5 * f),
-        ("LEFTPADDING", (0, 0), (-1, -1), 9), ("RIGHTPADDING", (0, 0), (-1, -1), 9),
-    ]))
-    return t
-
-
 def _signature_block(submission: Submission, signature_file: Path, signed: datetime, place_city: str, styles: dict,
                      f: float = 1.0) -> Table:
-    sig = (Image(str(signature_file), width=4.6 * cm, height=1.7 * cm)
+    sig = (Image(str(signature_file), width=3.8 * cm * f, height=1.35 * cm * f)
            if signature_file.exists() else Paragraph("(signature non enregistrée)", styles["sig_small"]))
     name = f"{submission.first_name} {submission.last_name}"
     left = [Paragraph('<font name="Helvetica-Bold" color="#7A3319">Signature électronique du Voyageur</font>', styles["sig_small"]),
-            Paragraph("(certificat de signature électronique – loi n° 43-20)", styles["sig_small"]),
+            Paragraph("(certificat de signature électronique)", styles["sig_small"]),
             Paragraph('<font name="Helvetica-BoldOblique">Lu et approuvé</font>', styles["sig_small"]), Spacer(1, 2), sig]
     mid = [Paragraph(f'<font name="Helvetica-Bold">Fait à :</font> {_escape(place_city) or "____________________"}', styles["cell"]),
            Spacer(1, 4),
@@ -380,7 +353,7 @@ def _signature_block(submission: Submission, signature_file: Path, signed: datet
            Paragraph(f'<font name="Helvetica-Bold">Référence de la transaction / certificat :</font> '
                      f'{submission.public_id[:8].upper()}-{signed.strftime("%Y%m%d%H%M")}', styles["cell"])]
     right = [Paragraph('<font name="Helvetica-Bold" color="#7A3319">Cachet et signature de l\'Hôte</font>', styles["sig_small"])]
-    t = Table([[left, mid, right]], colWidths=[CONTENT_W * 0.30, CONTENT_W * 0.45, CONTENT_W * 0.25], rowHeights=[3.7 * cm * f])
+    t = Table([[left, mid, right]], colWidths=[CONTENT_W * 0.29, CONTENT_W * 0.51, CONTENT_W * 0.20], rowHeights=[None])
     t.setStyle(TableStyle([
         ("BOX", (0, 0), (-1, -1), 0.8, CLAY), ("LINEAFTER", (0, 0), (1, 0), 0.5, LINE),
         ("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
@@ -404,59 +377,57 @@ def _contract_story(submission: Submission, apartment_name: str, apartment_addre
     guests = f"{submission.number_of_guests} voyageur{'s' if submission.number_of_guests > 1 else ''}"
     if submission.number_of_kids:
         guests += f" dont {submission.number_of_kids} enfant{'s' if submission.number_of_kids > 1 else ''}"
-    gap = lambda mm_: Spacer(1, mm_ * mm * f)
 
-    def article(title: str, body: str) -> list:
-        return [Paragraph(_escape(title), styles["h2l"]), Paragraph(_escape(body), styles["body"])]
+    def runin(title: str, body: str, raw: bool = False) -> Paragraph:
+        """Article title in bold on the same line as its text."""
+        text = body if raw else _escape(body)
+        return Paragraph(f'<font name="Helvetica-Bold" color="#B8532D">{_escape(title)}.</font> {text}', styles["body"])
 
     story: list = [
-        *_title_block(styles), gap(4),
-        Paragraph("ENTRE LES SOUSSIGNÉS", styles["h2l"]), _parties(submission, styles), gap(1.2),
-        Paragraph("CONDITIONS", styles["h2"]),
-        Paragraph("Article 1 – Objet et durée", styles["h2l"]),
-        Paragraph("Le présent contrat a pour objet la mise à disposition temporaire, à titre de location saisonnière, "
-                  f"du logement suivant : <b>{_escape(place)}</b>. Période : "
-                  f"<b>Date de check-in : {_escape(_fdate(submission.arrival_date))}</b> &nbsp;&nbsp; "
-                  f"<b>Date de check-out : {_escape(_fdate(submission.departure_date))}</b>{stay} · {guests}.", styles["body"]),
-        Paragraph("Article 2 – Identification des voyageurs", styles["h2l"]),
-        _travelers(submission, styles, f), gap(1.6),
-        Paragraph("Le Voyageur certifie l'exactitude et l'exhaustivité des informations communiquées. Toute fausse "
-                  "déclaration engage sa seule responsabilité.", styles["body"]),
+        Paragraph("ENTRE LES SOUSSIGNÉS", styles["h2l"]), _parties(submission, styles),
+        runin("Article 1 – Objet et durée",
+              "Le présent contrat a pour objet la mise à disposition temporaire, à titre de location saisonnière, "
+              f"du logement suivant : <b>{_escape(place)}</b>. Période : "
+              f"<b>check-in le {_escape(_fdate(submission.arrival_date))}</b>, "
+              f"<b>check-out le {_escape(_fdate(submission.departure_date))}</b>{stay} · {guests}.", raw=True),
+        runin("Article 2 – Identification et responsabilité du Voyageur",
+              "Le Voyageur certifie l'exactitude et l'exhaustivité des informations communiquées ; toute fausse "
+              "déclaration engage sa seule responsabilité. La personne ayant loué le logement (identifiée ci-dessus) "
+              "est responsable de toutes les personnes qui l'accompagnent dans le logement et leur fait respecter le "
+              "règlement intérieur."),
     ]
     for title, body in ARTICLES:
-        story += article(title, body)
-    story.append(Paragraph("Article 4 – Règlement intérieur", styles["h2l"]))
-    story.append(Paragraph("Le Voyageur reconnaît avoir pris connaissance du règlement intérieur du logement et "
-                           "s'engage à le respecter pendant toute la durée du séjour :", styles["body"]))
+        story.append(runin(title, body))
+    story.append(runin("Article 4 – Règlement intérieur",
+                       "Le Voyageur a pris connaissance du règlement intérieur du logement et s'engage à le "
+                       "respecter pendant tout son séjour&nbsp;:", raw=True))
     for i, rule in enumerate(HOUSE_RULES, 1):
         story.append(Paragraph(f"{i}.&nbsp; {_escape(rule)}", styles["rule"]))
     for title, body in AFTER_RULES:
-        story += article(title, body)
-    story += [KeepTogether([Paragraph("Déclaration d'acceptation et signature électronique", styles["h2l"]),
-                            Paragraph(_escape(DECLARATION), styles["body"]), Spacer(1, 4 * mm * f),
+        story.append(runin(title, body))
+    story += [KeepTogether([runin("Déclaration d'acceptation et signature électronique", DECLARATION), Spacer(1, 3 * mm * f),
                             _signature_block(submission, signature_file, signed, _city(apartment_address) if assigned else "", styles, f)])]
     return story
 
 
 def generate_contract_pdf(submission: Submission, apartment_name: str, apartment_address: str,
                           signature_file: Path, output_path: Path) -> None:
-    """The contract filled with what the guest provided (identity, stay, signature).
+    """The contract filled with what the guest provided (identity, stay, signature), on one A4 page.
 
-    Two A4 pages. The text is sized as large as possible while the contract still fits on two pages.
+    The text is sized as large as possible while the whole contract still fits on the page.
     """
     from io import BytesIO
 
     _register_fonts()
     signed = _signed_at(submission)
     kw = dict(ref=submission.public_id[:8].upper(), host_name=_host_name(submission),
-              title="Contrat de location saisonnière",
-              meta=(f"Contrat N° {submission.public_id[:8].upper()}", f"Établi le {signed.strftime('%d/%m/%Y à %H:%M')} (heure du Maroc)"))
+              title="Contrat de location saisonnière", total_pages=1,
+              meta=(f"N° {submission.public_id[:8].upper()}", ""))
 
     def story(f):
         return _contract_story(submission, apartment_name, apartment_address, signature_file, f)
 
-    f = 1.25
-    while f > 0.7 and _build(BytesIO(), story(f), total_pages=2, **kw) > 2:
-        f -= 0.02
-    pages = _build(BytesIO(), story(f), total_pages=2, **kw)
-    _build(output_path, story(f), total_pages=pages, **kw)
+    f = 1.0  # 10 pt body text; shrinks only if a very long contract would not fit on the page
+    while f > 0.6 and _build(BytesIO(), story(f), **kw) > 1:
+        f -= 0.01
+    _build(output_path, story(f), **kw)

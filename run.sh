@@ -35,7 +35,7 @@ BASE_URL="$(grep -E '^BASE_URL=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr 
 BASE_URL="${BASE_URL:-http://localhost:${PORT}}"
 echo ""
 echo "============================================"
-echo "  Tigmy Host Shield — guest link:  ${BASE_URL%/}/register"
+echo "  Tigmi Host Shield — guest link:  ${BASE_URL%/}/register"
 echo "  Admin login:              ${BASE_URL%/}/admin/login"
 echo "  Admin share + QR:         ${BASE_URL%/}/admin/share"
 echo "  Set BASE_URL in .env when you deploy (see DEPLOY.md)"

@@ -1,4 +1,4 @@
-# Deploy Tigmy Host Shield on Render (free)
+# Deploy Tigmi Host Shield on Render (free)
 
 > ⚠️ **Free Render does not keep data.** Its disk is wiped whenever the service restarts, sleeps
 > (after ~15 min idle) or redeploys — guest registrations, signatures, ID scans and PDFs are lost.
@@ -19,7 +19,7 @@ From your project folder:
 cd ~/Desktop/tigmy-host-shield
 git init
 git add .
-git commit -m "Deploy Tigmy Host Shield to Render"
+git commit -m "Deploy Tigmi Host Shield to Render"
 ```
 
 Create a new repo on [GitHub](https://github.com/new) (e.g. `tigmy-host-shield`), then:
