@@ -23,6 +23,8 @@ def add_columns():
     with engine.begin() as conn:
         if missing("apartments", "nightly_rate"):
             conn.execute(text("ALTER TABLE apartments ADD COLUMN nightly_rate INTEGER"))
+        if missing("host_sections", "legal_info"):
+            conn.execute(text("ALTER TABLE host_sections ADD COLUMN legal_info TEXT"))
         if missing("admin_users", "last_login_at"):
             conn.execute(text("ALTER TABLE admin_users ADD COLUMN last_login_at DATETIME"))
 

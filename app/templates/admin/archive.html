@@ -64,8 +64,7 @@
           <td class="actions-cell">
             <a href="/admin/submissions/{{ sub.public_id }}">Voir</a>
             {% if sub.document %}
-            · <a href="/admin/submissions/{{ sub.public_id }}/pdf">Fiche</a>
-            · <a href="/admin/submissions/{{ sub.public_id }}/pdf/rules">Règlement</a>
+            · <a href="/admin/submissions/{{ sub.public_id }}/pdf">Contrat</a>
             {% endif %}
             ·
             <form method="post" action="/admin/archive/{{ sub.public_id }}/purge" style="display:inline"

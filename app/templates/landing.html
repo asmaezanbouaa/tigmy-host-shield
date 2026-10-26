@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ app_name }} — La fiche de police de vos voyageurs, sans papier</title>
-  <meta name="description" content="Vos voyageurs remplissent leur fiche depuis leur téléphone, l'IA vérifie la pièce d'identité, et vous obtenez une fiche de police officielle en PDF. Pensé pour les hôtes marocains.">
+  <title>{{ app_name }} — Le contrat et l'enregistrement de vos voyageurs, sans papier</title>
+  <meta name="description" content="Vos voyageurs remplissent leur fiche depuis leur téléphone, l'IA vérifie la pièce d'identité, et vous obtenez un contrat de location signé, d'aspect officiel, en PDF. Pensé pour les hôtes marocains.">
   <meta name="theme-color" content="#fbf7f1">
   <meta name="color-scheme" content="only light">
   <meta name="supported-color-schemes" content="light">
@@ -30,8 +30,8 @@
     <div class="wrap hero__grid">
       <div class="hero__copy">
         <span class="pill reveal"><i class="pulse"></i>Propulsé par l'IA · Fait pour le Maroc</span>
-        <h1 class="reveal d1">La fiche de police de vos voyageurs, <span class="gold">sans papier</span>.</h1>
-        <p class="hero__sub reveal d2">Un lien ou un QR code. Votre voyageur remplit tout depuis son téléphone, notre IA vérifie sa pièce d'identité en quelques secondes, et vous recevez une fiche officielle en PDF.</p>
+        <h1 class="reveal d1">Le contrat et l'enregistrement de vos voyageurs, <span class="gold">sans papier</span>.</h1>
+        <p class="hero__sub reveal d2">Un lien ou un QR code. Votre voyageur remplit tout depuis son téléphone, notre IA vérifie sa pièce d'identité en quelques secondes, et vous recevez un contrat de location signé en PDF.</p>
         <div class="gift reveal d3">{{ icon("sparkles","i") }}<span><b>{{ trial.fiches }} fiches gratuites</b> pendant {{ trial.days }} jours pour tout nouvel hôte</span></div>
         <div class="cta reveal d3">
           {% if wa(hello) %}<a class="btn btn--gold" href="{{ wa(hello) }}" target="_blank" rel="noopener">{{ icon("chat","i") }}Obtenir mes {{ trial.fiches }} fiches gratuites</a>{% endif %}
@@ -63,7 +63,7 @@
           </div>
         </div>
         <div class="float float--a">{{ icon("shield","i") }}<div><b>Pièce vérifiée</b><span>Nette et lisible</span></div></div>
-        <div class="float float--b">{{ icon("file","i") }}<div><b>Fiche de police</b><span>PDF prêt à imprimer</span></div></div>
+        <div class="float float--b">{{ icon("file","i") }}<div><b>Contrat de location</b><span>PDF signé, prêt à imprimer</span></div></div>
         <div class="float float--c">{{ icon("sparkles","i") }}<div><b>Validée par l'IA</b><span>en quelques secondes</span></div></div>
       </div>
     </div>
@@ -137,7 +137,7 @@
       <div class="timeline">
         <div class="tl reveal"><span class="tl__n">01</span><div class="tl__ic">{{ icon("qr","i") }}</div><h3>Partagez votre lien</h3><p>Chaque hôte a son lien et son QR code. Envoyez-les sur WhatsApp ou affichez le QR dans le logement.</p></div>
         <div class="tl reveal d1"><span class="tl__n">02</span><div class="tl__ic">{{ icon("sparkles","i") }}</div><h3>Le voyageur remplit, l'IA vérifie</h3><p>En français, anglais ou arabe : logement, pièce d'identité, règlement et signature à l'écran.</p></div>
-        <div class="tl reveal d2"><span class="tl__n">03</span><div class="tl__ic">{{ icon("file","i") }}</div><h3>Vous téléchargez le PDF</h3><p>Fiche de police et règlement signé, bilingues et d'aspect officiel, avec votre logo.</p></div>
+        <div class="tl reveal d2"><span class="tl__n">03</span><div class="tl__ic">{{ icon("file","i") }}</div><h3>Vous téléchargez le contrat</h3><p>Un contrat de location saisonnière signé par le voyageur, d'aspect officiel, avec l'identité du voyageur et le règlement.</p></div>
       </div>
     </div>
   </section>
@@ -150,7 +150,7 @@
         <h2>Conçu pour les hôtes <span class="gold">marocains</span></h2>
       </div>
       <div class="bento">
-        <article class="bx bx--big reveal"><div class="bx__ic">{{ icon("file","i") }}</div><h3>Des PDF d'aspect officiel</h3><p>Fiche de police et règlement intérieur bilingues français et arabe. La signature du voyageur est sur la même page que les règles.</p>
+        <article class="bx bx--big reveal"><div class="bx__ic">{{ icon("file","i") }}</div><h3>Un contrat d'aspect officiel</h3><p>Un seul PDF : contrat de location saisonnière avec l'identité du voyageur, le règlement intérieur et sa signature électronique, sur une page.</p>
           <div class="docs"><div class="doc"><i></i><i></i><i></i><i></i></div><div class="doc doc--b"><i></i><i></i><i></i><i></i></div></div></article>
         <article class="bx reveal d1"><div class="bx__ic">{{ icon("qr","i") }}</div><h3>Un lien et un QR par hôte</h3><p>Vous savez toujours à quel hôte appartient chaque voyageur. Renouvelable en un clic.</p></article>
         <article class="bx reveal d2"><div class="bx__ic">{{ icon("building","i") }}</div><h3>Tous vos logements</h3><p>Le voyageur choisit son logement avant d'envoyer. Calendrier des arrivées et archives.</p></article>
@@ -221,7 +221,7 @@
         <details class="reveal"><summary>Mon voyageur doit-il créer un compte ?</summary><p>Non. Il ouvre votre lien, remplit le formulaire et c'est terminé. Aucune application, aucun mot de passe.</p></details>
         <details class="reveal"><summary>Comment je paye ?</summary><p>Par virement bancaire. Vous choisissez un pack, les coordonnées s'affichent, vous envoyez votre reçu depuis la plateforme et le pack est activé dès confirmation.</p></details>
         <details class="reveal"><summary>Que se passe-t-il quand mes fiches sont épuisées ?</summary><p>Vos voyageurs ne peuvent plus s'enregistrer jusqu'au prochain pack ou à la recharge. Vos fiches existantes restent accessibles. Un avertissement apparaît avant d'arriver à zéro.</p></details>
-        <details class="reveal"><summary>Les fiches imprimées sont-elles valables ?</summary><p>Le PDF reprend la forme de la fiche de police d'hébergement et peut être imprimé et conservé. Vous restez responsable de vos démarches auprès des autorités.</p></details>
+        <details class="reveal"><summary>Les fiches imprimées sont-elles valables ?</summary><p>Le contrat est un PDF d'aspect officiel qui peut être imprimé et conservé. Vous restez responsable de vos démarches auprès des autorités.</p></details>
         <details class="reveal"><summary>Et si un voyageur envoie une mauvaise photo ?</summary><p>La plateforme la refuse tout de suite et lui demande de reprendre une photo nette de sa pièce, avant même l'envoi de la fiche.</p></details>
       </div>
     </div>

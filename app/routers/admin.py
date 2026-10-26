@@ -376,7 +376,7 @@ def _apartment_fields(form) -> tuple[str, str, str | None]:
     if not name:
         return name, address, "Donnez un nom au logement."
     if not address:
-        return name, address, "Ajoutez l'adresse complète du logement (elle est imprimée sur la fiche de police)."
+        return name, address, "Ajoutez l'adresse complète du logement (elle est inscrite dans le contrat de location)."
     return name, address, None
 
 
@@ -450,7 +450,7 @@ async def apartment_edit(
     apt.name, apt.address = name, address
     db.commit()
     return RedirectResponse(
-        url=f"/admin/apartments?msg={quote(f'{name} enregistré. Les nouveaux PDF utiliseront ces informations.')}",
+        url=f"/admin/apartments?msg={quote(f'{name} enregistré. Les nouveaux contrats utiliseront ces informations.')}",
         status_code=303,
     )
 
@@ -724,7 +724,7 @@ async def admin_profile(
     db.refresh(admin)
     err = request.query_params.get("error")
     ok_param = request.query_params.get("success")
-    ok = "Mot de passe mis à jour." if ok_param == "password" else ok_param
+    ok = {"password": "Mot de passe mis à jour.", "legal": "Informations du contrat enregistrées."}.get(ok_param, ok_param)
     return templates.TemplateResponse(
         "admin/profile.html",
         {
@@ -735,6 +735,22 @@ async def admin_profile(
             "success": ok,
         },
     )
+
+
+@router.post("/profile/legal")
+async def admin_save_legal_info(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(get_current_admin),
+):
+    section = admin.active_section
+    if not section:
+        return RedirectResponse(url="/admin/profile?error=Aucun h%C3%B4te%20s%C3%A9lectionn%C3%A9", status_code=303)
+    form = await request.form()
+    lines = [clean_text(ln, 120) for ln in str(form.get("legal_info", "")).splitlines()]
+    section.legal_info = "\n".join(ln for ln in lines if ln)[:700] or None
+    db.commit()
+    return RedirectResponse(url="/admin/profile?success=legal", status_code=303)
 
 
 @router.post("/profile/password")
@@ -963,7 +979,7 @@ async def submission_edit_save(
         admin_notes=payload.admin_notes,
     )
     return RedirectResponse(
-        url=f"/admin/submissions/{public_id}?msg={quote('Modifications enregistrées. Les PDF ont été régénérés.')}",
+        url=f"/admin/submissions/{public_id}?msg={quote('Modifications enregistrées. Le contrat a été régénéré.')}",
         status_code=303,
     )
 
@@ -1361,7 +1377,7 @@ async def purge_archived_submission(
 
 
 @router.get("/submissions/{public_id}/pdf")
-async def download_fiche_pdf(
+async def download_contract_pdf(
     public_id: str,
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(get_current_admin),
@@ -1380,22 +1396,9 @@ async def download_fiche_pdf(
 
 
 @router.get("/submissions/{public_id}/pdf/rules")
-async def download_rules_pdf(
-    public_id: str,
-    db: Session = Depends(get_db),
-    admin: AdminUser = Depends(get_current_admin),
-):
-    sub = _get_sub(db, admin, public_id)
-    if not sub or not sub.document or not sub.document.rules_pdf_path:
-        raise HTTPException(status_code=404, detail="PDF du règlement introuvable")
-    path = absolute_path(sub.document.rules_pdf_path)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="Fichier PDF du règlement introuvable")
-    return FileResponse(
-        path,
-        media_type="application/pdf",
-        filename=sub.document.rules_filename or "reglement.pdf",
-    )
+async def download_rules_pdf(public_id: str, admin: AdminUser = Depends(get_current_admin)):
+    """Old link: the rules are now part of the single contract PDF."""
+    return RedirectResponse(url=f"/admin/submissions/{public_id}/pdf", status_code=303)
 
 
 # ---------------- Platform owner: view any section, block admins, statistics ----------------

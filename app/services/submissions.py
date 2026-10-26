@@ -35,7 +35,7 @@ def assign_apartment(db: Session, submission: Submission, apartment: Apartment) 
     submission.apartment_id = apartment.id
     _regenerate(db, submission)
     db.commit()
-    return f"Logement défini : {apartment.name}. PDF mis à jour."
+    return f"Logement défini : {apartment.name}. Contrat mis à jour."
 
 
 def confirm_submission(db: Session, submission: Submission, apartment: Apartment) -> str:
@@ -44,7 +44,7 @@ def confirm_submission(db: Session, submission: Submission, apartment: Apartment
     submission.confirmed_at = datetime.now(timezone.utc)
     _regenerate(db, submission)
     db.commit()
-    return f"Fiche confirmée pour {apartment.name}. PDF mis à jour."
+    return f"Fiche confirmée pour {apartment.name}. Contrat mis à jour."
 
 
 def archive_submission(db: Session, submission: Submission) -> str:

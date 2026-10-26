@@ -1,76 +1,43 @@
-"""Generate or refresh both PDFs for a submission."""
-
-from pathlib import Path
+"""Generate or refresh the single contract PDF of a submission."""
 
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import Document, Submission
-from app.services.pdf_assets import ensure_fiche_banner, ensure_rules_banner
-from app.services.pdf_generator import generate_fiche_pdf, generate_rules_pdf
+from app.services.pdf_assets import ensure_coat_header_image
+from app.services.pdf_generator import generate_contract_pdf
 from app.services.property_placeholder import establishment_for
-from app.services.storage import absolute_path
+from app.services.storage import absolute_path, unlink_if_exists
 
 settings = get_settings()
 
 
+def _write_contract(submission: Submission, signature_rel: str | None = None):
+    ensure_coat_header_image()
+    name, address = establishment_for(submission)
+    sig_full = absolute_path(signature_rel or submission.signature_path)
+    filename = f"contrat_{submission.public_id}.pdf"
+    full = settings.pdfs_path / filename
+    generate_contract_pdf(submission, name, address, sig_full, full)
+    return filename, str(full.relative_to(settings.storage_path.parent))
+
+
 def regenerate_submission_pdfs(db: Session, submission: Submission) -> None:
-    ensure_fiche_banner()
-    ensure_rules_banner()
-    name, address = establishment_for(submission)
-    sig_full = absolute_path(submission.signature_path)
-
-    fiche_name = f"fiche_{submission.public_id}.pdf"
-    rules_name = f"reglement_{submission.public_id}.pdf"
-    fiche_full = settings.pdfs_path / fiche_name
-    rules_full = settings.pdfs_path / rules_name
-
-    generate_fiche_pdf(submission, address, name, sig_full, fiche_full)
-    generate_rules_pdf(submission, name, address, sig_full, rules_full)
-
-    fiche_rel = str(fiche_full.relative_to(settings.storage_path.parent))
-    rules_rel = str(rules_full.relative_to(settings.storage_path.parent))
-
-    if submission.document:
-        submission.document.pdf_path = fiche_rel
-        submission.document.filename = fiche_name
-        submission.document.rules_pdf_path = rules_rel
-        submission.document.rules_filename = rules_name
+    filename, rel = _write_contract(submission)
+    doc = submission.document
+    if doc:
+        # Older submissions also had a separate fiche and rules PDF: the contract replaces both.
+        for old in (doc.pdf_path, doc.rules_pdf_path):
+            if old and old != rel:
+                unlink_if_exists(old)
+        doc.pdf_path, doc.filename = rel, filename
+        doc.rules_pdf_path = doc.rules_filename = None
     else:
-        db.add(
-            Document(
-                submission_id=submission.id,
-                pdf_path=fiche_rel,
-                filename=fiche_name,
-                rules_pdf_path=rules_rel,
-                rules_filename=rules_name,
-            )
-        )
+        db.add(Document(submission_id=submission.id, pdf_path=rel, filename=filename))
 
 
-def create_submission_pdfs(
-    db: Session,
-    submission: Submission,
-    signature_rel: str,
-) -> Document:
-    ensure_fiche_banner()
-    ensure_rules_banner()
-    name, address = establishment_for(submission)
-    sig_full = absolute_path(signature_rel)
-    fiche_name = f"fiche_{submission.public_id}.pdf"
-    rules_name = f"reglement_{submission.public_id}.pdf"
-    fiche_full = settings.pdfs_path / fiche_name
-    rules_full = settings.pdfs_path / rules_name
-
-    generate_fiche_pdf(submission, address, name, sig_full, fiche_full)
-    generate_rules_pdf(submission, name, address, sig_full, rules_full)
-
-    doc = Document(
-        submission_id=submission.id,
-        pdf_path=str(fiche_full.relative_to(settings.storage_path.parent)),
-        filename=fiche_name,
-        rules_pdf_path=str(rules_full.relative_to(settings.storage_path.parent)),
-        rules_filename=rules_name,
-    )
+def create_submission_pdfs(db: Session, submission: Submission, signature_rel: str) -> Document:
+    filename, rel = _write_contract(submission, signature_rel)
+    doc = Document(submission_id=submission.id, pdf_path=rel, filename=filename)
     db.add(doc)
     return doc

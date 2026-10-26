@@ -113,7 +113,7 @@
         {% if not apartments and not assigned_apartment %}
         <div class="apt-missing">{{ icon("alert") }}<span>Aucun logement pour le moment. <a href="/admin/apartments#add">Ajoutez vos logements</a> pour pouvoir confirmer vos clients.</span></div>
         {% elif submission.status == 'submitted' %}
-        <p class="subtitle" style="margin:0 0 10px">Dans quel logement ce client séjourne-t-il ? Il sera imprimé sur la fiche de police.</p>
+        <p class="subtitle" style="margin:0 0 10px">Dans quel logement ce client séjourne-t-il ? Il sera inscrit dans le contrat de location.</p>
         <div class="apt-choice">
           {% for apt in apartments %}
           <label>
@@ -127,7 +127,7 @@
           {% if assigned_apartment %}
           <div class="apt-assigned">{{ icon("building") }}<span><strong>{{ assigned_apartment.name }}</strong><br><span style="font-size:0.86rem">{{ assigned_apartment.address }}</span></span></div>
           {% else %}
-          <div class="apt-missing">{{ icon("alert") }}<span>Aucun logement choisi. Les PDF indiquent « waiting for dynamic assigning ».</span></div>
+          <div class="apt-missing">{{ icon("alert") }}<span>Aucun logement choisi. Le contrat indique « logement à préciser » tant qu'aucun logement n'est choisi.</span></div>
           {% endif %}
           {% if submission.status != 'archived' and apartments %}
           <details class="disclose" style="margin-top:12px" {% if not assigned_apartment %}open{% endif %}>
@@ -141,7 +141,7 @@
                 </label>
                 {% endfor %}
               </div>
-              <button type="submit" class="btn btn-primary btn-sm" style="margin-top:10px">Enregistrer le logement et mettre à jour les PDF</button>
+              <button type="submit" class="btn btn-primary btn-sm" style="margin-top:10px">Enregistrer le logement et mettre à jour le contrat</button>
             </form>
           </details>
           {% endif %}
@@ -152,11 +152,10 @@
         <h2 class="review-section-label"><span class="review-step">4</span> Documents générés</h2>
         {% if submission.document %}
         <div class="review-docs">
-          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf">{{ icon("file") }}Fiche de police</a>
-          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf/rules">{{ icon("pen") }}Règlement signé</a>
+          <a class="btn btn-primary btn-sm review-docs__btn" href="/admin/submissions/{{ submission.public_id }}/pdf">{{ icon("file") }}Contrat de location (PDF)</a>
         </div>
         {% else %}
-        <p class="subtitle">PDF non générés.</p>
+        <p class="subtitle">Contrat non généré.</p>
         {% endif %}
         {% if submission.signature_path %}
         <div class="review-signature">
