@@ -57,11 +57,10 @@ app.include_router(billing.router)
 def on_startup():
     ensure_storage_dirs()
     try:
-        from app.services.pdf_assets import ensure_fiche_banner, ensure_rules_banner
+        from app.services.pdf_assets import ensure_logo_assets
 
-        ensure_fiche_banner()
-        ensure_rules_banner()
-        logger.info("PDF header banners ready")
+        ensure_logo_assets()
+        logger.info("PDF logo assets ready")
         from app.config import get_settings
 
         get_settings.cache_clear()

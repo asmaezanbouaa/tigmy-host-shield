@@ -16,12 +16,12 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Image, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import Image, KeepTogether, Paragraph, Spacer, Table, TableStyle
 from reportlab.platypus.doctemplate import BaseDocTemplate, Frame, PageTemplate
 
 from app.config import PROJECT_ROOT, get_settings
 from app.models import Submission
-from app.services.pdf_assets import ensure_coat_header_image, ensure_logo_assets
+from app.services.pdf_assets import ensure_logo_assets
 
 settings = get_settings()
 
@@ -40,7 +40,7 @@ WHITE = colors.white
 
 PAGE_W, PAGE_H = A4
 MARGIN_L = MARGIN_R = 1.6 * cm
-HEADER_H = 3.35 * cm
+HEADER_H = 3.75 * cm
 FOOTER_H = 1.9 * cm
 CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R
 
@@ -117,37 +117,23 @@ def _zellige_band(canvas, y: float, x0: float, x1: float, color=SAFFRON, size: f
     canvas.restoreState()
 
 
-def _draw_header(canvas, title_fr: str, title_ar: str) -> None:
-    top = PAGE_H - 0.9 * cm
+def _draw_header(canvas, ref_line: str, date_line: str) -> None:
+    """Letterhead: TIGMI logo on the left, contract reference on the right, ornament rule below."""
+    top = PAGE_H - 0.85 * cm
     canvas.saveState()
-
-    # Coat of arms, centred
-    coat = ensure_coat_header_image()
-    coat_h = 1.75 * cm
-    if coat.exists():
-        canvas.drawImage(str(coat), PAGE_W / 2 - coat_h / 2, top - coat_h, width=coat_h, height=coat_h,
-                         preserveAspectRatio=True, mask="auto")
-
-    # French letterhead (left)
-    canvas.setFillColor(INK)
-    canvas.setFont("Helvetica-Bold", 10.5)
-    canvas.drawString(MARGIN_L, top - 0.45 * cm, "ROYAUME DU MAROC")
-    canvas.setFont("Helvetica", 7.4)
+    logo, _ = ensure_logo_assets()
+    if logo.exists():
+        w = 4.6 * cm
+        h = w * 573 / 1200
+        canvas.drawImage(str(logo), MARGIN_L - 0.15 * cm, top - h, width=w, height=h, mask="auto")
+    canvas.setFillColor(CLAY_DARK)
+    canvas.setFont("Helvetica-Bold", 12)
+    canvas.drawRightString(PAGE_W - MARGIN_R, top - 0.75 * cm, ref_line)
     canvas.setFillColor(INK_2)
-    canvas.drawString(MARGIN_L, top - 0.85 * cm, "Hébergement touristique")
-    canvas.drawString(MARGIN_L, top - 1.2 * cm, "Location de courte durée")
-
-    # Arabic letterhead (right)
-    canvas.setFillColor(INK)
-    canvas.setFont(AR_FONT_BOLD, 12)
-    canvas.drawRightString(PAGE_W - MARGIN_R, top - 0.5 * cm, ar("المملكة المغربية"))
-    canvas.setFont(AR_FONT, 8.4)
-    canvas.setFillColor(INK_2)
-    canvas.drawRightString(PAGE_W - MARGIN_R, top - 0.9 * cm, ar("الإيواء السياحي"))
-    canvas.drawRightString(PAGE_W - MARGIN_R, top - 1.27 * cm, ar("الكراء قصير المدة"))
-
-    # Ornament rule
-    _zellige_band(canvas, top - 2.15 * cm, MARGIN_L, PAGE_W - MARGIN_R)
+    canvas.setFont("Helvetica", 8.8)
+    canvas.drawRightString(PAGE_W - MARGIN_R, top - 1.3 * cm, date_line)
+    canvas.drawRightString(PAGE_W - MARGIN_R, top - 1.75 * cm, "Location saisonnière")
+    _zellige_band(canvas, top - 2.55 * cm, MARGIN_L, PAGE_W - MARGIN_R)
     canvas.restoreState()
 
 
@@ -172,9 +158,9 @@ def _draw_footer(canvas, page: int, total: int, ref: str, host_name: str) -> Non
         canvas.drawImage(str(logo), MARGIN_L, y - 0.42 * cm, width=w, height=w * 573 / 1200, mask="auto")
         text_x = MARGIN_L + w + 0.35 * cm
     canvas.setFillColor(INK)
-    canvas.setFont("Helvetica-Bold", 7.2)
+    canvas.setFont("Helvetica-Bold", 8)
     canvas.drawString(text_x, y + 0.08 * cm, "Contrat de location saisonnière")
-    canvas.setFont("Helvetica", 6.6)
+    canvas.setFont("Helvetica", 7.2)
     canvas.setFillColor(MUTED)
     host = f"Établissement : {host_name} · " if host_name else ""
     canvas.drawString(text_x, y - 0.25 * cm, f"{host}Document généré électroniquement ({settings.app_name})")
@@ -185,7 +171,7 @@ def _draw_footer(canvas, page: int, total: int, ref: str, host_name: str) -> Non
 
 
 def _build(output_path, story: list, *, ref: str, host_name: str, title: str,
-           headers: list[tuple[str, str]], total_pages: int) -> int:
+           meta: tuple[str, str], total_pages: int) -> int:
     """Render `story`; returns the number of pages produced. `output_path` may be a path or a buffer."""
     _register_fonts()
     counter = [0]
@@ -193,8 +179,7 @@ def _build(output_path, story: list, *, ref: str, host_name: str, title: str,
     def on_page(canvas, _doc):
         counter[0] += 1
         _draw_watermark(canvas)
-        fr, ar_title = headers[min(counter[0] - 1, len(headers) - 1)]
-        _draw_header(canvas, fr, ar_title)
+        _draw_header(canvas, *meta)
         _draw_footer(canvas, counter[0], total_pages, ref, host_name)
 
     doc = BaseDocTemplate(output_path if hasattr(output_path, "write") else str(output_path), pagesize=A4, leftMargin=MARGIN_L, rightMargin=MARGIN_R,
@@ -305,53 +290,30 @@ def _host_lines(submission: Submission) -> list[str]:
 
 
 def _st(f: float = 1.0) -> dict:
-    """Contract text styles; every size is multiplied by f so the text can be fitted to one page."""
+    """Contract text styles; every size is multiplied by f so the text can be fitted to the pages."""
     s = _styles()
     s.update({
-        "doc_title": ParagraphStyle("doc_title", fontName="Helvetica-Bold", fontSize=15*f, leading=18*f, textColor=CLAY, alignment=TA_CENTER),
-        "doc_title_ar": ParagraphStyle("doc_title_ar", fontName=AR_FONT_BOLD, fontSize=13*f, leading=17*f, textColor=CLAY_DARK, alignment=TA_CENTER),
-        "h2": ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=10.5*f, leading=13*f, textColor=CLAY, alignment=TA_CENTER, spaceBefore=3, spaceAfter=2),
-        "h2l": ParagraphStyle("h2l", fontName="Helvetica-Bold", fontSize=8.6*f, leading=11*f, textColor=CLAY, spaceBefore=2.5, spaceAfter=1.5),
-        "party_tag": ParagraphStyle("party_tag", fontName="Helvetica-Bold", fontSize=7.4*f, leading=9.5*f, textColor=CLAY),
-        "party": ParagraphStyle("party", fontName="Helvetica", fontSize=8*f, leading=10.6*f, textColor=INK),
-        "body": ParagraphStyle("body", fontName="Helvetica", fontSize=7.9*f, leading=10.3*f, textColor=INK, alignment=TA_JUSTIFY),
-        "rule": ParagraphStyle("rule", fontName="Helvetica", fontSize=7.9*f, leading=10.1*f, textColor=INK, alignment=TA_JUSTIFY,
-                               leftIndent=13*f, firstLineIndent=-13*f),
-        "cell": ParagraphStyle("cell", fontName="Helvetica", fontSize=7.9*f, leading=10*f, textColor=INK),
-        "cell_h": ParagraphStyle("cell_h", fontName="Helvetica-Bold", fontSize=7.6*f, leading=9.5*f, textColor=WHITE),
-        "sig_small": ParagraphStyle("sig_small", fontName="Helvetica", fontSize=6.6*f, leading=8.4*f, textColor=INK_2),
+        "doc_title": ParagraphStyle("doc_title", fontName="Helvetica-Bold", fontSize=19 * f, leading=23 * f, textColor=CLAY, alignment=TA_CENTER),
+        "subtitle": ParagraphStyle("subtitle", fontName="Helvetica", fontSize=9.5 * f, leading=12 * f, textColor=MUTED, alignment=TA_CENTER),
+        "h2": ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=12 * f, leading=15 * f, textColor=CLAY, alignment=TA_CENTER,
+                             spaceBefore=4 * f, spaceAfter=3 * f, keepWithNext=1),
+        "h2l": ParagraphStyle("h2l", fontName="Helvetica-Bold", fontSize=10.2 * f, leading=13 * f, textColor=CLAY,
+                              spaceBefore=6 * f, spaceAfter=2.5 * f, keepWithNext=1),
+        "party_tag": ParagraphStyle("party_tag", fontName="Helvetica-Bold", fontSize=8.4 * f, leading=11 * f, textColor=CLAY),
+        "party": ParagraphStyle("party", fontName="Helvetica", fontSize=9.4 * f, leading=12.6 * f, textColor=INK),
+        "body": ParagraphStyle("body", fontName="Helvetica", fontSize=9.3 * f, leading=12.8 * f, textColor=INK, alignment=TA_JUSTIFY),
+        "rule": ParagraphStyle("rule", fontName="Helvetica", fontSize=9.3 * f, leading=12.4 * f, textColor=INK, alignment=TA_JUSTIFY,
+                               leftIndent=16 * f, firstLineIndent=-16 * f, spaceAfter=1.2 * f),
+        "cell": ParagraphStyle("cell", fontName="Helvetica", fontSize=9.4 * f, leading=12 * f, textColor=INK),
+        "cell_h": ParagraphStyle("cell_h", fontName="Helvetica-Bold", fontSize=9 * f, leading=11.5 * f, textColor=WHITE),
+        "sig_small": ParagraphStyle("sig_small", fontName="Helvetica", fontSize=8 * f, leading=10.4 * f, textColor=INK_2),
     })
     return s
 
 
-def _title_row(styles: dict) -> Table:
-    logo, _ = ensure_logo_assets()
-    w = 3.5 * cm
-    img = Image(str(logo), width=w, height=w * 573 / 1200) if logo.exists() else ""
-    center = [Paragraph("CONTRAT DE LOCATION SAISONNIÈRE", styles["doc_title"]),
-              Paragraph(_escape(ar("عقد كراء موسمي")), styles["doc_title_ar"]),
-              Paragraph("Hébergement touristique — Location de courte durée", styles["subtitle"])]
-    t = Table([[img, center, ""]], colWidths=[w + 0.2 * cm, CONTENT_W - 2 * (w + 0.2 * cm), w + 0.2 * cm])
-    t.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                           ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0),
-                           ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
-    return t
-
-
-def _meta(submission: Submission, signed: datetime, styles: dict) -> Table:
-    ref = submission.public_id[:8].upper()
-    left = Paragraph(f'<font name="Helvetica-Bold" color="#7A3319">Contrat N° {ref}</font>', styles["meta"])
-    right = Paragraph(f'<font name="Helvetica-Bold" color="#7A3319">Établi le</font> '
-                      f'{signed.strftime("%d/%m/%Y à %H:%M")} (heure du Maroc)', styles["meta_r"])
-    t = Table([[left, right]], colWidths=[CONTENT_W * 0.4, CONTENT_W * 0.6])
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), SAND), ("BOX", (0, 0), (-1, -1), 0.6, LINE),
-        ("LINEBEFORE", (0, 0), (0, 0), 2.5, CLAY),
-        ("TOPPADDING", (0, 0), (-1, -1), 4.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 4.5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]))
-    return t
+def _title_block(styles: dict) -> list:
+    return [Paragraph("CONTRAT DE LOCATION SAISONNIÈRE", styles["doc_title"]),
+            Paragraph("Hébergement touristique — Location de courte durée", styles["subtitle"])]
 
 
 def _parties(submission: Submission, styles: dict) -> Table:
@@ -382,29 +344,27 @@ def _parties(submission: Submission, styles: dict) -> Table:
 
 
 def _travelers(submission: Submission, signature_file: Path, styles: dict, f: float = 1.0) -> Table:
-    sig = (Image(str(signature_file), width=2.5 * cm, height=0.9 * cm)
+    """Signature table: who signs, and the signature itself (identity details are in the parties block)."""
+    sig = (Image(str(signature_file), width=3.4 * cm, height=1.2 * cm)
            if signature_file.exists() else Paragraph("—", styles["cell"]))
-    rows = [[Paragraph(h, styles["cell_h"]) for h in ("Nom et prénom", "Nationalité", "N° CIN / Passeport", "Signature")],
-            [Paragraph(f"<b>{_escape(submission.last_name).upper()} {_escape(submission.first_name)}</b>", styles["cell"]),
-             Paragraph(_escape(submission.nationality), styles["cell"]),
-             Paragraph(_escape(submission.id_document_number), styles["cell"]), sig]]
+    rows = [[Paragraph("Voyageur", styles["cell_h"]), Paragraph("Signature", styles["cell_h"])],
+            [Paragraph(f"<b>{_escape(submission.last_name).upper()} {_escape(submission.first_name)}</b>", styles["cell"]), sig]]
     extra = min(max((submission.number_of_guests or 1) - 1, 0), 5)
-    rows += [["", "", "", ""] for _ in range(extra)]
-    widths = [CONTENT_W * 0.34, CONTENT_W * 0.2, CONTENT_W * 0.24, CONTENT_W * 0.22]
-    t = Table(rows, colWidths=widths, rowHeights=[None, 1.0 * cm * f] + [0.62 * cm * f] * extra)
+    rows += [[Paragraph("Accompagnant", styles["sig_small"]), ""] for _ in range(extra)]
+    t = Table(rows, colWidths=[CONTENT_W * 0.55, CONTENT_W * 0.45], rowHeights=[None, 1.7 * cm * f] + [0.95 * cm * f] * extra)
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), CLAY), ("GRID", (0, 0), (-1, -1), 0.5, LINE),
-        ("BOX", (0, 0), (-1, -1), 0.7, CLAY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (3, 1), (3, 1), "CENTER"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3 * f), ("BOTTOMPADDING", (0, 0), (-1, -1), 3 * f),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("BOX", (0, 0), (-1, -1), 0.8, CLAY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (1, 1), (1, 1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4 * f), ("BOTTOMPADDING", (0, 0), (-1, -1), 4 * f),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9), ("RIGHTPADDING", (0, 0), (-1, -1), 9),
     ]))
     return t
 
 
 def _signature_block(submission: Submission, signature_file: Path, signed: datetime, place_city: str, styles: dict,
                      f: float = 1.0) -> Table:
-    sig = (Image(str(signature_file), width=4.4 * cm, height=1.6 * cm)
+    sig = (Image(str(signature_file), width=4.6 * cm, height=1.7 * cm)
            if signature_file.exists() else Paragraph("(signature non enregistrée)", styles["sig_small"]))
     name = f"{submission.first_name} {submission.last_name}"
     left = [Paragraph('<font name="Helvetica-Bold" color="#7A3319">Signature électronique du Voyageur</font>', styles["sig_small"]),
@@ -419,7 +379,7 @@ def _signature_block(submission: Submission, signature_file: Path, signed: datet
            Paragraph(f'<font name="Helvetica-Bold">Référence de la transaction / certificat :</font> '
                      f'{submission.public_id[:8].upper()}-{signed.strftime("%Y%m%d%H%M")}', styles["cell"])]
     right = [Paragraph('<font name="Helvetica-Bold" color="#7A3319">Cachet et signature de l\'Hôte</font>', styles["sig_small"])]
-    t = Table([[left, mid, right]], colWidths=[CONTENT_W * 0.30, CONTENT_W * 0.45, CONTENT_W * 0.25], rowHeights=[3.0 * cm * f])
+    t = Table([[left, mid, right]], colWidths=[CONTENT_W * 0.30, CONTENT_W * 0.45, CONTENT_W * 0.25], rowHeights=[3.7 * cm * f])
     t.setStyle(TableStyle([
         ("BOX", (0, 0), (-1, -1), 0.8, CLAY), ("LINEAFTER", (0, 0), (1, 0), 0.5, LINE),
         ("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
@@ -449,7 +409,7 @@ def _contract_story(submission: Submission, apartment_name: str, apartment_addre
         return [Paragraph(_escape(title), styles["h2l"]), Paragraph(_escape(body), styles["body"])]
 
     story: list = [
-        _title_row(styles), gap(2.2), _meta(submission, signed, styles), gap(2.4),
+        *_title_block(styles), gap(4),
         Paragraph("ENTRE LES SOUSSIGNÉS", styles["h2l"]), _parties(submission, styles), gap(1.2),
         Paragraph("CONDITIONS", styles["h2"]),
         Paragraph("Article 1 – Objet et durée", styles["h2l"]),
@@ -471,30 +431,31 @@ def _contract_story(submission: Submission, apartment_name: str, apartment_addre
         story.append(Paragraph(f"{i}.&nbsp; {_escape(rule)}", styles["rule"]))
     for title, body in AFTER_RULES:
         story += article(title, body)
-    story += [Paragraph("Déclaration d'acceptation et signature électronique", styles["h2l"]),
-              Paragraph(_escape(DECLARATION), styles["body"]), gap(2.2),
-              _signature_block(submission, signature_file, signed, _city(apartment_address) if assigned else "", styles, f)]
+    story += [KeepTogether([Paragraph("Déclaration d'acceptation et signature électronique", styles["h2l"]),
+                            Paragraph(_escape(DECLARATION), styles["body"]), Spacer(1, 4 * mm * f),
+                            _signature_block(submission, signature_file, signed, _city(apartment_address) if assigned else "", styles, f)])]
     return story
 
 
 def generate_contract_pdf(submission: Submission, apartment_name: str, apartment_address: str,
                           signature_file: Path, output_path: Path) -> None:
-    """One A4 contract filled with what the guest provided (identity, stay, signature).
+    """The contract filled with what the guest provided (identity, stay, signature).
 
-    The text is sized as large as possible while keeping the whole contract on a single page.
+    Two A4 pages. The text is sized as large as possible while the contract still fits on two pages.
     """
     from io import BytesIO
 
     _register_fonts()
+    signed = _signed_at(submission)
     kw = dict(ref=submission.public_id[:8].upper(), host_name=_host_name(submission),
-              title="Contrat de location saisonnière", headers=[("CONTRAT", "")])
-    f = 1.1
-    while f > 0.72:
-        story = _contract_story(submission, apartment_name, apartment_address, signature_file, f)
-        if _build(BytesIO(), story, total_pages=1, **kw) == 1:
-            break
+              title="Contrat de location saisonnière",
+              meta=(f"Contrat N° {submission.public_id[:8].upper()}", f"Établi le {signed.strftime('%d/%m/%Y à %H:%M')} (heure du Maroc)"))
+
+    def story(f):
+        return _contract_story(submission, apartment_name, apartment_address, signature_file, f)
+
+    f = 1.25
+    while f > 0.7 and _build(BytesIO(), story(f), total_pages=2, **kw) > 2:
         f -= 0.02
-    story = _contract_story(submission, apartment_name, apartment_address, signature_file, f)
-    pages = _build(BytesIO(), list(story), total_pages=1, **kw)
-    story = _contract_story(submission, apartment_name, apartment_address, signature_file, f)
-    _build(output_path, story, total_pages=pages, **kw)
+    pages = _build(BytesIO(), story(f), total_pages=2, **kw)
+    _build(output_path, story(f), total_pages=pages, **kw)

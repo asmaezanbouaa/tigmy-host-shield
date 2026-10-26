@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import Document, Submission
-from app.services.pdf_assets import ensure_coat_header_image
 from app.services.pdf_generator import generate_contract_pdf
 from app.services.property_placeholder import establishment_for
 from app.services.storage import absolute_path, unlink_if_exists
@@ -13,7 +12,6 @@ settings = get_settings()
 
 
 def _write_contract(submission: Submission, signature_rel: str | None = None):
-    ensure_coat_header_image()
     name, address = establishment_for(submission)
     sig_full = absolute_path(signature_rel or submission.signature_path)
     filename = f"contrat_{submission.public_id}.pdf"
