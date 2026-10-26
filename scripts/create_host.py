@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Create a host (section) with one user and the welcome pack.
 
-Usage:  HOST_PASSWORD='...' python scripts/create_host.py "Nom de l'hôte" identifiant
+Usage:  HOST_PASSWORD='...' python scripts/create_host.py "Nom de l'hôte" identifiant "Adresse de l'hôte"
 The password is read from the environment so it never lands in shell history or the repo.
 """
 
@@ -19,15 +19,15 @@ from app.services.sections import add_section_admin, unique_section_slug, valida
 
 
 def main() -> None:
-    if len(sys.argv) != 3 or not os.environ.get("HOST_PASSWORD"):
+    if len(sys.argv) != 4 or not os.environ.get("HOST_PASSWORD"):
         sys.exit(__doc__)
-    name, username, password = sys.argv[1], sys.argv[2], os.environ["HOST_PASSWORD"]
+    name, username, address, password = sys.argv[1], sys.argv[2], sys.argv[3], os.environ["HOST_PASSWORD"]
     db = SessionLocal()
     try:
         err = validate_new_admin(db, username, password)
         if err:
             sys.exit(err)
-        section = HostSection(name=name, slug=unique_section_slug(db, name), is_active=True)
+        section = HostSection(name=name, slug=unique_section_slug(db, name), is_active=True, address=address)
         db.add(section)
         db.flush()
         add_section_admin(db, section, username, password)

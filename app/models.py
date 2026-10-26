@@ -47,6 +47,8 @@ class HostSection(Base):
     name: Mapped[str] = mapped_column(String(128))
     slug: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    # Address of the host's establishment: printed in the contract ("D'une part" and "Fait à").
+    address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Legal identity printed on the rental contract ("D'une part"): one item per line.
     legal_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

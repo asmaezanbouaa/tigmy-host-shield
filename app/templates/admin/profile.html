@@ -47,10 +47,14 @@
     {% if section %}
     <div class="admin-panel">
       <h2 style="font-size:1rem;margin:0 0 0.5rem">Informations du contrat de location</h2>
-      <p class="subtitle" style="margin:0 0 1rem">Ces lignes apparaissent sous « D'une part » dans le contrat de vos voyageurs (raison sociale, adresse, ICE, RC…). Une information par ligne. S'applique aux nouveaux contrats.</p>
+      <p class="subtitle" style="margin:0 0 1rem">Ces informations apparaissent sous « D'une part » dans le contrat de vos voyageurs. La ville de votre adresse est aussi celle de « Fait à ». Une information par ligne. S'applique aux nouveaux contrats.</p>
       <form method="post" action="/admin/profile/legal" class="profile-form">
         <div class="field">
-          <label>Hôte : {{ section.name }}</label>
+          <label class="required" for="host-address">Adresse de l'hôte</label>
+          <input id="host-address" type="text" name="address" required maxlength="255" value="{{ section.address or '' }}" placeholder="Rue, numéro, quartier, ville">
+        </div>
+        <div class="field">
+          <label>Autres informations (raison sociale, ICE, RC…)</label>
           <textarea name="legal_info" rows="6" maxlength="700" placeholder="Ma Société – SARL&#10;2 rue … , Rabat&#10;ICE : …  |  RC : …">{{ section.legal_info or "" }}</textarea>
         </div>
         <button type="submit" class="btn btn-primary" style="width:auto">Enregistrer</button>

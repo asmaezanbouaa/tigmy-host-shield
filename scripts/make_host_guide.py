@@ -2,9 +2,11 @@
 """Illustrated getting-started guide (PDF, French) for a new host.
 
 Usage:
-  python scripts/make_host_guide.py --name Younes --username younes_dhirech \
-      --slug younes-dhirech --out guide-younes.pdf
+  python scripts/make_host_guide.py --out guide-hote.pdf          # standard guide, for any host
+  python scripts/make_host_guide.py --out guide-younes.pdf --name Younes \
+      --username younes_dhirech --slug younes-dhirech             # personalised copy
 
+The standard guide has blank lines where the host writes their identifier and link.
 The password is never printed in the guide: it is given to the host separately.
 Bank details are not printed either (the host sees them inside the platform).
 """
@@ -404,7 +406,7 @@ def page_cover(c, a):
     txt(c, "Validée par l'IA", ax - 3, ay + 375, SANS_B, 7.8, INK)
     shadow_card(c, ax + aw - 74, ay + 40, 112, 36, 10)
     tile(c, ax + aw - 56, ay + 58, icon_doc, CLAY, 11)
-    txt(c, "Fiche en PDF", ax + aw - 41, ay + 55, SANS_B, 7.8, INK)
+    txt(c, "Contrat en PDF", ax + aw - 41, ay + 55, SANS_B, 7.8, INK)
 
     zstrip(c, H - 40, 16)
     zstrip(c, 24, 16)
@@ -412,8 +414,8 @@ def page_cover(c, a):
     c.drawImage(str(LOGO), M, H - 120, 46, 46, mask="auto")
     txt(c, "Tigmi Host Shield", M + 58, H - 102, SERIF_B, 17, INK)
     txt(c, "GUIDE DE DÉMARRAGE", M, H - 200, SANS_B, 10, CLAY)
-    txt(c, "Bienvenue,", M, H - 252, SERIF_B, 44, INK)
-    txt(c, a.name + " !", M, H - 300, SERIF_B, 44, CLAY)
+    txt(c, "Bienvenue," if a.name else "Bienvenue", M, H - 252, SERIF_B, 44, INK)
+    txt(c, (a.name + " !") if a.name else "chez Tigmi !", M, H - 300, SERIF_B, 44, CLAY)
     para(c, "Tout ce qu'il faut pour enregistrer vos voyageurs, pas à pas, en quelques minutes. "
          "Aucune connaissance technique nécessaire.", M, H - 335, 232, SANS, 12, INK2, 17)
     rrect(c, M, H - 506, 238, 92, 14, EM)
@@ -421,22 +423,28 @@ def page_cover(c, a):
     txt(c, "VOTRE PACK DE BIENVENUE", M + 18, H - 436, SANS_B, 8.5, GOLD2)
     txt(c, f"{TRIAL['fiches']} fiches gratuites", M + 18, H - 466, SERIF_B, 23, WHITE)
     txt(c, f"pendant {TRIAL['days']} jours · jusqu'à 9 logements", M + 18, H - 488, SANS, 9.2, "#cfe9e0")
-    txt(c, "Votre identifiant", M, H - 550, SANS_B, 8.5, MUTED)
-    txt(c, a.username, M, H - 570, SANS_B, 14, INK)
-    txt(c, "Votre lien voyageurs", M, H - 605, SANS_B, 8.5, MUTED)
-    txt(c, a.link.replace("https://", ""), M, H - 623, SANS_B, 9.2, EM)
+    txt(c, "Mon identifiant" if not a.username else "Votre identifiant", M, H - 550, SANS_B, 8.5, MUTED)
+    txt(c, "Mon lien voyageurs" if not a.link else "Votre lien voyageurs", M, H - 605, SANS_B, 8.5, MUTED)
+    if a.username:
+        txt(c, a.username, M, H - 570, SANS_B, 14, INK)
+        txt(c, a.link.replace("https://", ""), M, H - 623, SANS_B, 9.2, EM)
+    else:  # standard guide: lines to fill in by hand
+        c.setStrokeColor(MUTED)
+        c.setLineWidth(0.8)
+        c.line(M, H - 572, M + 232, H - 572)
+        c.line(M, H - 627, M + 232, H - 627)
 
 
 def page_overview(c, a):
     page_bg(c)
-    step_header(c, icon_house, "Le principe en une image", "Comment votre voyageur arrive jusqu'à votre fiche de police")
+    step_header(c, icon_house, "Le principe en une image", "Comment votre voyageur arrive jusqu'à son contrat signé")
     y0 = H - 230
     steps = [
         (icon_qr, EM, "Vous partagez\nvotre lien"),
         (icon_phone, CLAY, "Le voyageur remplit\nsur son téléphone"),
         (icon_shield, EM, "L'IA vérifie\nsa pièce d'identité"),
         (icon_user, CLAY, "Vous contrôlez\net confirmez"),
-        (icon_doc, EM, "Vous téléchargez\nles PDF"),
+        (icon_doc, EM, "Vous téléchargez\nle contrat"),
     ]
     cw = (W - 2 * M) / 5
     for i, (ic, colr, label) in enumerate(steps):
@@ -490,7 +498,7 @@ def page_login(c, a):
     ix, iy, iw, ih = browser(c, bx, by, bw, bh, "tigmihostshield.duckdns.org/admin/login")
     c.drawImage(str(LOGO), ix + iw / 2 - 18, iy + ih - 52, 36, 36, mask="auto")
     txt(c, "Connexion", ix + iw / 2, iy + ih - 72, SERIF_B, 15, INK, "c")
-    field(c, ix + 24, iy + ih - 128, iw - 48, "Identifiant", a.username)
+    field(c, ix + 24, iy + ih - 128, iw - 48, "Identifiant", a.username or "votre.identifiant")
     field(c, ix + 24, iy + ih - 180, iw - 48, "Mot de passe", "••••••••••")
     button(c, ix + 24, iy + 22, iw - 48, 26, "Se connecter", CLAY)
     callout(c, ix + iw - 10, iy + ih - 100, 2)
@@ -499,7 +507,8 @@ def page_login(c, a):
     sx = M + 285
     y = numbered(c, sx, H - 156, W - sx - M, [
         ("Ouvrez le site", "Tapez  tigmihostshield.duckdns.org  puis touchez le bouton « Espace hôte » en haut à droite."),
-        ("Entrez vos identifiants", f"Identifiant : {a.username}. Le mot de passe vous est remis séparément, en privé."),
+        ("Entrez vos identifiants", (f"Identifiant : {a.username}. " if a.username else "Votre identifiant et votre mot de passe ")
+                                  + ("Le mot de passe vous est remis séparément, en privé." if a.username else "vous sont remis séparément, en privé.")),
         ("Touchez « Se connecter »", "Vous arrivez sur votre tableau de bord."),
     ])
     y = tip_box(c, sx, y - 4, W - sx - M, "Astuce",
@@ -555,7 +564,7 @@ def page_apartments(c, a):
     y = H - 480
     y = numbered(c, M, y, W - 2 * M, [
         ("Touchez « Logements » dans le menu", "Sur téléphone : touchez « Plus » en bas de l'écran pour voir tout le menu."),
-        ("Écrivez le nom et l'adresse", "Un nom que votre voyageur reconnaît tout de suite (ex. « Studio Médina »). L'adresse sert pour la fiche de police."),
+        ("Écrivez le nom et l'adresse", "Un nom que votre voyageur reconnaît tout de suite (ex. « Studio Médina »). L'adresse figure dans le contrat."),
         ("Touchez « Ajouter »", "Recommencez pour chaque logement. Vous pouvez en ajouter, modifier ou retirer à tout moment."),
     ])
     tip_box(c, M, y - 2, W - 2 * M, "Votre pack de bienvenue",
@@ -572,10 +581,10 @@ def page_link(c, a):
     txt(c, "Lien et QR code", ix + 16, iy + ih - 28, SERIF_B, 15, INK)
     txt(c, "Votre lien voyageurs", ix + 16, iy + ih - 52, SANS_B, 8, INK2)
     rrect(c, ix + 16, iy + ih - 80, iw - 200, 24, 6, WHITE, LINE, 1)
-    txt(c, a.link.replace("https://", ""), ix + 24, iy + ih - 72, SANS, 7.4, EM)
+    txt(c, (a.link or "https://tigmihostshield.duckdns.org/register/votre-nom").replace("https://", ""), ix + 24, iy + ih - 72, SANS, 7.4, EM)
     button(c, ix + iw - 176, iy + ih - 80, 62, 24, "Copier", CLAY, size=8)
     callout(c, ix + iw - 187, iy + ih - 58, 1)
-    qr_png = make_qr_png(a.link, 6)
+    qr_png = make_qr_png(a.link or a.base, 6)
     shadow_card(c, ix + 16, iy + 16, 96, 96, 8)
     c.drawImage(ImageReader(io.BytesIO(qr_png)), ix + 20, iy + 20, 88, 88)
     button(c, ix + 122, iy + 58, 120, 24, "Télécharger le QR", WHITE, CLAY, 7.6, CLAY)
@@ -644,7 +653,7 @@ def page_guest(c, a):
             check(c, sx + sw - 18, sy + sh - 92, 5, EM, 1.4)
             button(c, sx + 8, sy + 8, sw - 16, 16, "Suivant", CLAY, size=6.6)
         else:
-            txt(c, "Règlement", sx + 8, sy + sh - 18, SANS_B, 7, INK)
+            txt(c, "Contrat", sx + 8, sy + sh - 18, SANS_B, 7, INK)
             for k in range(4):
                 rrect(c, sx + 8, sy + sh - 34 - k * 8, sw - 16 - (k % 2) * 14, 3, 1.5, LINE)
             rrect(c, sx + 8, sy + 58, sw - 16, 42, 6, WHITE, LINE, 1)
@@ -707,14 +716,14 @@ def page_review(c, a):
         ("Ouvrez la fiche", "Touchez le nom du voyageur. Vous voyez ses informations et la photo de sa pièce."),
         ("Comparez", "Les informations écrites correspondent-elles à la pièce ? L'IA vous aide en signalant les différences."),
         ("Choisissez le logement", "S'il n'est pas encore choisi, touchez « Choisir le logement »."),
-        ("Touchez « Confirmer la fiche »", "C'est terminé : les PDF sont prêts."),
+        ("Touchez « Confirmer la fiche »", "C'est terminé : le contrat est prêt."),
     ], 6)
     sx = M + 305
     shadow_card(c, sx, yy - 190, W - sx - M, 168, 14)
     txt(c, "Les statuts", sx + 16, yy - 42, SANS_B, 10.5, INK)
     sts = [("À traiter", "#fdf4e3", "#8a5a0b", "Nouvelle fiche à contrôler"),
            ("Validée par l'IA", "#e8f3ef", EM, "Tout est cohérent, il reste à confirmer"),
-           ("Confirmée", "#e8f3ef", EM, "Fiche terminée, PDF disponibles"),
+           ("Confirmée", "#e8f3ef", EM, "Fiche terminée, contrat disponible"),
            ("Problème", "#fdecea", "#b42318", "Une information ne correspond pas"),
            ("Archivée", SAND, INK2, "Rangée dans les archives")]
     for i, (n, bgc, fg, d) in enumerate(sts):
@@ -728,54 +737,49 @@ def page_review(c, a):
 
 def page_pdfs(c, a):
     page_bg(c)
-    step_header(c, 6, "Téléchargez vos documents", "Fiche de police et règlement signé, prêts à imprimer")
-    # two documents
-    def doc(x, y, w, h, title_fr, ar_title, sig):
-        shadow_card(c, x, y, w, h, 6)
-        rrect(c, x + 12, y + h - 48, 70, 8, 3, "#ddd0bb")
-        txt(c, "ROYAUME DU MAROC", x + 12, y + h - 20, SANS_B, 6.5, INK)
-        txt(c, "المملكة المغربية" if False else "Hébergement touristique", x + 12, y + h - 30, SANS, 5.5, MUTED)
-        zs = y + h - 56
-        col(c, GOLD)
-        c.rect(x + 10, zs, w - 20, 4, fill=1, stroke=0)
-        txt(c, title_fr, x + w / 2, y + h - 78, SERIF_B, 11, INK, "c")
-        for k in range(7):
-            rrect(c, x + 14, y + h - 100 - k * 12, w - 28 - (k % 3) * 20, 4, 2, "#e6dac8")
-        if sig:
-            rrect(c, x + 12, y + 14, (w - 30) / 2, 52, 5, None, LINE, 1)
-            rrect(c, x + 18 + (w - 30) / 2, y + 14, (w - 30) / 2, 52, 5, None, LINE, 1)
-            txt(c, "Signature", x + 18, y + 55, SANS_B, 5.6, CLAY)
-            txt(c, "Cachet", x + 24 + (w - 30) / 2, y + 55, SANS_B, 5.6, CLAY)
-            c.setStrokeColor(INK)
-            c.setLineWidth(1)
-            p = c.beginPath()
-            p.moveTo(x + 22, y + 32)
-            p.curveTo(x + 30, y + 46, x + 36, y + 22, x + 46, y + 38)
-            p.curveTo(x + 52, y + 46, x + 58, y + 24, x + 70, y + 36)
-            c.drawPath(p, stroke=1, fill=0)
-    doc(M + 20, H - 360, 150, 200, "FICHE DE POLICE", "", False)
-    doc(M + 20 + 175, H - 360, 150, 200, "RÈGLEMENT INTÉRIEUR", "", True)
-    sx = M + 20 + 175 + 150 + 20
-    txt(c, "Dans la fiche :", sx, H - 175, SANS_B, 10, INK)
-    button(c, sx, H - 215, 100, 24, "Fiche de police", CLAY, size=8)
-    button(c, sx, H - 250, 100, 24, "Règlement signé", CLAY, size=8)
-    callout(c, sx + 108, H - 203, 1)
-    callout(c, sx + 108, H - 238, 1)
-    para(c, "Deux boutons à droite de la fiche confirmée.", sx, H - 275, W - sx - M, SANS, 8.4, INK2, 11)
-    yy = H - 395
-    txt(c, "Ce que contiennent vos PDF", M, yy, SERIF_B, 16, INK)
-    cw = (W - 2 * M - 12) / 2
-    for i, (icn, colr, t, items) in enumerate([
-        (icon_doc, EM, "Fiche de police", ["Identité complète du voyageur", "Logement et dates du séjour", "Aspect officiel, en-tête marocain", "Votre logo et votre nom d'hôte"]),
-        (icon_shield, CLAY, "Règlement signé", ["Règles de la maison en français", "Version anglaise et version arabe", "Signature du voyageur sur la même page", "Espace pour votre cachet"]),
-    ]):
-        x = M + i * (cw + 12)
-        shadow_card(c, x, yy - 138, cw, 118, 14)
-        tile(c, x + 34, yy - 52, icn, colr, 18)
-        txt(c, t, x + 62, yy - 56, SANS_B, 11, INK)
+    step_header(c, 6, "Téléchargez votre contrat", "Un seul PDF, signé par le voyageur, prêt à imprimer")
+    # the contract, drawn small
+    x, y, w, h = M + 30, H - 392, 205, 240
+    shadow_card(c, x, y, w, h, 6)
+    c.drawImage(str(LOGO), x + 10, y + h - 34, 24, 24, mask="auto")
+    txt(c, "CONTRAT DE LOCATION", x + 40, y + h - 20, SERIF_B, 8.2, CLAY)
+    txt(c, "SAISONNIÈRE", x + 40, y + h - 29, SERIF_B, 8.2, CLAY)
+    for k, lab in enumerate(("D'UNE PART — L'HÔTE", "D'AUTRE PART — LE VOYAGEUR")):
+        bx = x + 10 + k * (w - 20) / 2
+        rrect(c, bx, y + h - 78, (w - 28) / 2, 32, 3, "#fdf1ea", CLAY, 0.6)
+        txt(c, lab, bx + 4, y + h - 55, SANS_B, 3.9, CLAY)
+        for m in range(3):
+            rrect(c, bx + 4, y + h - 62 - m * 5, 40 - m * 6, 2, 1, "#c9b9a3")
+    for k in range(15):
+        rrect(c, x + 10, y + h - 92 - k * 7.4, w - 20 - (k % 4) * 14, 2.6, 1.3, "#e6dac8")
+    rrect(c, x + 10, y + 10, w - 20, 40, 3, None, CLAY, 0.7)
+    txt(c, "Signature électronique du Voyageur", x + 14, y + 41, SANS_B, 4.2, CLAY)
+    c.setStrokeColor(INK)
+    c.setLineWidth(1)
+    pth = c.beginPath()
+    pth.moveTo(x + 16, y + 22)
+    pth.curveTo(x + 26, y + 36, x + 34, y + 14, x + 46, y + 28)
+    pth.curveTo(x + 54, y + 36, x + 62, y + 16, x + 76, y + 26)
+    c.drawPath(pth, stroke=1, fill=0)
+    txt(c, "Cachet de l'Hôte", x + w - 62, y + 41, SANS_B, 4.2, CLAY)
+    sx = x + w + 40
+    txt(c, "Dans la fiche :", sx, H - 188, SANS_B, 10, INK)
+    button(c, sx, H - 230, 150, 26, "Contrat de location (PDF)", CLAY, size=8.2)
+    callout(c, sx + 160, H - 217, 1)
+    para(c, "Un bouton à droite de la fiche confirmée. Le contrat est rempli avec les informations du voyageur.",
+         sx, H - 256, W - sx - M, SANS, 8.8, INK2, 12)
+    yy = H - 420
+    txt(c, "Ce que contient votre contrat", M, yy, SERIF_B, 16, INK)
+    shadow_card(c, M, yy - 134, W - 2 * M, 118, 14)
+    tile(c, M + 34, yy - 50, icon_doc, EM, 18)
+    cols = (["Identité complète du voyageur", "Logement, dates et nombre de voyageurs", "Vos coordonnées d'hôte (Mon profil)", "Responsabilité du titulaire pour ses accompagnants"],
+            ["10 règles de la maison (horaires, pas de sous-location…)", "Signature électronique du voyageur", "Une seule page, prête à imprimer", "Espace pour votre cachet"])
+    for ci, items in enumerate(cols):
         for k, it in enumerate(items):
-            disc(c, x + 22, yy - 82 - k * 15, 3, GOLD)
-            txt(c, it, x + 32, yy - 85 - k * 15, SANS, 8.8, INK2)
+            bxx = M + 66 + ci * 235
+            disc(c, bxx, yy - 36 - k * 21, 3, GOLD)
+            for li, ln in enumerate(simpleSplit(it, SANS, 8.8, 215)):
+                txt(c, ln, bxx + 9, yy - 39 - k * 21 - li * 9, SANS, 8.8, INK2)
     cy0 = yy - 160
     shadow_card(c, M, cy0 - 150, W - 2 * M, 150, 14)
     txt(c, "Le calendrier : vos arrivées du mois", M + 18, cy0 - 26, SERIF_B, 14, INK)
@@ -798,7 +802,7 @@ def page_pdfs(c, a):
     para(c, "Touchez « Calendrier » dans le menu pour voir d'un coup d'œil qui arrive et quand.", lx, cy0 - 128, W - M - lx - 14, SANS, 8.4, MUTED, 11)
     tip_box(c, M, cy0 - 168, W - 2 * M, "Où retrouver une fiche plus tard ?",
             "Dans « Archives » pour les fiches rangées, et dans « Calendrier » pour voir les arrivées du mois. "
-            "Gardez les PDF sur votre téléphone ou imprimez-les : à vous de choisir.", EM, "#e8f3ef", EM_D)
+            "Gardez le contrat sur votre téléphone ou imprimez-le : à vous de choisir.", EM, "#e8f3ef", EM_D)
 
 
 def page_pack(c, a):
@@ -915,15 +919,15 @@ PAGES = [page_cover, page_overview, page_login, page_apartments, page_link, page
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--name", required=True)
-    ap.add_argument("--username", required=True)
-    ap.add_argument("--slug", required=True)
+    ap.add_argument("--name")
+    ap.add_argument("--username")
+    ap.add_argument("--slug")
     ap.add_argument("--out", required=True)
     ap.add_argument("--base", default="https://tigmihostshield.duckdns.org")
     a = ap.parse_args()
-    a.link = f"{a.base.rstrip('/')}/register/{a.slug}"
+    a.link = f"{a.base.rstrip('/')}/register/{a.slug}" if a.slug else None
     c = canvas.Canvas(a.out, pagesize=A4)
-    c.setTitle(f"Guide de démarrage — {a.name}")
+    c.setTitle(f"Guide de démarrage — {a.name}" if a.name else "Guide de démarrage — Tigmi Host Shield")
     c.setAuthor("Tigmi Host Shield")
     total = len(PAGES)
     for n, fn in enumerate(PAGES, 1):

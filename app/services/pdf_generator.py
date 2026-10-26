@@ -285,6 +285,11 @@ def _host_name(submission: Submission) -> str:
     return section.name if section else ""
 
 
+def _host_address(submission: Submission) -> str:
+    section = getattr(submission, "section", None)
+    return (getattr(section, "address", None) or "").strip()
+
+
 def _host_lines(submission: Submission) -> list[str]:
     section = getattr(submission, "section", None)
     info = (getattr(section, "legal_info", None) or "").strip()
@@ -313,12 +318,13 @@ def _parties(submission: Submission, styles: dict) -> Table:
     host = _host_name(submission) or "L'Hôte"
     lines = _host_lines(submission)
     left = [Paragraph("D'UNE PART — L'HÔTE", styles["party_tag"])]
-    if lines:
-        left.append(Paragraph(f"<b>{_escape(lines[0])}</b>", styles["party"]))
-        left += [Paragraph(_escape(ln), styles["party"]) for ln in lines[1:]]
-    else:
-        left += [Paragraph(f"<b>{_escape(host)}</b>", styles["party"]),
-                 Paragraph("Exploitant du logement ci-dessous désigné", styles["party"])]
+    address = _host_address(submission)
+    left.append(Paragraph(f"<b>{_escape(lines[0] if lines else host)}</b>", styles["party"]))
+    if address:
+        left.append(Paragraph(_escape(address), styles["party"]))
+    left += [Paragraph(_escape(ln), styles["party"]) for ln in lines[1:]]
+    if not lines and not address:
+        left.append(Paragraph("Exploitant du logement ci-dessous désigné", styles["party"]))
     name = f"{_escape(submission.first_name)} {_escape(submission.last_name).upper()}"
     right = [Paragraph("D'AUTRE PART — LE VOYAGEUR", styles["party_tag"]),
              Paragraph(f"<b>{name}</b>", styles["party"]),
@@ -406,7 +412,7 @@ def _contract_story(submission: Submission, apartment_name: str, apartment_addre
     for title, body in AFTER_RULES:
         story.append(runin(title, body))
     story += [KeepTogether([runin("Déclaration d'acceptation et signature électronique", DECLARATION), Spacer(1, 3 * mm * f),
-                            _signature_block(submission, signature_file, signed, _city(apartment_address) if assigned else "", styles, f)])]
+                            _signature_block(submission, signature_file, signed, _city(_host_address(submission)) or (_city(apartment_address) if assigned else ""), styles, f)])]
     return story
 
 

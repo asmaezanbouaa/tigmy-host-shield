@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     ai_auto_confirm_threshold: float = 0.8
 
     # Payment by bank transfer + support (kept in .env, never committed: the repository is public)
+    bank_name: str = ""     # e.g. "CIH Bank"
+    bank_branch: str = ""   # e.g. "Agence Guéliz Central, 187 bd Mohamed V"
     bank_holder: str = ""
     bank_rib: str = ""
     bank_iban: str = ""

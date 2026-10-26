@@ -41,6 +41,8 @@ def bank_details() -> list[tuple[str, str]]:
     """Transfer details to show to hosts (empty when not configured in .env)."""
     rows = [
         ("Titulaire du compte", settings.bank_holder),
+        ("Banque", settings.bank_name),
+        ("Agence", settings.bank_branch),
         ("RIB", settings.bank_rib),
         ("IBAN", settings.bank_iban),
         ("Code SWIFT", settings.bank_swift),

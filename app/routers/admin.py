@@ -552,6 +552,9 @@ async def section_create(
     name = clean_text(str(form.get("name", "")), 128)
     if not name:
         return _sections_redirect(error="Donnez un nom à l'hôte.", anchor="new")
+    address = clean_text(str(form.get("address", "")), 255)
+    if not address:
+        return _sections_redirect(error="Indiquez l'adresse de l'hôte (elle figure dans le contrat).", anchor="new")
     accounts = []
     for i in (1, 2):
         username = str(form.get(f"username{i}", "")).strip()
@@ -565,7 +568,7 @@ async def section_create(
             return _sections_redirect(error=f"Utilisateur {i} : {err}", anchor="new")
         accounts.append((username, password))
 
-    section = HostSection(name=name, slug=unique_section_slug(db, name), is_active=True)
+    section = HostSection(name=name, slug=unique_section_slug(db, name), is_active=True, address=address)
     db.add(section)
     db.flush()
     for username, password in accounts:
@@ -747,6 +750,10 @@ async def admin_save_legal_info(
     if not section:
         return RedirectResponse(url="/admin/profile?error=Aucun h%C3%B4te%20s%C3%A9lectionn%C3%A9", status_code=303)
     form = await request.form()
+    address = clean_text(str(form.get("address", "")), 255)
+    if not address:
+        return RedirectResponse(url="/admin/profile?error=Indiquez%20l%27adresse%20de%20l%27h%C3%B4te", status_code=303)
+    section.address = address
     lines = [clean_text(ln, 120) for ln in str(form.get("legal_info", "")).splitlines()]
     section.legal_info = "\n".join(ln for ln in lines if ln)[:700] or None
     db.commit()
